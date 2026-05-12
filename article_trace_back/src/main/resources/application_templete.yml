@@ -1,0 +1,73 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  data:
+    redis:
+      database: 0
+      articleDB: 1
+      port: 6379
+      host: localhost
+      timeout: 1500
+      lettuce:
+        shutdown-timeout: 100ms
+        pool:
+          max-wait: 2s
+        cluster:
+          refresh:
+            adaptive: false
+      viewKey: "article:view"
+      infoKey: "article:info"
+      password: ${REDIS_PASSWORD} # redis密码，无则删除该行
+  tokenCheck:
+    # 不同用户组的访问权限
+    excludeUrls: /user/login, /user/register,/user/forgetPass,/error
+    notAllowUrl:
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType
+      reader: /category/**,/article/**
+  application:
+    name: articleTraceBack
+    admin:
+      enableAutoConfig: true
+      defaultUser: ${DEFAULT_USER_ID} # 默认用户名
+      defaultPass: ${DEFAULT_USER_PASS} # 默认密码
+      defaultResetPass: ${DEFAULT_USER_RESET_PASS} # 默认重置密码
+      defaultEmail: ${DEFAULT_USER_EMAIL} # 默认邮箱
+      defaultNickName: ${DEFAULT_USER_NICK_NAME} # 默认昵称
+  datasource:
+    url: ${DB_CONNECT_URL} # 数据库连接地址（MySQL）
+    username: ${DB_USER} # 数据库用户名
+    password: ${DB_PASSWORD} # 数据库密码
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      auto-commit: true
+      pool-name: hikariPool
+logging:
+  level:
+    root: INFO
+    com.boot_pro.demo_work: DEBUG
+    org.springframework.web: DEBUG
+    com.articleTraceBack.mapper: DEBUG
+JWT:
+  Secure_KEY: ${JWT_SECURE_KEY} # JWT加密密钥
+  longTime: 259200000 # 72小时
+  shortTime: 86400000 # 毫秒（24小时）
+Password:
+  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  registerPass: ${REGISTER_PASS} # 注册密码
+  masterPass: ${MASTER_PASS} # 站长密码
+S3:
+  endpoint: ${RUSTFS_ENDPOINT} # rustfs存储服务端地址
+  accessKey: ${RUSTFS_ACCESS_KEY} # rustfs存储服务端密钥（登录用户名）
+  secretKey: ${RUSTFS_SECRET_KEY} # rustfs存储服务端密钥（登录密码）
+  picBucket: "pic" # 图片存储桶
+  contentBucket: "content" # 文章内容存储桶
+sensitive_word:
+  filePath: ./res/sensitive_words.txt
+  cron: "0 */30 * * * ?"
+scheduler:
+  # Redis同步MySQL任务
+  sync:
+    enabled: true
+    cron: "0 */10 * * * ?"   # 每 10 分钟执行一次
