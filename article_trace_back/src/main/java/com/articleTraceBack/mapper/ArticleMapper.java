@@ -52,6 +52,12 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "where a.id = #{id}")
     Article findArticleById(int id);
 
+    @Select("SELECT views FROM article WHERE id = #{id}")
+    Long getArticleViews(int id);
+
+    @Select("SELECT id, title, views FROM article WHERE state = 1 ORDER BY views DESC LIMIT 10")
+    List<Article> getHotArticlesTop10();
+
     @Select("select count(*)" +
             "from article a left join user u on a.create_user = u.id where " +
             "( " +
@@ -136,9 +142,9 @@ public interface ArticleMapper extends BaseMapper<Article> {
 
     @Update({
             "<script>",
-            "UPDATE article SET views = CASE id ",
-            "<foreach collection='updates.entrySet()' item='views' index='id'>",
-            "WHEN #{id} THEN #{views} ",
+            "UPDATE article SET views = views + CASE id ",
+            "<foreach collection='updates.entrySet()' item='delta' index='id'>",
+            "WHEN #{id} THEN #{delta} ",
             "</foreach>",
             "END WHERE id IN ",
             "<foreach collection='updates.keySet()' item='id' open='(' close=')' separator=','>",
@@ -146,5 +152,5 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "</foreach>",
             "</script>"
     })
-    void batchIncrementViews(@Param("updates") Map<Long, Long> updates);
+    void batchAddViews(@Param("updates") Map<Long, Long> updates);
 }

@@ -11,7 +11,6 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,9 +26,9 @@ public class ArticleServiceImpl implements ArticleService {
     @Qualifier("stringRedisTemplateArticle")
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
-    private String ARTICLE_VIEW_KEY;
-    @Value("${spring.data.redis.infoKey}")
-    private String ARTICLE_INFO_KEY;
+    private String ARTICLE_PENDING_VIEWS_KEY;
+
+    private static final long HOT_ARTICLES_TTL_MINUTES = 5;
 
 
     public ArticleServiceImpl(ArticleMapper articleMapper, RustFsUtil rustFsUtil,
@@ -78,9 +77,6 @@ public class ArticleServiceImpl implements ArticleService {
                 return false;
             }
         }
-        String hashKey = ARTICLE_INFO_KEY + ":" + article.getId();
-        stringRedisTemplateArticle.opsForHash().put(hashKey, "title", article.getTitle());
-        stringRedisTemplateArticle.opsForHash().put(hashKey, "state", Integer.toString(article.getState()));
         return articleMapper.insertOrUpdate(article);
     }
 
@@ -141,8 +137,7 @@ public class ArticleServiceImpl implements ArticleService {
         String contentName = article.getContent();
         if (rustFsUtil.delete(imgName, "image")
                 && rustFsUtil.delete(contentName, "json")) {
-            stringRedisTemplateArticle.delete(ARTICLE_INFO_KEY + id);
-            stringRedisTemplateArticle.opsForZSet().remove(ARTICLE_VIEW_KEY, String.valueOf(id));
+            stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
             return articleMapper.deleteById(id) == 1;
         }
         return false;
@@ -198,7 +193,8 @@ public class ArticleServiceImpl implements ArticleService {
             } else {
                 article.setCoverImg("");
             }
-            article.setViews(getViews(article.getId()) != null ? getViews(article.getId()) : 0);
+            Long v = article.getViews();
+            article.setViews(v != null ? v : 0L);
         }
         pageBean.setItems(allArticles);
         return pageBean;
@@ -227,13 +223,6 @@ public class ArticleServiceImpl implements ArticleService {
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
                 .set("state", state);
-        String hashKey = ARTICLE_INFO_KEY + ":" + id;
-        if (stringRedisTemplateArticle.hasKey(hashKey)) {
-            stringRedisTemplateArticle.opsForHash().put(hashKey, "state", Integer.toString(state));
-        } else {
-            stringRedisTemplateArticle.opsForHash().put(hashKey, "title", articleMapper.selectById(id).getTitle());
-            stringRedisTemplateArticle.opsForHash().put(hashKey, "state", Integer.toString(state));
-        }
         return articleMapper.update(updateWrapper) == 1;
     }
 
@@ -243,71 +232,43 @@ public class ArticleServiceImpl implements ArticleService {
         if (article.getState() != 1) {
             return;
         }
-        String key = ARTICLE_VIEW_KEY + ":" + username + ":" + articleId;
-        if (stringRedisTemplateArticle.hasKey(key)) return;
+        String dedupKey = ARTICLE_PENDING_VIEWS_KEY + ":" + username + ":" + articleId;
+        if (stringRedisTemplateArticle.hasKey(dedupKey)) return;
 
-        String hashKey = ARTICLE_INFO_KEY + ":" + articleId;
-        if (!stringRedisTemplateArticle.hasKey(hashKey)) {
-            stringRedisTemplateArticle.opsForHash().put(hashKey, "title", article.getTitle());
-            stringRedisTemplateArticle.opsForHash().put(hashKey, "state", article.getState().toString());
-        }
-
-        stringRedisTemplateArticle.opsForValue().set(key, "", 1, TimeUnit.DAYS);
-        stringRedisTemplateArticle.opsForZSet().incrementScore(ARTICLE_VIEW_KEY,
+        stringRedisTemplateArticle.opsForValue().set(dedupKey, "", 1, TimeUnit.DAYS);
+        stringRedisTemplateArticle.opsForHash().increment(ARTICLE_PENDING_VIEWS_KEY,
                 String.valueOf(articleId), 1);
     }
 
     @Override
     public Long getViews(int id) {
-        try {
-            return Objects.requireNonNull(stringRedisTemplateArticle.opsForZSet().score(ARTICLE_VIEW_KEY, String.valueOf(id))).longValue();
-        } catch (NullPointerException e) {
-            Long view = articleMapper.findArticleById(id).getViews();
-            stringRedisTemplateArticle.opsForZSet().add(ARTICLE_VIEW_KEY, String.valueOf(id), view);
-            return view;
-        }
+        return articleMapper.getArticleViews(id);
     }
 
     @Override
     public List<Article> getViewsTop10() {
-        // 提取25个数据
-        Set<ZSetOperations.TypedTuple<String>> views =
-                stringRedisTemplateArticle.opsForZSet().reverseRangeWithScores(ARTICLE_VIEW_KEY, 0, 24);
-        List<Article> articles = new ArrayList<>();
-        if (views != null && !views.isEmpty()) {
-            for (ZSetOperations.TypedTuple<String> tuple : views) {
-                if (articles.size() == 10) {
-                    break;
-                }
-                if (Objects.requireNonNull(tuple.getScore()).longValue() == 0) {
-                    break;
-                }
+        String cacheKey = "article:hot:top10";
+        String cached = stringRedisTemplateArticle.opsForValue().get(cacheKey);
+        if (cached != null) {
+            String[] parts = cached.split(",");
+            List<Article> articles = new ArrayList<>();
+            for (int i = 0; i < parts.length; i += 3) {
                 Article art = new Article();
-                String hashKey = ARTICLE_INFO_KEY + ":" + tuple.getValue();
-                if (stringRedisTemplateArticle.hasKey(hashKey)) {
-                    String state = (Objects.requireNonNull(stringRedisTemplateArticle.opsForHash().
-                            get(hashKey, "state"))).toString();
-                    if (!Objects.equals(state, "1")) {
-                        continue;
-                    }
-                    String articleName = Objects.requireNonNull(stringRedisTemplateArticle.opsForHash().
-                            get(hashKey, "title")).toString();
-                    art.setTitle(articleName);
-                } else {
-                    Article thisArticle = articleMapper.findArticleById(Integer.parseInt(Objects.requireNonNull(tuple.getValue())));
-                    if (thisArticle.getState() != 1) {
-                        continue;
-                    }
-                    art.setTitle(thisArticle.getTitle());
-                    stringRedisTemplateArticle.opsForHash().put(hashKey, "title", thisArticle.getTitle());
-                    stringRedisTemplateArticle.opsForHash().put(hashKey, "state", thisArticle.getState().toString());
-                }
-                art.setViews(Objects.requireNonNull(tuple.getScore()).longValue());
-                art.setId(Integer.parseInt(Objects.requireNonNull(tuple.getValue())));
+                art.setId(Integer.parseInt(parts[i]));
+                art.setTitle(parts[i + 1]);
+                art.setViews(Long.parseLong(parts[i + 2]));
                 articles.add(art);
             }
+            return articles;
         }
-
+        List<Article> articles = articleMapper.getHotArticlesTop10();
+        StringBuilder sb = new StringBuilder();
+        for (Article a : articles) {
+            if (!sb.isEmpty()) sb.append(",");
+            sb.append(a.getId()).append(",").append(a.getTitle()).append(",").append(a.getViews());
+        }
+        stringRedisTemplateArticle.opsForValue().set(cacheKey, sb.toString(),
+                HOT_ARTICLES_TTL_MINUTES, TimeUnit.MINUTES);
         return articles;
     }
 }

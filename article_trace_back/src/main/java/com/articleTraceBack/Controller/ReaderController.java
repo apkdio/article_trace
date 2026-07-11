@@ -70,7 +70,7 @@ public class ReaderController {
                 error.put("error", "文章未发布！");
                 return Result.error(error);
             }
-            article.setViews(articleService.getViews(id));
+            article.setViews(article.getViews() != null ? article.getViews() : 0L);
             return Result.success(article);
         }
         error.put("error", "文章不存在!");
