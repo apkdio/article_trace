@@ -10,6 +10,7 @@ import com.articleTraceBack.pojo.User;
 import com.articleTraceBack.rpc.ArticleAgentClient;
 import com.articleTraceBack.rpc.ArticleProtoMapper;
 import com.articleTraceBack.rpc.gen.BatchIngestReply;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,12 +25,17 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 知识库定时批量同步任务。
+ * 知识库定时同步任务。
  *
- * <p>业务侧（ArticleServiceImpl）在文章增删改、审核时只往 Redis 写入待处理的
- * 文章 id，本任务每 5 分钟批量读取并统一推送到 article_trace_agent，成功后清空
- * Redis，失败则保留下次重试。目的是把「每篇一次」的推送合并为「每批一次」，
+ * <p>增量同步（每 5 分钟）：业务侧（ArticleServiceImpl）在文章增删改、审核时只往
+ * Redis 写入待处理的文章 id，本任务批量读取并统一推送到 article_trace_agent，成功
+ * 后清空 Redis，失败则保留下次重试。目的是把「每篇一次」的推送合并为「每批一次」，
  * 避免频繁的 BM25 索引重建与知识库 IO。</p>
+ *
+ * <p>全量对账（每天凌晨 1 点）：兜底机制——若 Redis 丢失或增量同步漏推，定时把全部
+ * 已发布文章重新推送一遍（agent 侧按 article.id 幂等覆盖，重复推送无害）。</p>
+ *
+ * <p>所有批量推送均按 batchSize 分批，避免单次 RPC 体量过大。</p>
  */
 @Slf4j
 @Component
@@ -46,6 +52,8 @@ public class AgentSyncTask {
 
     @Value("${rpc.agent.sync.enabled:true}")
     private boolean enabled;
+    @Value("${rpc.agent.sync.batchSize:100}")
+    private int batchSize;
     @Value("${rpc.agent.sync.ingestKey:agent:ingest:pending}")
     private String ingestKey;
     @Value("${rpc.agent.sync.deleteKey:agent:delete:pending}")
@@ -86,27 +94,72 @@ public class AgentSyncTask {
                 }
             }
 
-            // 2. 再处理入库/更新（已发布的文章）
+            // 2. 再处理入库/更新（已发布的文章），按批次上限分批推送
             if (!ingestIds.isEmpty()) {
                 List<Integer> ids = toIntList(ingestIds);
-                List<com.articleTraceBack.rpc.gen.Article> protoArticles = buildProtoArticles(ids);
-                if (!protoArticles.isEmpty()) {
-                    BatchIngestReply reply = agentClient.batchIngestArticles(protoArticles);
-                    if (reply.getOk()) {
-                        stringRedisTemplateArticle.opsForSet().remove(ingestKey, ingestIds.toArray(new Object[0]));
-                        log.info("agent sync: ingested {} article(s) into knowledge base", protoArticles.size());
-                    } else {
-                        log.warn("agent sync: ingest failed, {} id(s) kept for retry: {}",
-                                ids.size(), reply.getMessage());
-                    }
-                } else {
-                    // 文章已被删除或非发布状态，直接清掉无意义的待入库标记
+                if (ingestInBatches(ids)) {
                     stringRedisTemplateArticle.opsForSet().remove(ingestKey, ingestIds.toArray(new Object[0]));
+                    log.info("agent sync: cleared {} pending ingest id(s)", ids.size());
+                } else {
+                    log.warn("agent sync: ingest partially failed, pending kept for retry");
                 }
             }
         } catch (Exception e) {
             log.error("agent sync task failed", e);
         }
+    }
+
+    /**
+     * 全量对账：每天凌晨 1 点，把全部已发布文章重新推送一遍（幂等覆盖，兜底增量同步的丢失）。
+     */
+    @Scheduled(cron = "${rpc.agent.sync.fullSyncCron:0 0 1 * * ?}")
+    public void fullSync() {
+        if (!enabled) {
+            return;
+        }
+        try {
+            QueryWrapper<Article> wrapper = new QueryWrapper<>();
+            wrapper.eq("state", 1);
+            List<Article> published = articleMapper.selectList(wrapper);
+            if (published.isEmpty()) {
+                log.info("full sync: no published article, skip");
+                return;
+            }
+            List<Integer> ids = new ArrayList<>();
+            for (Article a : published) {
+                ids.add(a.getId());
+            }
+            ingestInBatches(ids);
+            log.info("full sync: pushed {} published article(s)", ids.size());
+        } catch (Exception e) {
+            log.error("full sync failed", e);
+        }
+    }
+
+    /**
+     * 按 batchSize 分批构造并推送文章，返回是否全部成功。
+     */
+    private boolean ingestInBatches(List<Integer> ids) {
+        int size = batchSize > 0 ? batchSize : 100;
+        boolean allOk = true;
+        int totalBatches = (ids.size() + size - 1) / size;
+        for (int i = 0; i < ids.size(); i += size) {
+            List<Integer> batch = ids.subList(i, Math.min(i + size, ids.size()));
+            List<com.articleTraceBack.rpc.gen.Article> protoArticles = buildProtoArticles(batch);
+            if (protoArticles.isEmpty()) {
+                continue;
+            }
+            BatchIngestReply reply = agentClient.batchIngestArticles(protoArticles);
+            if (reply.getOk()) {
+                log.info("agent sync: ingested {} article(s) (batch {}/{})",
+                        protoArticles.size(), i / size + 1, totalBatches);
+            } else {
+                log.warn("agent sync: ingest batch {}/{} failed: {}",
+                        i / size + 1, totalBatches, reply.getMessage());
+                allOk = false;
+            }
+        }
+        return allOk;
     }
 
     /**

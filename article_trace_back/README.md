@@ -81,7 +81,8 @@ article_trace_back/
     │   │   └── AdminInitializer.java        #   启动时自动创建站长账号
     │   └── scheduledTask/                   # 定时任务
     │       ├── SyncRedisToDbTask.java       #   Redis 浏览量 → MySQL 同步
-    │       └── SyncSensitiveWordLoader.java #   敏感词库热更新
+    │       ├── SyncSensitiveWordLoader.java #   敏感词库热更新
+    │       └── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
@@ -173,45 +174,57 @@ flowchart LR
 
 | 方法 | 方向 | 作用 |
 |---|---|---|
-| `IngestArticle` | Java → agent | 单篇推送/覆盖（按 article.id 幂等） |
+| `IngestArticle` | Java → agent | 单篇推送/覆盖（按 article.id 幂等，由定时任务批量阶段使用） |
 | `BatchIngestArticles` | Java → agent | 批量推送/覆盖 |
 | `DeleteArticles` | Java → agent | 删除若干篇（下线/删除时） |
 | `SyncArticles` | Java → agent | 全量/增量流式同步（客户端流式） |
-| `Ask` | Java ⇄ agent | 检索 + LLM 生成答案 |
+| `Ask` | Java ⇄ agent | 检索 + LLM 流式生成答案（服务端流式） |
 | `Health` | Java → agent | 健康探活 + 入库统计 |
 
-### 数据流（写链路）
+### 知识库同步机制（写链路）
+
+业务侧**不直接推送**，而是把待处理的文章 id 写入 Redis，由定时任务统一批量推送，
+避免每篇一次实时推送导致频繁的 BM25 索引重建与知识库 IO。
 
 ```mermaid
-sequenceDiagram
-    participant J as article_trace(Java)
-    participant P as article_agent(Python)
-    Note over J,P: 发布/更新(state=1)
-    J->>J: 保存文章 + 从 RustFS 取正文
-    J->>P: gRPC IngestArticle(Article)
-    Note over J,P: 删除/下架/驳回(state≠1)
-    J->>P: gRPC DeleteArticles([id])
-    Note over J,P: 用户提问
-    J->>P: gRPC Ask(query, session_id?)
-    P-->>J: AskReply(answer, articles[])
+flowchart LR
+    A[文章增删改/审核] -->|SADD 文章id| B[Redis Set<br/>ingest:pending / delete:pending]
+    B -->|每 5 分钟| C[批量读 id]
+    C -->|id 查 MySQL + 读 RustFS 正文| D[组装完整 Article]
+    D -->|按 batchSize 分批| E[BatchIngest / Delete]
+    E -->|成功| F[SREM 清 Redis]
+    E -->|失败| B
+    G[每天凌晨 1 点] -->|查全部 state=1| H[分批重推 幂等覆盖]
+    E --> P[article_trace_agent]
+    H --> P
 ```
 
-- **发布/更新**（`articleAddOrUpdate`）：保存成功后，`state==1` 时联查作者/分类，调 `IngestArticle` 推送。
-- **审核**（`updateState`）：通过（state=1）推送全文；下架/驳回（state≠1）调 `DeleteArticles`。
-- **删除**（`deleteById`）：删库后调 `DeleteArticles`。
-- 所有推送均为**旁路容错**（try-catch + 日志），agent 不可用不影响主业务。
+- **实时标记**（`ArticleServiceImpl`）：`articleAddOrUpdate` / `updateState` / `deleteById` 成功后，只把文章 id `SADD` 到 Redis（`agent:ingest:pending` 或 `agent:delete:pending`），不查正文、不调 RPC。
+- **增量同步**（`AgentSyncTask.syncPendingUpdates`，每 5 分钟）：读 Redis 待处理 id → 先删后增 → 用 id 查 MySQL 元数据 + 读 RustFS 正文 → 组装完整 proto Article → 按 `batchSize` 分批推送 → 全部成功后清 Redis，失败保留重试。
+- **全量对账**（`AgentSyncTask.fullSync`，每天凌晨 1 点）：兜底机制，查询全部 `state=1` 文章重新推送（agent 侧按 article.id 幂等覆盖），防止 Redis 丢失或增量漏推。
+- **幂等与冲突**：`markIngestPending` / `markDeletePending` 互相移除对方集合中的同 id，保证「后到操作覆盖先到操作」。
+- **旁路容错**：所有 Redis 写入与 RPC 调用均 try-catch + 日志，agent 不可用不影响主业务。
+
+> **BM25 重建说明**：agent 侧采用「脏标记 + 惰性重建」——每批 ingest 只置脏标记，BM25 索引在下次检索前才重建一次，因此 Java 侧分多批推送**不会**导致多次重建。
 
 ### 客户端封装
 
-`ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 5 秒 deadline 并捕获异常；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
+`ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 deadline 并捕获异常；`askStream` 返回服务端流式迭代器；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
 
 ### 配置
 
 ```yaml
 rpc:
   agent:
-    host: ${AGENT_HOST:localhost}   # agent gRPC 服务地址
-    port: ${AGENT_PORT:50051}       # agent gRPC 端口
+    host: ${AGENT_HOST:localhost}     # agent gRPC 服务地址
+    port: ${AGENT_PORT:50051}         # agent gRPC 端口
+    sync:
+      enabled: true                   # 是否启用知识库定时同步
+      cron: "0 */5 * * * ?"           # 增量同步：每 5 分钟
+      fullSyncCron: "0 0 1 * * ?"     # 全量对账：每天凌晨 1 点
+      batchSize: 100                   # 每批最多推送文章数
+      ingestKey: "agent:ingest:pending"  # 待入库/更新文章 id 集合
+      deleteKey: "agent:delete:pending"  # 待删除文章 id 集合
 ```
 
 ## 数据库设计
