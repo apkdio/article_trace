@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# gRPC 生成的 stub
+generated/
+
+# 运行时产物
+data/
+logs/

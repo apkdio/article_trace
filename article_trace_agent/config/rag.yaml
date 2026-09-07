@@ -1,0 +1,38 @@
+# RAG 流水线配置
+
+# 文本分块
+chunk:
+  chunk_size: 600          # 每块字符数（文章正文较长，取中等粒度）
+  chunk_overlap: 60        # 相邻块重叠
+  separators:              # 递归切分器分隔符（按优先级）
+    - "\n\n"
+    - "\n"
+    - "。"
+    - "！"
+    - "？"
+    - "；"
+    - ". "
+    - " "
+    - ""
+
+# 检索
+retrieval:
+  dense_top_k: 10           # 稠密检索候选数（RRF 前）
+  sparse_top_k: 10          # BM25 候选数（RRF 前）
+  final_top_k: 8            # RRF 融合后的分块数
+
+# 稀疏检索（BM25）
+sparse:
+  bm25_k1: 1.5              # TF 饱和参数
+  bm25_b: 0.75              # 文档长度归一化
+
+# RRF 融合
+rrf:
+  k: 60                     # 平滑常数
+  dense_weight: 1.0         # 稠密通道权重
+  sparse_weight: 1.0        # 稀疏通道权重
+
+# 文章级结果（按 article_id 分组后）
+article:
+  top_k: 5                  # 返回给用户的文章数
+  context_chunks: 4         # 喂给 LLM 的命中分块数

@@ -1,0 +1,13 @@
+# Chroma 向量库配置
+
+# 持久化目录（相对项目根目录）
+persist_dir: data/vector_store
+
+# 向量集合名称
+collection_name: article_kb
+
+# Embedding 模型（本地 Ollama，OpenAI 兼容端点）
+embedding:
+  base_url: http://localhost:11434/v1
+  api_key: ollama                         # 本地 Ollama 无需真实 key
+  model: bge-m3                           # 可换成 qwen3-embedding 等

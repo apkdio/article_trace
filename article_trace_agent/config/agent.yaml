@@ -1,0 +1,14 @@
+# Agent 配置
+
+# LLM 设置（OpenAI 兼容端点，默认本地 Ollama；接入云端服务改 base_url/api_key/model）
+llm:
+  model: qwen2.5:7b
+  base_url: http://localhost:11434/v1
+  api_key: ollama
+  temperature: 0.3
+  max_tokens: 1024
+
+# 行为开关
+behavior:
+  retrieval_only: false   # true=直接返回检索片段原文；false=走 LLM 生成答案
+  verbose_log: false
