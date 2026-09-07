@@ -181,7 +181,7 @@ const changeUserType = (id, type) => {
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="资料更新于" width="220">
+          <el-table-column label="资料更新于" >
             <template #default="{ row }">
               <div class="time-track">
                 <div class="time-item">

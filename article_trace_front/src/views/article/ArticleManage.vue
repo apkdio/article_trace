@@ -477,7 +477,7 @@ const assessArticle = async (id, state) => {
             </template>
           </el-table-column>
 
-          <el-table-column label="状态" width="100">
+          <el-table-column label="状态" >
             <template #default="scope">
               <el-tag v-if="scope.row.state === 0" type="primary" disable-transitions>草稿</el-tag>
               <el-tag v-else-if="scope.row.state === 1" type="success" disable-transitions>发布</el-tag>
@@ -487,7 +487,7 @@ const assessArticle = async (id, state) => {
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" fixed="right" min-width="100">
+          <el-table-column label="操作" fixed="right" width="150">
             <template #default="{ row }">
               <div class="action-cell">
                 <el-tooltip content="编辑文章" placement="top" :enterable="false">
