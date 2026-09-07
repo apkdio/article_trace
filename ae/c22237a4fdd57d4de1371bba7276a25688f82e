@@ -1,0 +1,19 @@
+article_trace_agent/server/service_impl.py
+  s_9910039e2528d5::t_2094899a541395 49,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "aec22237a4fdd57d4de1371bba7276a25688f82e",
+  "prompts": {},
+  "sessions": {
+    "s_9910039e2528d5": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_iqc76wqjrqs7",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
