@@ -5,17 +5,12 @@ import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
-import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.PageBean;
-import com.articleTraceBack.pojo.User;
-import com.articleTraceBack.rpc.ArticleAgentClient;
-import com.articleTraceBack.rpc.ArticleProtoMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,30 +25,25 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleMapper articleMapper;
     private final RustFsUtil rustFsUtil;
     private final AhoCorasickUtil ahoCorasickUtil;
-    private final ArticleAgentClient agentClient;
-    private final UserService userService;
-    private final CategoryService categoryService;
     @Qualifier("stringRedisTemplateArticle")
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
     private String ARTICLE_PENDING_VIEWS_KEY;
+    @Value("${rpc.agent.sync.ingestKey:agent:ingest:pending}")
+    private String AGENT_INGEST_KEY;
+    @Value("${rpc.agent.sync.deleteKey:agent:delete:pending}")
+    private String AGENT_DELETE_KEY;
 
     private static final long HOT_ARTICLES_TTL_MINUTES = 5;
 
 
     public ArticleServiceImpl(ArticleMapper articleMapper, RustFsUtil rustFsUtil,
                               @Qualifier("stringRedisTemplateArticle") StringRedisTemplate stringRedisTemplateArticle,
-                              AhoCorasickUtil ahoCorasickUtil,
-                              ArticleAgentClient agentClient,
-                              @Lazy UserService userService,
-                              CategoryService categoryService) {
+                              AhoCorasickUtil ahoCorasickUtil) {
         this.ahoCorasickUtil = ahoCorasickUtil;
         this.articleMapper = articleMapper;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplateArticle = stringRedisTemplateArticle;
-        this.agentClient = agentClient;
-        this.userService = userService;
-        this.categoryService = categoryService;
     }
     @Override
     public List<AhoCorasickUtil.Match> containsSensitive(String content) {
@@ -94,9 +84,13 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
         boolean saved = articleMapper.insertOrUpdate(article);
-        // 保存成功后，将已发布文章推送到 agent（旁路容错，失败不影响主流程）
+        // 保存成功后标记待同步：已发布 → 待入库，非发布 → 待删除（避免草稿被检索）
         if (saved) {
-            pushToAgent(article, (String) content.get("content"));
+            if (article.getState() != null && article.getState() == 1) {
+                markIngestPending(article.getId());
+            } else {
+                markDeletePending(article.getId());
+            }
         }
         return saved;
     }
@@ -160,9 +154,9 @@ public class ArticleServiceImpl implements ArticleService {
                 && rustFsUtil.delete(contentName, "json")) {
             stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
             boolean deleted = articleMapper.deleteById(id) == 1;
-            // 同步从 agent 删除索引（旁路容错）
+            // 标记待删除：由定时任务统一从 agent 移除索引
             if (deleted) {
-                agentClient.deleteArticles(Collections.singletonList((long) id));
+                markDeletePending(id);
             }
             return deleted;
         }
@@ -251,49 +245,47 @@ public class ArticleServiceImpl implements ArticleService {
                 .set("state", state);
         boolean updated = articleMapper.update(updateWrapper) == 1;
         if (updated) {
+            // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除
             if (state == 1) {
-                // 审核通过（发布）：推送完整文章到 agent
-                Article article = articleMapper.selectById(id);
-                if (article != null) {
-                    pushToAgent(article, rustFsUtil.getContent(article.getContent()));
-                }
+                markIngestPending(id);
             } else {
-                // 下架 / 驳回 / 转草稿：从 agent 移除索引
-                agentClient.deleteArticles(Collections.singletonList((long) id));
+                markDeletePending(id);
             }
         }
         return updated;
     }
 
     /**
-     * 将已发布文章推送到 agent（旁路容错：任何异常只记录日志，不向上抛）。
+     * 标记文章待入库/更新到 agent 知识库（幂等，写入 Redis Set，由定时任务批量处理）。
      */
-    private void pushToAgent(Article article, String rawContent) {
-        if (article == null || article.getState() == null || article.getState() != 1) {
+    private void markIngestPending(Integer articleId) {
+        if (articleId == null) {
             return;
         }
+        String id = String.valueOf(articleId);
         try {
-            String authorName = null;
-            User author = userService.findUserById(article.getCreateUser());
-            if (author != null) {
-                authorName = author.getNickname();
-            }
-            String categoryName = null;
-            if (article.getCategoryId() != null) {
-                Category category = categoryService.findById(article.getCategoryId());
-                if (category != null) {
-                    categoryName = category.getCategoryName();
-                }
-            }
-            String coverUrl = null;
-            if (article.getCoverImg() != null && !article.getCoverImg().isEmpty()) {
-                coverUrl = rustFsUtil.getPciUrl(article.getCoverImg());
-            }
-            com.articleTraceBack.rpc.gen.Article proto = ArticleProtoMapper.toProto(
-                    article, rawContent, authorName, categoryName, coverUrl);
-            agentClient.ingestArticle(proto);
+            stringRedisTemplateArticle.opsForSet().add(AGENT_INGEST_KEY, id);
+            // 后到操作覆盖先到操作：移除该 id 的待删除标记
+            stringRedisTemplateArticle.opsForSet().remove(AGENT_DELETE_KEY, id);
         } catch (Exception e) {
-            log.warn("push article to agent failed: articleId={}", article.getId(), e);
+            log.warn("mark ingest pending failed: articleId={}", articleId, e);
+        }
+    }
+
+    /**
+     * 标记文章待从 agent 知识库删除（幂等，写入 Redis Set，由定时任务批量处理）。
+     */
+    private void markDeletePending(Integer articleId) {
+        if (articleId == null) {
+            return;
+        }
+        String id = String.valueOf(articleId);
+        try {
+            stringRedisTemplateArticle.opsForSet().add(AGENT_DELETE_KEY, id);
+            // 后到操作覆盖先到操作：移除该 id 的待入库标记
+            stringRedisTemplateArticle.opsForSet().remove(AGENT_INGEST_KEY, id);
+        } catch (Exception e) {
+            log.warn("mark delete pending failed: articleId={}", articleId, e);
         }
     }
 

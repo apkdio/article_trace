@@ -67,6 +67,11 @@ rpc:
   agent:
     host: ${AGENT_HOST:localhost} # Python Agent gRPC 服务地址
     port: ${AGENT_PORT:50051}     # Python Agent gRPC 端口
+    sync:
+      enabled: true                          # 是否启用知识库定时批量同步
+      cron: "0 */5 * * * ?"                  # 每 5 分钟检查一次
+      ingestKey: "agent:ingest:pending"      # 待入库/更新文章 id 集合
+      deleteKey: "agent:delete:pending"      # 待删除文章 id 集合
 sensitive_word:
   filePath: ./res/sensitive_words.txt
   cron: "0 */30 * * * ?"
