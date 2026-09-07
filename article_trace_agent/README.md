@@ -55,22 +55,26 @@ article_trace_agent/
 ├── proto/                     # 接口契约（唯一与 Java 共享，见 proto/README.md）
 │   ├── article_agent.proto    # 服务 + 消息定义
 │   └── README.md              # 契约说明 + 两端代码生成命令
-├── tools/                     # 双路召回内核（已抽取）
+├── tools/                     # 检索/问答内核
+│   ├── vector_store.py        # 文章入库/删除（按 article_id 幂等）+ 稠密检索 + BM25 重建
+│   ├── hybrid_retriever.py    # 双路召回编排（dense + sparse → RRF）
+│   ├── article_agent.py       # 问答编排：检索 → 按文章分组 → LLM 生成
 │   ├── sparse_retriever.py    # BM25 稀疏检索（含 pickle 缓存）
 │   ├── rrf_fusion.py          # RRF 融合（按 chunk_id 去重）
 │   ├── llm_tool.py            # LLM / Embedding 工厂（默认 Ollama，可切任意 OpenAI 兼容服务）
 │   ├── context_store.py       # 多轮会话上下文（jsonl）
 │   ├── html_util.py           # HTML → 纯文本清洗
 │   └── path_tool.py / config_tool.py / log_tool.py / prompts_tool.py  # 支撑
-├── generated/                 # grpc 生成的 *_pb2.py（生成产物，gitignore）
-├── config/                    # agent / rag / chroma / prompts 配置（YAML）
+├── server/                    # gRPC 服务
+│   ├── server.py              # 服务入口（python -m server.server）
+│   └── service_impl.py        # 6 个 RPC 方法实现
+├── config/                    # agent / rag / chroma / prompts 配置（YAML，默认本地 Ollama）
 ├── prompts/                   # 系统提示词
+├── generated/                 # grpc 生成的 *_pb2.py（生成产物，gitignore）
 ├── data/                      # 运行时产物：向量库 / pkl / 上下文（gitignore）
+├── requirements.txt           # 依赖清单
 └── README.md
 ```
-
-> 当前 `tools/` 内为已抽取的双路召回内核；文章级入库、问答编排、gRPC server 与配置仍在实现中，
-> 进度见文末 [开发进度](#开发进度)。
 
 ---
 
@@ -112,13 +116,10 @@ article_trace_agent/
 
 ## 快速开始
 
-> ⚠️ 当前为**开发早期**：契约与检索内核已就绪，gRPC server / 配置 / 依赖清单正在补齐。
-> 下列步骤为最终形态，带「待实现」标记的部分暂不可运行。
-
 ### 1. 环境要求
 
-- Python 3.11+
-- [Ollama](https://ollama.com)（本地已运行，默认端口 `11434`）
+- Python 3.13+（本仓库 venv 用 3.13.14）
+- [Ollama](https://ollama.com)（本地运行，默认端口 `11434`）
 
 ### 2. 拉取模型
 
@@ -127,29 +128,37 @@ ollama pull bge-m3        # embedding 模型
 ollama pull qwen2.5:7b    # 生成模型
 ```
 
-### 3. 安装依赖（待实现 `requirements.txt`）
-
-核心依赖：
+### 3. 创建虚拟环境并安装依赖
 
 ```bash
-pip install grpcio grpcio-tools chromadb langchain langchain-chroma \
-            langchain-openai langchain-text-splitters rank-bm25 PyYAML
+uv venv --python 3.13              # 创建 .venv
+uv pip install -r requirements.txt  # 安装依赖
 ```
 
-### 4. 配置（待实现）
+> 也可用标准库方式：`python -m venv .venv` + `.venv\Scripts\pip install -r requirements.txt`。
 
-复制 `config/*_template.yaml` 为对应 `*.yaml`，填入模型名与端点地址。
-默认使用本地 Ollama；如需接入云端 OpenAI 兼容服务，改 `base_url / api_key / model` 即可。
+### 4. 配置
 
-### 5. 生成 stub 并启动（待实现）
+`config/*.yaml` 已随仓库提供默认值（本地 Ollama，无密钥）。如需接入云端 OpenAI 兼容服务，
+改 `config/agent.yaml` 与 `config/chroma.yaml` 里的 `base_url / api_key / model` 即可。
+
+### 5. 生成 stub（仅 proto 变更后需要）
 
 ```bash
 python -m grpc_tools.protoc -I proto \
     --python_out=generated --grpc_python_out=generated \
     proto/article_agent.proto
-
-python -m article_agent.server
 ```
+
+> 当前仓库的 `generated/` 已生成过；只有改动了 `proto/article_agent.proto` 才需重新生成。
+
+### 6. 启动服务
+
+```bash
+python -m server.server        # 默认监听 50051，AGENT_PORT 环境变量可覆盖
+```
+
+启动成功日志：`[gRPC] article_agent listening on :50051`。Java 侧用 `localhost:50051` 连接。
 
 ---
 
@@ -180,11 +189,11 @@ sequenceDiagram
 
 - [x] 接口契约 `proto/article_agent.proto`（含两端代码生成说明）
 - [x] 双路召回内核抽取（BM25 / RRF / LLM 工厂 / 会话上下文 / HTML 清洗）
-- [ ] 文章级向量库：入库 / 删除 / 分块（按 `article.id` 幂等）
-- [ ] 双路召回编排 `hybrid_retriever`
-- [ ] 问答编排：检索 → 分组 → LLM 生成
-- [ ] gRPC server：实现 6 个 RPC 方法
-- [ ] 配置与系统提示词（agent / rag / chroma / prompts）
-- [ ] `requirements.txt` 与 `generated/` 生成脚本
-- [ ] Java 侧 client + 事件钩子（发布/更新/删除推送）
-- [ ] 全量同步 `SyncArticles` 联调
+- [x] 文章级向量库：入库 / 删除 / 分块（按 `article.id` 幂等）
+- [x] 双路召回编排 `hybrid_retriever`
+- [x] 问答编排：检索 → 分组 → LLM 生成
+- [x] gRPC server：实现 6 个 RPC 方法
+- [x] 配置与系统提示词（agent / rag / chroma / prompts）
+- [x] `requirements.txt` + venv 创建 + stub 生成
+- [x] Java 侧 client + 事件钩子（发布/更新/删除推送）
+- [ ] 全量同步 `SyncArticles` 联调（待 Java 侧触发全量同步验证）
