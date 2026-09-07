@@ -1,0 +1,19 @@
+article_trace_back/pom.xml
+  s_ab74ea15e793d1::t_caa8604f174808 150-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "4c1c1ffb4bedf478250ff8a4b88ab37ffeed1abc",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
