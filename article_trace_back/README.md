@@ -1,6 +1,6 @@
 # 文迹 · 后端（article_trace_back）
 
-基于 **Spring Boot 3 + MyBatis-Plus** 的文章平台后端服务，采用 `Controller → Service → Mapper` 三层架构，为前端提供 REST 接口。
+基于 **Spring Boot 3 + MyBatis-Plus** 的文章平台后端服务，采用 `Controller → Service → Mapper` 三层架构，为前端提供 REST 接口，并通过 gRPC 与 `article_trace_agent` 检索问答服务通信。
 
 ## 技术栈
 
@@ -15,28 +15,35 @@
 | 鉴权 | JWT（java-jwt） | 4.4.0 |
 | 密码加密 | BCrypt（jbcrypt） | 0.4 |
 | HTML 解析 | jsoup | 1.17.2 |
+| RPC | gRPC / Protobuf | 1.68.1 / 3.25.5 |
 | 其他 | Lombok / Validation / Actuator | — |
 
 ## 目录结构
 
 ```
 article_trace_back/
-├── pom.xml                                  # Maven 依赖管理
+├── pom.xml                                  # Maven 依赖管理（含 gRPC + protobuf 插件）
 ├── res/
 │   └── sensitive_words.txt                  # 外部敏感词库（一行一词，支持热更新）
 └── src/main/
+    ├── proto/
+    │   └── article_agent.proto              # gRPC 契约（与 agent 侧共享，mvn compile 自动生成 stub）
     ├── java/com/articleTraceBack/
     │   ├── ArticleTraceBackApplication.java # 启动类（@EnableScheduling）
     │   ├── Controller/                      # 控制层（REST 接口）
     │   │   ├── ArticleController.java       #   文章：增删改查/审核/封面
     │   │   ├── CategoryController.java      #   分类：增删改查
     │   │   ├── ReaderController.java        #   读者：文章浏览/评论/作者信息
-    │   │   └── UserController.java          #   用户：注册/登录/信息/账号管理
+    │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
+    │   │   └── AgentController.java         #   检索问答/探活（转发 agent）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
     │   │   ├── ReaderService.java / ReaderServiceImpl.java
     │   │   └── UserService.java / UserServiceImpl.java
+    │   ├── rpc/                             # gRPC 客户端（调用 agent）
+    │   │   ├── ArticleAgentClient.java      #   6 个 RPC 方法封装（容错 + 超时）
+    │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
     │   ├── mapper/                          # 数据访问层（MyBatis-Plus）
     │   │   ├── ArticleMapper.java           #   文章自定义 SQL（分页/统计/批量加浏览量）
     │   │   ├── CategoryMapper.java
@@ -50,6 +57,9 @@ article_trace_back/
     │   │   ├── Result.java                  #   统一响应包装
     │   │   ├── PageBean.java                #   分页包装
     │   │   ├── WriterInfo.java              #   作者信息视图对象
+    │   │   ├── AgentAskRequest.java         #   问答请求体
+    │   │   ├── AgentAskResult.java          #   问答结果
+    │   │   ├── AgentMatchedArticle.java     #   问答命中的文章
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -155,6 +165,55 @@ flowchart LR
 
 启动时若配置了 `enableAutoConfig=true` 且默认站长账号不存在，则自动创建 `type=0` 的站长账号（密码 BCrypt 加密）。
 
+## 与 article_trace_agent 的对接（gRPC）
+
+后端通过 gRPC 与独立的 Python 检索问答微服务 `article_trace_agent` 通信，契约见 [src/main/proto/article_agent.proto](src/main/proto/article_agent.proto)。
+
+### 契约方法
+
+| 方法 | 方向 | 作用 |
+|---|---|---|
+| `IngestArticle` | Java → agent | 单篇推送/覆盖（按 article.id 幂等） |
+| `BatchIngestArticles` | Java → agent | 批量推送/覆盖 |
+| `DeleteArticles` | Java → agent | 删除若干篇（下线/删除时） |
+| `SyncArticles` | Java → agent | 全量/增量流式同步（客户端流式） |
+| `Ask` | Java ⇄ agent | 检索 + LLM 生成答案 |
+| `Health` | Java → agent | 健康探活 + 入库统计 |
+
+### 数据流（写链路）
+
+```mermaid
+sequenceDiagram
+    participant J as article_trace(Java)
+    participant P as article_agent(Python)
+    Note over J,P: 发布/更新(state=1)
+    J->>J: 保存文章 + 从 RustFS 取正文
+    J->>P: gRPC IngestArticle(Article)
+    Note over J,P: 删除/下架/驳回(state≠1)
+    J->>P: gRPC DeleteArticles([id])
+    Note over J,P: 用户提问
+    J->>P: gRPC Ask(query, session_id?)
+    P-->>J: AskReply(answer, articles[])
+```
+
+- **发布/更新**（`articleAddOrUpdate`）：保存成功后，`state==1` 时联查作者/分类，调 `IngestArticle` 推送。
+- **审核**（`updateState`）：通过（state=1）推送全文；下架/驳回（state≠1）调 `DeleteArticles`。
+- **删除**（`deleteById`）：删库后调 `DeleteArticles`。
+- 所有推送均为**旁路容错**（try-catch + 日志），agent 不可用不影响主业务。
+
+### 客户端封装
+
+`ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 5 秒 deadline 并捕获异常；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
+
+### 配置
+
+```yaml
+rpc:
+  agent:
+    host: ${AGENT_HOST:localhost}   # agent gRPC 服务地址
+    port: ${AGENT_PORT:50051}       # agent gRPC 端口
+```
+
 ## 数据库设计
 
 数据库 `article_trace`，共 4 张表（见根目录 `article_trace.sql`）。
@@ -210,7 +269,7 @@ flowchart LR
 
 ## 核心接口概览
 
-统一响应格式 `Result`：`{ "code": 200, "message": "...", "data": ... }`。
+统一响应格式 `Result`：`{ "code": 0, "message": "...", "data": ... }`（0 成功 / 1 失败）。
 
 ### 用户 `/user`
 
@@ -267,6 +326,13 @@ flowchart LR
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
 
+### 检索问答 `/agent`
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/agent/ask` | 检索 + LLM 问答（转发 agent） |
+| GET | `/agent/health` | agent 健康/入库统计 |
+
 ## 部署
 
 ### 基础环境
@@ -277,13 +343,14 @@ flowchart LR
 | MySQL | 8.0 |
 | Redis | 6+ |
 | RustFS | S3 兼容对象存储 |
+| article_trace_agent | 可选，未启动时问答接口返回失败但不影响主业务 |
 
 ### 启动步骤
 
 1. 初始化数据库：`source article_trace.sql`。
 2. 配置 RustFS：启动后访问 `IP:9001` 创建 `pic` 与 `content` 两个私密桶。
-3. 配置：复制 `application_templete.yml` 为 `application.yml`，填写 `${}` 占位符（数据库、Redis、JWT 密钥、RustFS 凭据、默认管理员等）。`application.yml` 已被 `.gitignore` 忽略，不会提交到仓库。
-4. 启动：
+3. 配置：复制 `application_templete.yml` 为 `application.yml`，填写 `${}` 占位符（数据库、Redis、JWT 密钥、RustFS 凭据、默认管理员、agent 地址等）。`application.yml` 已被 `.gitignore` 忽略，不会提交到仓库。
+4. 启动（`mvn compile` 会自动生成 gRPC stub 到 `com.articleTraceBack.rpc.gen` 包）：
 
 ```bash
 mvn spring-boot:run
