@@ -46,7 +46,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
     def BatchIngestArticles(self, request, context):
         result = ingest_articles([_article_to_dict(a) for a in request.articles])
         return pb.BatchIngestReply(
-            ok=True,
+            ok=(result.get("failed", 0) == 0),
             ingested=result.get("ingested", 0),
             failed=result.get("failed", 0),
             message=result.get("message", ""),
@@ -64,7 +64,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         articles = [_article_to_dict(a) for a in request_iterator]
         result = ingest_articles(articles)
         return pb.SyncReply(
-            ok=True,
+            ok=(result.get("failed", 0) == 0),
             ingested=result.get("ingested", 0),
             failed=result.get("failed", 0),
             message=result.get("message", ""),
