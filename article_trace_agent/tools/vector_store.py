@@ -151,17 +151,43 @@ def ingest_article(article: dict) -> dict:
 
 
 def ingest_articles(articles: list) -> dict:
-    """批量入库。逐篇幂等覆盖，返回成功/失败计数。"""
-    ok = failed = 0
-    messages = []
+    """批量入库（真批量：一次删旧、一次写新、一次 embedding）。
+
+    把整批文章先统一切成 chunk 收集起来，再：
+    1. 用一次 $in 删除这批所有文章的旧 chunk（幂等覆盖）；
+    2. 用一次 add_documents 写入全部新 chunk（embedding 一次批量）；
+    3. 只标记一次索引脏。
+    相比逐篇调用 ingest_article，避免重复实例化 Chroma、逐篇触发 embedding。
+    """
+    all_docs: list = []
+    all_ids: list = []
+    article_ids: list = []
+    failed = 0
+    messages: list = []
     for art in articles:
-        r = ingest_article(art)
-        if r.get("status") == "ok":
-            ok += 1
-        else:
+        article_id = art.get("id")
+        if article_id is None:
             failed += 1
-            messages.append(r.get("message", ""))
-    return {"status": "ok", "ingested": ok, "failed": failed, "message": "; ".join(messages)}
+            messages.append("article.id 缺失")
+            continue
+        try:
+            docs, ids = _article_to_chunks(art)
+            all_docs.extend(docs)
+            all_ids.extend(ids)
+            article_ids.append(int(article_id))
+        except Exception as e:
+            failed += 1
+            messages.append(f"article {article_id} 分块失败: {e}")
+
+    ingested = len(article_ids)
+    if article_ids:
+        store = get_vector_store()  # 只取一次
+        store._collection.delete(where={"article_id": {"$in": article_ids}})
+        if all_docs:
+            store.add_documents(all_docs, ids=all_ids)
+        mark_index_dirty()  # 只标记一次
+        logger.info("[Ingest] batch: %d article(s), %d chunk(s)", ingested, len(all_docs))
+    return {"status": "ok", "ingested": ingested, "failed": failed, "message": "; ".join(messages)}
 
 
 def delete_articles(article_ids: list) -> dict:
@@ -228,11 +254,13 @@ def list_collections_info() -> dict:
     store = get_vector_store()
     count = store._collection.count()
     data = store._collection.get(include=["metadatas"])
-    article_ids = {
-        m.get("article_id")
-        for m in data["metadatas"]
-        if m and "article_id" in m
-    }
+    article_ids = set()
+    for m in (data.get("metadatas") or []):
+        if not m:
+            continue
+        aid = m.get("article_id")
+        if isinstance(aid, int):
+            article_ids.add(aid)
     return {
         "collection_name": _get_collection_name(),
         "chunk_count": count,
