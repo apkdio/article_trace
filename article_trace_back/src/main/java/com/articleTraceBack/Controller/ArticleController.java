@@ -134,7 +134,7 @@ public class ArticleController {
                 return Result.error(error);
             }
             Article byName = articleService.findArticleByName(articleTitle);
-            if (byName != null) {
+            if (byName != null && (!Objects.equals(byName.getId(), article.getId()))) {
                 error.put("title", "文章已存在！");
                 return Result.error(error);
             }
