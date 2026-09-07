@@ -1,0 +1,31 @@
+article_trace_back/src/main/java/com/articleTraceBack/rpc/ArticleAgentClient.java
+  s_ab74ea15e793d1::t_014e1396efc628 14,106-107,113-116
+  s_ab74ea15e793d1::t_f98d79c552961c 13
+article_trace_agent/tools/article_agent.py
+  s_ab74ea15e793d1::t_02dd8eae53903f 167-240
+  s_ab74ea15e793d1::t_85af9bf3a50b1e 12
+article_trace_agent/server/service_impl.py
+  s_ab74ea15e793d1::t_9bcea55bfcfb4a 6,74-99
+article_trace_agent/proto/article_agent.proto
+  s_ab74ea15e793d1::t_bc0ee11d7655e9 37-38,136-141
+article_trace_back/src/test/java/com/articleTraceBack/ArticleAgentAskTest.java
+  s_ab74ea15e793d1::t_aa0fbb1aa46ccb 5,12,19,35,37-38,51,55-64,67-68
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_2018bcbb77ef68 8,11-18,22,25-26,30,37,43-48,50,52-54,69-115,117-119,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "351cc47ac94f33b1ea3830cacbad09c5c13e3f41",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
