@@ -361,3 +361,39 @@ mvn clean package && java -jar target/article_trace-*.jar
 ### 外部敏感词库
 
 在服务启动的工作目录下创建 `res/sensitive_words.txt`，一行一词。默认每 30 分钟检查一次文件变化并热更新，无需重启服务。
+
+## 测试
+
+### Ask 集成测试
+
+[ArticleAgentAskTest](src/test/java/com/articleTraceBack/ArticleAgentAskTest.java) 模拟用户输入问题，调用 agent 的 `Ask` 接口，验证返回 LLM 答案。
+
+**运行前提**：`article_trace_agent` 的 gRPC server 已启动（agent 未启动时测试会通过 `assumeTrue` 自动跳过，不会导致构建失败）：
+
+```bash
+cd ../article_trace_agent && .venv/Scripts/python -m server.server
+```
+
+运行测试（默认问题「什么是 gRPC？」）：
+
+```bash
+mvn test -Dtest=ArticleAgentAskTest
+```
+
+自定义问题（`-Dask.query` 模拟用户输入）：
+
+```bash
+mvn test -Dtest=ArticleAgentAskTest -Dask.query="你的问题"
+```
+
+## 开发注意事项
+
+### IDE 中 gRPC 生成类报红
+
+`com.articleTraceBack.rpc.gen` 包下的类（`ArticleAgentServiceGrpc`、`Article` 等）由 protobuf 插件在**编译期生成**，位于 `target/generated-sources/protobuf/`。IntelliJ 若报「无法解析符号」，按以下顺序处理：
+
+1. 先执行一次 `mvn compile` 生成代码；
+2. 点击 **Reload Maven Project**（pom 已配置 `build-helper-maven-plugin` 显式声明生成目录为 source root）；
+3. 若仍报红，手动将 `target/generated-sources/protobuf/java` 与 `target/generated-sources/protobuf/grpc-java` 标记为 **Generated Sources Root**。
+
+> 代码本身无错误（`mvn compile` 通过即为证），此现象仅为 IDE 未识别生成目录所致。
