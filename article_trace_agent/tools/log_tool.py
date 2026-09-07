@@ -1,0 +1,83 @@
+from datetime import datetime
+import logging
+import logging.handlers
+import os
+import sys
+
+from path_tool import get_abs_path
+
+# ── ANSI 终端颜色 ─────────────────────────────────────────────────────────
+_COLORS = {
+    "DEBUG":    "\033[90m",   # 灰色
+    "INFO":     "\033[0m",    # 默认（白色）
+    "WARNING":  "\033[33m",   # 黄色
+    "ERROR":    "\033[31m",   # 红色
+    "CRITICAL": "\033[35m",   # 洋红色
+    "RESET":    "\033[0m",
+}
+
+
+class _ColorFormatter(logging.Formatter):
+    """将 levelname 包裹在 ANSI 颜色码中，便于终端阅读。"""
+
+    def format(self, record: logging.LogRecord) -> str:
+        color = _COLORS.get(record.levelname, "")
+        reset = _COLORS["RESET"]
+        original = record.levelname
+        record.levelname = f"{color}{original}{reset}"
+        result = super().format(record)
+        record.levelname = original
+        return result
+
+
+# ── 文件日志（无颜色，完整详情）───────────────────────────────────────────
+log_path = get_abs_path("logs")
+if not os.path.exists(log_path):
+    os.makedirs(log_path)
+
+# 文件日志级别：默认 INFO；设环境变量 LOG_LEVEL=DEBUG 临时开启检索细节。
+_DEFAULT_FILE_LEVEL = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
+
+# 单个日志文件上限（字节）与滚动备份数
+_LOG_MAX_BYTES = 5 * 1024 * 1024   # 5MB
+_LOG_BACKUP_COUNT = 2              # 保留 2 份滚动备份
+
+file_log_template = logging.Formatter(
+    "%(asctime)s - %(name)s - [%(levelname)s] - %(filename)s:%(lineno)d -  %(message)s"
+)
+
+console_log_template = _ColorFormatter(
+    "%(asctime)s - %(name)s - %(levelname)s  -  %(message)s"
+)
+
+
+def get_logger(name: str = "agent",
+               console_level: int = logging.INFO,
+               file_level: int | None = None,
+               log_file=None):
+    """返回一个已配置的 logger，包含彩色控制台输出 + 文件输出。"""
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    if logger.handlers:
+        return logger
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(console_level)
+    console_handler.setFormatter(console_log_template)
+    logger.addHandler(console_handler)
+
+    if file_level is None:
+        file_level = _DEFAULT_FILE_LEVEL
+    if not log_file:
+        date_dir = os.path.join(log_path, name, datetime.now().strftime('%Y-%m-%d'))
+        os.makedirs(date_dir, exist_ok=True)
+        log_file = os.path.join(date_dir, f"{name}.log")
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file, mode="a", encoding="utf-8",
+        maxBytes=_LOG_MAX_BYTES, backupCount=_LOG_BACKUP_COUNT,
+    )
+    file_handler.setLevel(file_level)
+    file_handler.setFormatter(file_log_template)
+    logger.addHandler(file_handler)
+
+    return logger

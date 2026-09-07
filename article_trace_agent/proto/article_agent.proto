@@ -1,0 +1,155 @@
+// =============================================================
+// 文章 Agent 接口契约（唯一共享物）
+// =============================================================
+// 这是 article_trace(Java) 与 article_agent(Python) 之间唯一的
+// 代码耦合点：两边各复制本文件，各自用 protoc/grpc 插件生成
+// 客户端/服务端 stub。除此之外，两边不 import 对方任何代码。
+//
+// 版本化命名空间：将来有不兼容变更时新增 v2，不影响 v1 老客户端。
+// =============================================================
+
+syntax = "proto3";
+
+package article.agent.v1;
+
+// Java 侧代码生成选项（Python 侧不受影响）
+option java_multiple_files = true;
+option java_package = "com.articleTraceBack.rpc.gen";
+option java_outer_classname = "ArticleAgentProto";
+
+
+// =============================================================
+// 服务定义
+// =============================================================
+service ArticleAgentService {
+  // 单篇推送/覆盖（幂等：按 article.id 覆盖同名旧文章）
+  rpc IngestArticle(IngestRequest) returns (IngestReply);
+
+  // 批量推送/覆盖
+  rpc BatchIngestArticles(BatchIngestRequest) returns (BatchIngestReply);
+
+  // 删除文章（下线/删除时调用）
+  rpc DeleteArticles(DeleteRequest) returns (DeleteReply);
+
+  // 全量/增量同步：Java 一边读 RustFS 正文一边流式推送（客户端流式）
+  rpc SyncArticles(stream Article) returns (SyncReply);
+
+  // 检索 + LLM 生成答案（同步请求-响应）
+  rpc Ask(AskRequest) returns (AskReply);
+
+  // 健康/统计
+  rpc Health(HealthRequest) returns (HealthReply);
+}
+
+
+// =============================================================
+// 文章实体（对应 Java 侧 Article 实体 + category 联查结果）
+// =============================================================
+message Article {
+  int64  id = 1;              // 文章主键
+  string title = 2;           // 标题
+  string content = 3;         // 正文：纯文本或 HTML，agent 侧负责清洗
+  ArticleState state = 4;     // 发布状态
+  int64  category_id = 5;     // 分类 ID
+  string category_name = 6;   // 分类名（Java 联查好传入，agent 不必回查）
+  string cover_url = 7;       // 封面可访问 URL（可选）
+  int64  views = 8;           // 阅览数（可作热度排序参考）
+  string create_time = 9;     // 创建时间，格式 "yyyy-MM-dd HH:mm:ss"
+  string update_time = 10;    // 更新时间，同上
+  string author = 11;         // 作者昵称（可选，用于展示）
+}
+
+// 发布状态：与 Java 侧 article.state 一一对应
+enum ArticleState {
+  DRAFT = 0;        // 草稿
+  PUBLISHED = 1;    // 已发布（agent 只检索该状态）
+  PENDING = 2;      // 待审核
+  REJECTED = 3;     // 驳回
+}
+
+
+// =============================================================
+// 入库（Ingest / Batch / Sync）
+// =============================================================
+message IngestRequest {
+  Article article = 1;
+}
+
+message IngestReply {
+  bool   ok = 1;            // 是否成功
+  int64  article_id = 2;    // 入库的文章 ID
+  string message = 3;       // 失败原因（ok=false 时）
+}
+
+message BatchIngestRequest {
+  repeated Article articles = 1;
+}
+
+message BatchIngestReply {
+  bool   ok = 1;
+  int32  ingested = 2;      // 成功入库篇数
+  int32  failed = 3;        // 失败篇数
+  string message = 4;       // 失败明细（若有）
+}
+
+message SyncReply {
+  bool   ok = 1;
+  int32  ingested = 2;      // 成功篇数
+  int32  failed = 3;        // 失败篇数
+  string message = 4;
+}
+
+
+// =============================================================
+// 删除
+// =============================================================
+message DeleteRequest {
+  repeated int64 article_ids = 1;  // 要删除的文章 ID 列表
+}
+
+message DeleteReply {
+  bool   ok = 1;
+  int32  deleted = 2;       // 实际删除篇数
+  string message = 3;
+}
+
+
+// =============================================================
+// 问答
+// =============================================================
+message AskRequest {
+  string query = 1;          // 用户问题（必填）
+  string session_id = 2;     // 会话 ID（可选，用于多轮上下文，空则由 agent 生成）
+  int64  category_id = 3;    // 可选：限定在某个分类内检索（0 表示不限定）
+  int32  top_k = 4;          // 可选：返回文章数，默认由 agent 配置决定
+}
+
+// 命中的文章（供前端渲染卡片/链接，不含正文）
+message MatchedArticle {
+  int64  id = 1;
+  string title = 2;
+  string category_name = 3;
+  string snippet = 4;        // 命中片段摘要
+  double score = 5;          // 相关度分数（RRF 归一化，仅作排序参考）
+}
+
+message AskReply {
+  bool   ok = 1;
+  string answer = 2;                   // LLM 生成的自然语言答案
+  repeated MatchedArticle articles = 3; // 命中的文章列表（按相关度降序）
+  string message = 4;                  // 错误信息（ok=false 时）
+}
+
+
+// =============================================================
+// 健康/统计
+// =============================================================
+message HealthRequest {}
+
+message HealthReply {
+  bool   ok = 1;
+  int64  article_count = 2;     // 已入库文章数（去重后的 article_id 数）
+  int64  chunk_count = 3;       // 分块数
+  string chat_model = 4;        // 生成模型名
+  string embedding_model = 5;   // embedding 模型名
+}
