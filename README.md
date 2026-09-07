@@ -1,78 +1,117 @@
 <div align="center">
 <img width="150" height="60" alt="logo2" src="https://github.com/user-attachments/assets/b70382ca-0577-49c3-b568-50e256632efc" />
 
+# 文迹 · Article Trace
 
-# 文迹
-一个基于SpringBoot + Vue3 的前后端分离式Web文章平台
+一个基于 **Spring Boot 3 + Vue 3** 的前后端分离式 Web 文章平台
+
 </div>
 
-# 简介
-本系统是一个基于SpringBoot+MybatisPlus+Vue3分层的前后端分离Web平台，可供读者、作者、站长等不同用户层次的使用，涵盖文章分类、文章、审核、阅览、系统管理等多个方面的功能，同时也拥有文章评论区供读者和作者之间交流。
+## 项目简介
 
-**基于黑马程序员Web教程大幅修改优化。**
+**文迹（Article Trace）** 是面向 **读者、作者、站长** 三类用户的前后端分离式 Web 文章平台，涵盖文章分类、撰写发布、审核、阅览、评论、账号管理等完整功能。系统基于黑马程序员 Web 教程大幅修改优化。
 
-# 涉及技术栈
-1. SpringBoot
-2. MybatisPlus
-3. Vue
-4. Axios
-5. Element Plus
-6. Pinia
-7. RustFS
-8. MySQL
-9. Redis
-10. Nginx
-11. JWT
-12. ThreadLocal
-13. 全局异常捕获处理
-14. Bcrypt
-15. Aho-Corasick字符匹配
-# 平台架构
-系统采用前后端分离架构。后端采用`SpringBoot3`框架搭建，配合`MybatisPlus`高效开发，使用`MySQL`存储数据，并将密码等敏感字段通过`Bcrypt`加密存储，用户头像与文章内容等采用对象存储（上传至`RustFS`）,且图片与文章内容`json`文件分桶存储。`Redis`作为缓存层存储热点数据，减少数据库压力，同时通过定时任务完成`Redis`到`MySQL`的数据同步。编写自定义异常捕获器，重构部分异常抛出的逻辑，便于调试与信息友好展示。用户鉴权方面采用`JWT`对用户的`id`，`username`和`type`属性进行存储校验，便于不同用户的权限管理。并使用`Aho-Corasick`算法对文章标题和内容进行初步敏感词过滤，减少审核工作。
+### 用户角色
 
-前端界面采用Vue3框架搭建，配合`Element Plus`进一步优化布局与样式(**Gemini神力**)，配合`Axios`实现从后端接口获取数据并使用Pinia进行数据存储管理，实现前后端分离操作，服务层将静态数据托管至`Nginx`，提高静态资源的访问性能。
-# 项目展示
+| 角色 | type 值 | 权限说明 |
+|---|---|---|
+| 站长（管理员） | `0` | 全站文章审核、用户身份管理、删除任意文章/评论 |
+| 作者（写手） | `1` | 撰写、编辑、删除自己的文章，管理自己的分类 |
+| 读者 | `2` | 浏览文章、发表评论、管理个人信息 |
+
+### 文章状态机
+
+`0` 草稿 ｜ `1` 已发布 ｜ `2` 待审核 ｜ `3` 已驳回
+
+## 功能特性
+
+- **用户体系**：注册、登录（JWT + Redis 双校验）、忘记密码、个人信息与头像维护。
+- **文章体系**：富文本撰写、封面上传、草稿/发布、站长审核与驳回。
+- **分类体系**：作者自定义分类，读者按分类浏览。
+- **评论体系**：登录评论 + 敏感词校验 + 分级删除。
+- **敏感词过滤**：Aho-Corasick 多模式匹配，外部词库 30 分钟热更新。
+- **浏览量统计**：Redis 缓冲累加 + 定时同步 MySQL + 热门 Top10 缓存。
+- **对象存储**：图片与内容 JSON 分桶存于 RustFS（S3 兼容）。
+- **安全防护**：BCrypt 加密、JWT 鉴权、ThreadLocal 上下文、全局异常捕获。
+
+## 技术栈
+
+- **后端**：Spring Boot 3.5 · Java 21 · MyBatis-Plus · MySQL · Redis · RustFS(S3) · JWT · BCrypt · jsoup
+- **前端**：Vue 3.5 · Vite 7 · Element Plus · Pinia · Vue Router · Axios · Vue-Quill · Sass
+
+## 项目结构
+
+```
+article_trace/
+├── article_trace_back/          # Spring Boot 后端      → 详见 article_trace_back/README.md
+├── article_trace_front/         # Vue 3 前端           → 详见 article_trace_front/README.md
+├── article_trace_agent/         # RAG 检索增强服务（Python，独立维护）
+├── article_trace.sql            # MySQL 建库脚本（4 张表）
+├── README.md                    # 本文件（项目总览）
+├── LICENSE
+└── .gitignore
+```
+
+> 各子项目的技术细节、目录结构、模块实现、部署方式均在各子目录的 `README.md` 中，本文件只做总览。
+
+## 平台架构
+
+```mermaid
+flowchart LR
+    subgraph 客户端
+        FE[Vue3 前端<br/>Element Plus + Pinia + Axios]
+    end
+    subgraph 服务端
+        Nginx[Nginx<br/>静态资源 + 反向代理]
+        BE[Spring Boot 3 后端<br/>Controller → Service → Mapper]
+    end
+    subgraph 存储层
+        MySQL[(MySQL 8)]
+        Redis[(Redis)]
+        RustFS[(RustFS / S3)]
+    end
+    FE -->|HTTP/JSON| Nginx
+    Nginx -->|/api| BE
+    BE --> MySQL
+    BE --> Redis
+    BE --> RustFS
+```
+
+## 快速开始
+
+完整的环境准备、配置与启动步骤见各子项目文档：
+
+- 后端：[article_trace_back/README.md](article_trace_back/README.md)
+- 前端：[article_trace_front/README.md](article_trace_front/README.md)
+
+简版流程：
+
+```bash
+# 后端
+cd article_trace_back
+# 1. source article_trace.sql 初始化数据库
+# 2. 复制 application_templete.yml 为 application.yml 并填写配置
+mvn spring-boot:run
+
+# 前端
+cd article_trace_front
+npm install        # 或 bun install
+npm run dev        # Vite 代理 /api → localhost:8080
+```
+
+## 项目展示
+
 <div align="center">
-<img width="568" height="261" alt="image" src="https://github.com/user-attachments/assets/428243bd-58d4-4237-9d83-cad1f2bd345e" />
-  
+<img width="568" height="261" alt="登录界面" src="https://github.com/user-attachments/assets/428243bd-58d4-4237-9d83-cad1f2bd345e" />
   登录界面
 
-<img width="622" height="285" alt="image" src="https://github.com/user-attachments/assets/e9b770d7-0d4e-4373-a6c4-5d54f2d9037c" />
-
+<img width="622" height="285" alt="首页" src="https://github.com/user-attachments/assets/e9b770d7-0d4e-4373-a6c4-5d54f2d9037c" />
   首页
-  
-<img width="599" height="280" alt="image" src="https://github.com/user-attachments/assets/a99aae6d-8e9a-416a-bac4-0a7d3d6686ce" />
 
+<img width="599" height="280" alt="后台首页" src="https://github.com/user-attachments/assets/a99aae6d-8e9a-416a-bac4-0a7d3d6686ce" />
   后台首页
-  
 </div>
 
-# 项目部署
-## 基础环境
+---
 
-1. MySQL 8.0
-（Bash） Command: sudo apt install mysql-server -y
-
-3. Redis
-（Bash）Command: sudo apt install redis-server -y
-
-4. RustFS
-（Bash）Command: curl -O https://rustfs.com/install_rustfs.sh && bash install_rustfs.sh
-
-5. Nginx
-（Bash）Command: sudo apt install nginx -y
-
-6. Java 21
-（Bash）Command: sudo apt install openjdk-21-jdk -y
-
-## 服务配置
-- MySQL：使用root用户进入MySQL，使用source命令运行article_trace.sql文件完成基础数据库结构搭建。随后创建一个专门管理该服务器的用户（如articleManager）。
-- Redis：配置位于/etc/redis/redis.conf，按需配置。
-- RustFS：配置位于/etc/default/rustfs，按需修改用户名、密码等配置。配置完需访问该服务器IP:9001创建两个桶用于存储图片和文章内容，并设置为私密桶。
-- Nginx：于/etc/nginx/conf.d 目录下新建myServiceExample.conf，配置相关配置。
-- SpringBoot：重命名application.templete.yml为application.yml,修改其中`${}`的配置
-## 其他
-- 防火墙需要开放9001（配置完RustFS桶后可关闭）、9000端口。
-- 外部敏感词库配置：
-在服务启动的工作目录下创建res文件夹，在文件夹中创建sensitive_words.txt 
-一行一词，默认30分钟检查一次词库并进行热更新。
+*基于黑马程序员 Web 教程大幅修改优化。*
