@@ -1,0 +1,39 @@
+article_trace_agent/tools/sparse_retriever.py
+  s_9910039e2528d5::t_a950316d531fb2 1-201
+article_trace_agent/tools/log_tool.py
+  s_9910039e2528d5::t_ee0f479c6c4c97 1-83
+article_trace_agent/tools/config_tool.py
+  s_9910039e2528d5::t_c62fbb282594ce 1-21
+article_trace_agent/tools/llm_tool.py
+  s_9910039e2528d5::t_3b769d5b5e47f3 1-83
+article_trace_agent/tools/path_tool.py
+  s_9910039e2528d5::t_673b51d05cea58 1-11
+article_trace_agent/tools/context_store.py
+  s_9910039e2528d5::t_458dccbcab71bf 1-182
+article_trace_agent/tools/rrf_fusion.py
+  s_9910039e2528d5::t_85bd01305df630 1-101
+article_trace_agent/tools/html_util.py
+  s_9910039e2528d5::t_3f71e38fa656e4 1-33
+article_trace_agent/proto/article_agent.proto
+  s_9910039e2528d5::t_5bd3584678f310 1-155
+article_trace_agent/proto/README.md
+  s_9910039e2528d5::t_c22176ddb44951 1-38
+article_trace_agent/tools/prompts_tool.py
+  s_9910039e2528d5::t_30184339325b7e 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "5cd65afa1a35c6c3641f9175d7c1489633cf88c6",
+  "prompts": {},
+  "sessions": {
+    "s_9910039e2528d5": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_iqc76wqjrqs7",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
