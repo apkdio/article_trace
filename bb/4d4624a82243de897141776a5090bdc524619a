@@ -1,0 +1,24 @@
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/AgentSyncTask.java
+  s_ab74ea15e793d1::t_7b0bf84bfc3d43 13,28,30-32,34-38,55-56,97,100,102-104,112-162
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_1639a9ba7e0583 72-74
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_01e0ddc9385283 84-85
+  s_ab74ea15e793d1::t_857534af9cb210 177,181,184-187,190-199,202-208,212,219-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "bb4d4624a82243de897141776a5090bdc524619a",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
