@@ -63,6 +63,10 @@ S3:
   secretKey: ${RUSTFS_SECRET_KEY} # rustfs存储服务端密钥（登录密码）
   picBucket: "pic" # 图片存储桶
   contentBucket: "content" # 文章内容存储桶
+rpc:
+  agent:
+    host: ${AGENT_HOST:localhost} # Python Agent gRPC 服务地址
+    port: ${AGENT_PORT:50051}     # Python Agent gRPC 端口
 sensitive_word:
   filePath: ./res/sensitive_words.txt
   cron: "0 */30 * * * ?"

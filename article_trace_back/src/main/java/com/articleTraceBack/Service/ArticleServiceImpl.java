@@ -5,11 +5,17 @@ import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
+import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.PageBean;
+import com.articleTraceBack.pojo.User;
+import com.articleTraceBack.rpc.ArticleAgentClient;
+import com.articleTraceBack.rpc.ArticleProtoMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,11 +24,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class ArticleServiceImpl implements ArticleService {
     private final ArticleMapper articleMapper;
     private final RustFsUtil rustFsUtil;
     private final AhoCorasickUtil ahoCorasickUtil;
+    private final ArticleAgentClient agentClient;
+    private final UserService userService;
+    private final CategoryService categoryService;
     @Qualifier("stringRedisTemplateArticle")
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
@@ -33,11 +43,17 @@ public class ArticleServiceImpl implements ArticleService {
 
     public ArticleServiceImpl(ArticleMapper articleMapper, RustFsUtil rustFsUtil,
                               @Qualifier("stringRedisTemplateArticle") StringRedisTemplate stringRedisTemplateArticle,
-                              AhoCorasickUtil ahoCorasickUtil) {
+                              AhoCorasickUtil ahoCorasickUtil,
+                              ArticleAgentClient agentClient,
+                              @Lazy UserService userService,
+                              CategoryService categoryService) {
         this.ahoCorasickUtil = ahoCorasickUtil;
         this.articleMapper = articleMapper;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplateArticle = stringRedisTemplateArticle;
+        this.agentClient = agentClient;
+        this.userService = userService;
+        this.categoryService = categoryService;
     }
     @Override
     public List<AhoCorasickUtil.Match> containsSensitive(String content) {
@@ -77,7 +93,12 @@ public class ArticleServiceImpl implements ArticleService {
                 return false;
             }
         }
-        return articleMapper.insertOrUpdate(article);
+        boolean saved = articleMapper.insertOrUpdate(article);
+        // 保存成功后，将已发布文章推送到 agent（旁路容错，失败不影响主流程）
+        if (saved) {
+            pushToAgent(article, (String) content.get("content"));
+        }
+        return saved;
     }
 
     @Override
@@ -138,7 +159,12 @@ public class ArticleServiceImpl implements ArticleService {
         if (rustFsUtil.delete(imgName, "image")
                 && rustFsUtil.delete(contentName, "json")) {
             stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
-            return articleMapper.deleteById(id) == 1;
+            boolean deleted = articleMapper.deleteById(id) == 1;
+            // 同步从 agent 删除索引（旁路容错）
+            if (deleted) {
+                agentClient.deleteArticles(Collections.singletonList((long) id));
+            }
+            return deleted;
         }
         return false;
     }
@@ -223,7 +249,52 @@ public class ArticleServiceImpl implements ArticleService {
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
                 .set("state", state);
-        return articleMapper.update(updateWrapper) == 1;
+        boolean updated = articleMapper.update(updateWrapper) == 1;
+        if (updated) {
+            if (state == 1) {
+                // 审核通过（发布）：推送完整文章到 agent
+                Article article = articleMapper.selectById(id);
+                if (article != null) {
+                    pushToAgent(article, rustFsUtil.getContent(article.getContent()));
+                }
+            } else {
+                // 下架 / 驳回 / 转草稿：从 agent 移除索引
+                agentClient.deleteArticles(Collections.singletonList((long) id));
+            }
+        }
+        return updated;
+    }
+
+    /**
+     * 将已发布文章推送到 agent（旁路容错：任何异常只记录日志，不向上抛）。
+     */
+    private void pushToAgent(Article article, String rawContent) {
+        if (article == null || article.getState() == null || article.getState() != 1) {
+            return;
+        }
+        try {
+            String authorName = null;
+            User author = userService.findUserById(article.getCreateUser());
+            if (author != null) {
+                authorName = author.getNickname();
+            }
+            String categoryName = null;
+            if (article.getCategoryId() != null) {
+                Category category = categoryService.findById(article.getCategoryId());
+                if (category != null) {
+                    categoryName = category.getCategoryName();
+                }
+            }
+            String coverUrl = null;
+            if (article.getCoverImg() != null && !article.getCoverImg().isEmpty()) {
+                coverUrl = rustFsUtil.getPciUrl(article.getCoverImg());
+            }
+            com.articleTraceBack.rpc.gen.Article proto = ArticleProtoMapper.toProto(
+                    article, rawContent, authorName, categoryName, coverUrl);
+            agentClient.ingestArticle(proto);
+        } catch (Exception e) {
+            log.warn("push article to agent failed: articleId={}", article.getId(), e);
+        }
     }
 
     @Override
