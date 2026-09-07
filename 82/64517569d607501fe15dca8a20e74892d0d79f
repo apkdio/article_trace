@@ -1,0 +1,24 @@
+README.md
+  s_ab74ea15e793d1::t_f9f2290f4f9101 12,24,28-35,39-40,42-53,55,69-71,74,80,82,84-85,87,90,92-93,96,99
+  s_ab74ea15e793d1::t_c9eec8f5210155 4-6,10,14,16-23,25-27,36-38,41,57,59-68,72-73,75-78,83,86,88-89,91,94-95,97-98,100-113,115,117
+article_trace_front/README.md
+  s_ab74ea15e793d1::t_20267e96810d35 1-126
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_ac65032d69b919 1-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "8264517569d607501fe15dca8a20e74892d0d79f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
