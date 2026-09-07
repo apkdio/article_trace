@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from config_tool import load_config
 from context_store import append_message, get_recent
-from llm_tool import chat_once
+from llm_tool import chat_once, stream_chat
 from log_tool import get_logger
 from prompts_tool import load_main_prompts
 
@@ -164,3 +164,77 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
     append_message(session_id, "assistant", answer)
     logger.info("[Ask] query='%.50s' → %d article(s)", q, len(articles))
     return {"answer": answer, "articles": articles}
+
+
+def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
+    """流式问答入口：先产出命中文章，再逐段产出 LLM 答案增量。
+
+    生成器每次 yield 一个 dict：
+        {"articles": [命中文章...], "delta": ""}   # 第一条：检索结果
+        {"articles": [], "delta": "片段"}          # 后续：LLM 增量
+    """
+    q = (query or "").strip()
+    if not q:
+        yield {"articles": [], "delta": "请告诉我你想找什么文章～"}
+        return
+    session_id = session_id or "default"
+
+    # 闲聊/道谢：直接 LLM 流式回应，不走检索
+    if _is_greeting(q):
+        yield {"articles": [], "delta": ""}
+        messages = [SystemMessage(content=load_main_prompts()), HumanMessage(content=q)]
+        full = ""
+        for chunk in stream_chat(messages, model=_llm_cfg.get("model"),
+                                 temperature=_llm_cfg.get("temperature", 0.3)):
+            if chunk:
+                full += chunk
+                yield {"articles": [], "delta": chunk}
+        append_message(session_id, "user", q)
+        append_message(session_id, "assistant", full)
+        return
+
+    append_message(session_id, "user", q)
+
+    hr = _get_retriever()
+    filter_ = {"category_id": {"$eq": int(category_id)}} if category_id else None
+    fused = hr.search(q, filter=filter_)
+    articles = _group_articles(fused, top_k=top_k)
+
+    history_block = "\n".join(
+        f"{'用户' if m.get('role') == 'user' else '助手'}：{(m.get('content') or '')[:200]}"
+        for m in get_recent(session_id)
+    )
+
+    # 纯检索模式：命中片段作为单条增量直接返回
+    if _behavior.get("retrieval_only", False):
+        answer = _context_block(fused, _article_cfg.get("context_chunks", 4)) or "暂无相关文章。"
+        append_message(session_id, "assistant", answer)
+        yield {"articles": articles, "delta": answer}
+        return
+
+    # 第一条：先发命中文章
+    yield {"articles": articles, "delta": ""}
+
+    if not articles:
+        user_msg = (
+            f"对话历史：\n{history_block}\n\n"
+            f"用户问题：{q}\n\n"
+            f"（参考资料为空，请据实说明暂未检索到相关文章。）"
+        )
+    else:
+        context_block = _context_block(fused, _article_cfg.get("context_chunks", 4))
+        user_msg = (
+            f"对话历史：\n{history_block}\n\n"
+            f"参考资料：\n{context_block}\n\n"
+            f"用户问题：{q}"
+        )
+
+    messages = [SystemMessage(content=load_main_prompts()), HumanMessage(content=user_msg)]
+    full = ""
+    for chunk in stream_chat(messages, model=_llm_cfg.get("model"),
+                             temperature=_llm_cfg.get("temperature", 0.3)):
+        if chunk:
+            full += chunk
+            yield {"articles": [], "delta": chunk}
+    append_message(session_id, "assistant", full)
+    logger.info("[AskStream] query='%.50s' → %d article(s)", q, len(articles))

@@ -1,22 +1,22 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.rpc.gen.ArticleAgentServiceGrpc;
-import com.articleTraceBack.rpc.gen.AskReply;
 import com.articleTraceBack.rpc.gen.AskRequest;
+import com.articleTraceBack.rpc.gen.AskStreamChunk;
 import com.articleTraceBack.rpc.gen.HealthRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Ask 接口集成测试：模拟用户输入问题，验证返回 LLM 生成的答案。
+ * Ask 流式接口集成测试：模拟用户输入问题，验证流式返回 LLM 生成的答案。
  *
  * <p>运行前提：article_trace_agent 的 gRPC server 已在 localhost:50051 启动：</p>
  * <pre>cd article_trace_agent && .venv/Scripts/python -m server.server</pre>
@@ -32,9 +32,10 @@ public class ArticleAgentAskTest {
     private static final int PORT = 50051;
 
     @Test
-    public void testAskReturnsLlmAnswer() {
+    public void testAskStreamReturnsLlmAnswer() {
         // 模拟用户输入的问题（可通过 -Dask.query 覆盖）
-        String query = System.getProperty("ask.query", "什么是 gRPC？");
+
+        String query = System.getProperty("ask.query", "现在库里有多少文章？");
 
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(HOST, PORT)
@@ -47,17 +48,24 @@ public class ArticleAgentAskTest {
             // agent 未启动时跳过，而非失败
             Assumptions.assumeTrue(isAgentAvailable(stub), "article_trace_agent 未启动，跳过 Ask 测试");
 
-            AskReply reply = stub
+            Iterator<AskStreamChunk> chunks = stub
                     .withDeadlineAfter(60, TimeUnit.SECONDS)
                     .ask(AskRequest.newBuilder().setQuery(query).build());
 
-            assertTrue(reply.getOk(), "Ask 调用失败：" + reply.getMessage());
-            assertNotNull(reply.getAnswer(), "LLM 未返回答案");
-            assertFalse(reply.getAnswer().isBlank(), "LLM 答案为空");
+            StringBuilder answer = new StringBuilder();
+            int articleCount = 0;
+            while (chunks.hasNext()) {
+                AskStreamChunk chunk = chunks.next();
+                assertTrue(chunk.getOk(), "流式返回失败：" + chunk.getMessage());
+                articleCount += chunk.getArticlesCount();
+                answer.append(chunk.getDelta());
+            }
+
+            assertFalse(answer.toString().isBlank(), "LLM 答案为空");
 
             System.out.println("【用户问题】" + query);
-            System.out.println("【LLM 答案】" + reply.getAnswer());
-            System.out.println("【命中文章】" + reply.getArticlesCount() + " 篇");
+            System.out.println("【LLM 答案】" + answer);
+            System.out.println("【命中文章】" + articleCount + " 篇");
         } finally {
             channel.shutdownNow();
         }

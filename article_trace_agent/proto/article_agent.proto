@@ -34,8 +34,8 @@ service ArticleAgentService {
   // 全量/增量同步：Java 一边读 RustFS 正文一边流式推送（客户端流式）
   rpc SyncArticles(stream Article) returns (SyncReply);
 
-  // 检索 + LLM 生成答案（同步请求-响应）
-  rpc Ask(AskRequest) returns (AskReply);
+  // 检索 + LLM 流式生成答案（服务端流式）
+  rpc Ask(AskRequest) returns (stream AskStreamChunk);
 
   // 健康/统计
   rpc Health(HealthRequest) returns (HealthReply);
@@ -133,11 +133,12 @@ message MatchedArticle {
   double score = 5;          // 相关度分数（RRF 归一化，仅作排序参考）
 }
 
-message AskReply {
-  bool   ok = 1;
-  string answer = 2;                   // LLM 生成的自然语言答案
-  repeated MatchedArticle articles = 3; // 命中的文章列表（按相关度降序）
-  string message = 4;                  // 错误信息（ok=false 时）
+// 流式问答响应：一条流中依次发送 命中文章 → 多个答案增量
+message AskStreamChunk {
+  bool   ok = 1;                        // 是否成功
+  string message = 2;                   // 错误信息（ok=false 时，仅一条）
+  repeated MatchedArticle articles = 3; // 命中文章（仅第一条携带）
+  string delta = 4;                     // LLM 答案增量片段（后续多条）
 }
 
 

@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -101,16 +103,17 @@ public class ArticleAgentClient {
         }
     }
 
-    /** 检索 + LLM 生成答案（同步） */
-    public AskReply ask(AskRequest request) {
+    /** 检索 + LLM 流式生成答案（服务端流式，返回增量迭代器） */
+    public Iterator<AskStreamChunk> askStream(AskRequest request) {
         try {
             return blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS * 6, TimeUnit.SECONDS)
                     .ask(request);
         } catch (Exception e) {
-            log.error("ask rpc failed", e);
-            return AskReply.newBuilder()
-                    .setOk(false).setMessage(e.getMessage()).build();
+            log.error("askStream rpc failed", e);
+            return Collections.singletonList(
+                    AskStreamChunk.newBuilder().setOk(false).setMessage(e.getMessage()).build()
+            ).iterator();
         }
     }
 

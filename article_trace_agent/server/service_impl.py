@@ -3,7 +3,7 @@
 import article_agent_pb2 as pb
 import article_agent_pb2_grpc as pb_grpc
 
-from tools.article_agent import ask as core_ask
+from tools.article_agent import ask_stream as core_ask_stream
 from tools.config_tool import load_config
 from tools.log_tool import get_logger
 from tools.vector_store import (
@@ -71,28 +71,32 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         )
 
     def Ask(self, request, context):
-        result = core_ask(
-            request.query,
-            session_id=request.session_id or None,
-            category_id=request.category_id or None,
-            top_k=request.top_k or None,
-        )
-        matched = [
-            pb.MatchedArticle(
-                id=a["id"],
-                title=a["title"],
-                category_name=a["category_name"],
-                snippet=a["snippet"],
-                score=a["score"],
-            )
-            for a in result.get("articles", [])
-        ]
-        return pb.AskReply(
-            ok=True,
-            answer=result.get("answer", ""),
-            articles=matched,
-            message="",
-        )
+        try:
+            for item in core_ask_stream(
+                request.query,
+                session_id=request.session_id or None,
+                category_id=request.category_id or None,
+                top_k=request.top_k or None,
+            ):
+                matched = [
+                    pb.MatchedArticle(
+                        id=a["id"],
+                        title=a["title"],
+                        category_name=a["category_name"],
+                        snippet=a["snippet"],
+                        score=a["score"],
+                    )
+                    for a in item.get("articles", [])
+                ]
+                yield pb.AskStreamChunk(
+                    ok=True,
+                    articles=matched,
+                    delta=item.get("delta", ""),
+                    message="",
+                )
+        except Exception as e:
+            logger.error("Ask stream failed: %s", e)
+            yield pb.AskStreamChunk(ok=False, message=str(e))
 
     def Health(self, request, context):
         info = list_collections_info()
