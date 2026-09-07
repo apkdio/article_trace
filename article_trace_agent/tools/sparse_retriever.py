@@ -125,7 +125,7 @@ class SparseRetriever:
     ) -> List[Tuple[Document, float]]:
         """执行 BM25 检索，返回 [(doc, bm25_score), ...]，按分数降序排列。"""
         if self.bm25_model is None:
-            logger.error("[Sparse] Index not built yet.")
+            logger.info("[Sparse] Sparse index empty (no articles ingested), skip sparse retrieval.")
             return []
 
         k = top_k if top_k is not None else _retrieval_cfg.get("sparse_top_k", 10)
