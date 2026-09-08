@@ -1,0 +1,68 @@
+article_trace_front/src/views/public/readerHome.vue
+  s_ab74ea15e793d1::t_5c0f17dcb68b2e 3-47
+article_trace_front/src/components/PageHeader.vue
+  s_ab74ea15e793d1::t_d002a31be818d8 1-49
+article_trace_front/src/components/UserTypeTag.vue
+  s_ab74ea15e793d1::t_92f70beffe84bd 1-11
+article_trace_front/src/views/public/publicHome.vue
+  s_ab74ea15e793d1::t_fd6fe27353a024 19,190
+  s_ab74ea15e793d1::t_96f6bde0bea5a0 13,139
+article_trace_front/src/views/user/UserLogo.vue
+  s_ab74ea15e793d1::t_fd6fe27353a024 8,51-56,104
+  s_ab74ea15e793d1::t_4590b47b1e9552 9,89
+article_trace_front/src/components/StatCard.vue
+  s_ab74ea15e793d1::t_bcf09b909b5b6f 1-84
+article_trace_front/src/utils/confirm.js
+  s_ab74ea15e793d1::t_da37fac3bccefe 1-33
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_0ff575fd7f8f8a 21,86-285
+  s_ab74ea15e793d1::t_4590b47b1e9552 22,330-334
+  s_ab74ea15e793d1::t_fd6fe27353a024 20,520
+article_trace_front/src/utils/auth.js
+  s_ab74ea15e793d1::t_5257f2da18efad 1-22
+article_trace_front/src/App.vue
+  s_ab74ea15e793d1::t_a59337edde7e27 10-13,19
+  s_ab74ea15e793d1::t_7e11764ed83c3c 18
+article_trace_front/src/utils/upload.js
+  s_ab74ea15e793d1::t_eba0863542840c 1-31
+article_trace_front/src/views/article/ArticleCategory.vue
+  s_ab74ea15e793d1::t_0ff575fd7f8f8a 8,38
+  s_ab74ea15e793d1::t_4590b47b1e9552 9-10,116-135
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_9d9bcc6a9290bb 10-53
+article_trace_front/src/views/public/articleInfo.vue
+  s_ab74ea15e793d1::t_fd6fe27353a024 18,161
+  s_ab74ea15e793d1::t_88c642b38d2291 19-157
+article_trace_front/src/views/user/UserResetPassword.vue
+  s_ab74ea15e793d1::t_9d9bcc6a9290bb 8-35
+article_trace_front/src/components/UserLayout.vue
+  s_ab74ea15e793d1::t_04fda1a138e389 8,28
+  s_ab74ea15e793d1::t_9806fe5efc7ece 1-7,9-27,29-360
+article_trace_front/src/views/user/AccountManage.vue
+  s_ab74ea15e793d1::t_4590b47b1e9552 11-12,101-113
+  s_ab74ea15e793d1::t_0ff575fd7f8f8a 10,79
+article_trace_front/src/views/user/mainPage.vue
+  s_ab74ea15e793d1::t_8f5b2ddd46dc9b 3-77
+article_trace_front/src/utils/date.js
+  s_ab74ea15e793d1::t_e62a82dc448b16 1-11
+article_trace_front/src/utils/validators.js
+  s_ab74ea15e793d1::t_251140a8b6da2e 1-13
+article_trace_front/src/api/confirmDeleteAccount.js
+  s_ab74ea15e793d1::t_0ff575fd7f8f8a 3-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "5efb672a9b6aef97e82a4fd8a47e448a73d5ecd8",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
