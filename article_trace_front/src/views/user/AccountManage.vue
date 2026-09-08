@@ -119,7 +119,7 @@ const changeUserType = (id, type) => {
           <el-table-column label="用户身份" width="300">
             <template #default="{ row }">
               <div class="user-profile">
-                <el-avatar :size="44" :src="row.userPicSrc || defaultAvatar" class="custom-avatar"/>
+                <el-avatar :size="44" :src="row.userPicThumbSrc || defaultAvatar" class="custom-avatar"/>
                 <div class="name-box">
                   <span class="username">{{ row.username }}</span>
                   <span class="nickname">@{{ row.nickname || '未设置昵称' }}</span>

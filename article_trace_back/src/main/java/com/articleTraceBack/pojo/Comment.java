@@ -34,5 +34,7 @@ public class Comment {
     @TableField(exist = false)
     private String userPicSrc;
     @TableField(exist = false)
+    private String userPicThumbSrc;
+    @TableField(exist = false)
     private String email;
 }

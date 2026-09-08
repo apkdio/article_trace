@@ -382,7 +382,7 @@ const assessArticle = async (id, state) => {
               <div class="pic_box">
                 <el-image
                     class="full-img"
-                    :src="scope.row.coverImgSrc == null ? cover : scope.row.coverImgSrc"
+                    :src="scope.row.coverThumbSrc == null ? cover : scope.row.coverThumbSrc"
                     fit="contain"
                 >
                   <template #error>

@@ -70,6 +70,9 @@ public class User {
     @TableField(exist = false)
     private String userPicSrc;
 
+    @TableField(exist = false)
+    private String userPicThumbSrc;
+
     public interface login {
     }
     public interface update{}

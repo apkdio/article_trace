@@ -89,6 +89,7 @@ public class ReaderController {
         int publishCount = readerService.findPublishCounts(user.getId());
         writer.setType(user.getType());
         writer.setWriterPicSrc(user.getUserPicSrc());
+        writer.setWriterPicThumbSrc(user.getUserPicThumbSrc());
         writer.setPublishCount(publishCount);
         writer.setNickName(user.getNickname());
         writer.setEmail(user.getEmail());
@@ -103,6 +104,7 @@ public class ReaderController {
         int publishCount = readerService.findPublishCounts(user.getId());
         writer.setType(user.getType());
         writer.setWriterPicSrc(user.getUserPicSrc());
+        writer.setWriterPicThumbSrc(user.getUserPicThumbSrc());
         writer.setPublishCount(publishCount);
         writer.setNickName(user.getNickname());
         writer.setEmail(user.getEmail());

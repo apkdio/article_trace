@@ -112,6 +112,7 @@ public class ArticleServiceImpl implements ArticleService {
             article.setContent(rustFsUtil.getContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
+                article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
             } else {
                 article.setCoverImg("");
             }
@@ -139,6 +140,7 @@ public class ArticleServiceImpl implements ArticleService {
         article.setContent(rustFsUtil.getContent(article.getContent()));
         if (!Objects.equals(article.getCoverImg(), "")) {
             article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
+            article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
         } else {
             article.setCoverImg("");
         }
@@ -210,6 +212,7 @@ public class ArticleServiceImpl implements ArticleService {
             article.setContent(extractorContent);
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
+                article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
             } else {
                 article.setCoverImg("");
             }
@@ -230,6 +233,7 @@ public class ArticleServiceImpl implements ArticleService {
             article.setContent(rustFsUtil.getContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
+                article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
             } else {
                 article.setCoverImg("");
             }

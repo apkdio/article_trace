@@ -51,4 +51,7 @@ public class Article {
 
     @TableField(exist = false)
     private String coverImgSrc;
+
+    @TableField(exist = false)
+    private String coverThumbSrc;
 }

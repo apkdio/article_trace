@@ -55,8 +55,10 @@ public class UserServiceImpl implements UserService {
         }
         if (!StringUtils.isBlank(user.getUserPic())) {
             user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));
+            user.setUserPicThumbSrc(rustFsUtil.getThumbUrl(user.getUserPic()));
         } else {
             user.setUserPicSrc("");
+            user.setUserPicThumbSrc("");
         }
         return user;
     }
@@ -237,7 +239,10 @@ public class UserServiceImpl implements UserService {
         PageBean<User> usersData = new PageBean<>();
         List<User> users = userMapper.findAllAccountsWithPage(offset, pageSize);
         for (User user : users) {
-            if (!StringUtils.isBlank(user.getUserPic())) user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));
+            if (!StringUtils.isBlank(user.getUserPic())) {
+                user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));
+                user.setUserPicThumbSrc(rustFsUtil.getThumbUrl(user.getUserPic()));
+            }
         }
         usersData.setItems(users);
         return usersData;

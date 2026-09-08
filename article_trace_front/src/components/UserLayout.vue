@@ -60,7 +60,7 @@ const logout = (command) => {
                 </div>
                 <el-dropdown placement="bottom-end" @command="logout">
                     <span class="el-dropdown__box">
-                        <el-avatar :src="userInfoStore().userPicSrc === '' ? avatar : userInfoStore().userPicSrc"/>
+                        <el-avatar :src="userInfoStore().userPicThumbSrc === '' ? avatar : userInfoStore().userPicThumbSrc"/>
                         <el-icon class="arrow">
                             <CaretBottom/>
                         </el-icon>

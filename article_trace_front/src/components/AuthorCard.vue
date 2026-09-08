@@ -14,7 +14,7 @@ defineProps({
     <div class="sidebar-author-widget" v-loading="loading">
         <div class="author-card-header">
             <div class="header-bg" :style="{background: headerBg}"></div>
-            <el-avatar :size="80" :src="info.writerPicSrc || logo" class="author-avatar-main"/>
+            <el-avatar :size="80" :src="info.writerPicThumbSrc || logo" class="author-avatar-main"/>
         </div>
         <div class="author-card-body">
             <div class="writer-nick">{{ info.nickName || defaultName }}

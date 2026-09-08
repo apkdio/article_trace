@@ -14,6 +14,7 @@ export const userInfoStore
         const lastLogin = ref("")
         const userPic = ref("")
         const userPicSrc = ref("")
+        const userPicThumbSrc = ref("")
         const articlesTotal = ref(0)
         const categories = ref(0)
         const type = ref()
@@ -32,6 +33,7 @@ export const userInfoStore
                 updateTime.value = result.data.updateTime
                 userPic.value = result.data.userPic
                 userPicSrc.value = result.data.userPicSrc
+                userPicThumbSrc.value = result.data.userPicThumbSrc
                 articlesTotal.value = result.data.articlesTotal
                 type.value = result.data.type
             }).catch((err) => {
@@ -70,6 +72,7 @@ export const userInfoStore
             lastLogin.value = ""
             userPic.value = ""
             userPicSrc.value = ""
+            userPicThumbSrc.value = ""
             categories.value = 0
             articlesTotal.value = 0
             type.value = null
@@ -81,7 +84,7 @@ export const userInfoStore
 
         return {
             fetchUserInfo, clearUserInfo,
-            username, userPic, userPicSrc, email, nickname, lastLogin, id,
+            username, userPic, userPicSrc, userPicThumbSrc, email, nickname, lastLogin, id,
             updateTime, createTime, categories, articlesTotal, setLastLogin,
             type, allArticles, fetchArticlesCount, waitTotal,accessTotal,rejectTotal,fetchCategories
         }

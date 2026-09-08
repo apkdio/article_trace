@@ -10,4 +10,5 @@ public class WriterInfo {
     private int publishCount;
     private int type;
     private String writerPicSrc;
+    private String writerPicThumbSrc;
 }

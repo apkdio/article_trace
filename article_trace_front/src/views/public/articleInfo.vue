@@ -207,7 +207,7 @@ const pushSearch = (type) => {
           <el-button v-if="!isLogin" type="primary" plain round @click="router.push({name: 'Login'})">登录</el-button>
           <el-dropdown v-else @command="switchCommand">
             <span class="el-dropdown__box">
-              <el-avatar :src="userInfoStore().userPicSrc || avatar"/>
+              <el-avatar :src="userInfoStore().userPicThumbSrc || avatar"/>
               <el-icon class="arrow"><CaretBottom/></el-icon>
             </span>
             <template #dropdown>
@@ -279,7 +279,7 @@ const pushSearch = (type) => {
 
               <div class="comment-list" v-if="comments.length > 0">
                 <div v-for="item in comments" :key="item.id" class="comment-item">
-                  <el-avatar :size="40" :src="item.userPicSrc || avatar"/>
+                  <el-avatar :size="40" :src="item.userPicThumbSrc || avatar"/>
                   <div class="comment-main">
                     <div class="comment-user-info">
                       <span class="comment-nickname">{{ item.nickName }}</span>

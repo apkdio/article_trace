@@ -251,7 +251,7 @@ const searchArticleInWriter = (nickName) => {
           <el-button v-if="!isLogin" type="primary" plain round @click="router.push({name: 'Login'})">登录</el-button>
           <el-dropdown placement="bottom-end" v-if="isLogin" @command="switchCommand">
         <span class="el-dropdown__box">
-          <el-avatar :src="userInfoStore().userPicSrc==='' ? avatar : userInfoStore().userPicSrc"/>
+          <el-avatar :src="userInfoStore().userPicThumbSrc==='' ? avatar : userInfoStore().userPicThumbSrc"/>
           <el-icon class="arrow"><CaretBottom/></el-icon>
         </span>
             <template #dropdown>
@@ -281,7 +281,7 @@ const searchArticleInWriter = (nickName) => {
               <div class="article-cover">
                 <router-link style="text-decoration: none;" target="_blank"
                              :to="{name: 'ArticleInfo', params: {id: item.id}}">
-                  <el-image :src="item.coverImgSrc!==null?item.coverImgSrc:cover" fit="cover"/>
+                  <el-image :src="item.coverThumbSrc!==null?item.coverThumbSrc:cover" fit="cover"/>
                 </router-link>
               </div>
               <div class="article-info">

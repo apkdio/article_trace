@@ -57,9 +57,13 @@ public class ReaderServiceImpl implements ReaderService {
         int offset = (pageNum - 1) * pageSize;
         List<Comment> comments = commentMapper.findAllComments(offset, pageSize, articleId);
         for (Comment comment : comments) {
-            if (!StringUtils.isBlank(comment.getUserPic()))
+            if (!StringUtils.isBlank(comment.getUserPic())) {
                 comment.setUserPicSrc(rustFsUtil.getPciUrl(comment.getUserPic()));
-            else comment.setUserPicSrc("");
+                comment.setUserPicThumbSrc(rustFsUtil.getThumbUrl(comment.getUserPic()));
+            } else {
+                comment.setUserPicSrc("");
+                comment.setUserPicThumbSrc("");
+            }
         }
         return comments;
     }
@@ -75,8 +79,13 @@ public class ReaderServiceImpl implements ReaderService {
     public User findUserByNickName(String nickName) {
         User user = userMapper.selectOne(new QueryWrapper<User>().eq("nickname", nickName));
         if (user != null) {
-            if (!Objects.equals(user.getUserPic(), "")) user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));
-            else user.setUserPicSrc("");
+            if (!Objects.equals(user.getUserPic(), "")) {
+                user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));
+                user.setUserPicThumbSrc(rustFsUtil.getThumbUrl(user.getUserPic()));
+            } else {
+                user.setUserPicSrc("");
+                user.setUserPicThumbSrc("");
+            }
             return user;
         } else return null;
     }

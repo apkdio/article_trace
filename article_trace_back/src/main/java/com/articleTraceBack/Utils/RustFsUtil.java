@@ -18,12 +18,14 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -53,6 +55,8 @@ public class RustFsUtil {
     String contentBucket;
     String bucketName;
     String FileKey;
+    public static final String THUMB_PREFIX = "thumb_";
+    private static final int THUMB_WIDTH = 400;
 
     public RustFsUtil(@Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
@@ -84,16 +88,48 @@ public class RustFsUtil {
     private boolean uploadImage(MultipartFile file) {
         String contentType = file.getContentType();
         long fileSize = file.getSize();
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(FileKey)
-                .contentType(contentType)
-                .contentLength(fileSize)
-                .build();
+        // 上传原图
+        if (!putObject(file, FileKey, contentType, fileSize)) {
+            return false;
+        }
+        // 生成并上传缩略图（失败不阻断主流程）
         try {
-            InputStream inputStream = file.getInputStream();
-            RequestBody requestBody = RequestBody.fromInputStream(inputStream, fileSize);
-            s3Client.putObject(putObjectRequest, requestBody);
+            byte[] thumb = ThumbnailUtil.thumbnail(file, THUMB_WIDTH);
+            if (thumb != null) {
+                putObjectBytes(thumb, THUMB_PREFIX + FileKey, "image/jpeg");
+            }
+        } catch (Exception e) {
+            System.out.println("缩略图上传失败: " + e.getMessage());
+        }
+        return true;
+    }
+
+    /** 上传 MultipartFile 到当前桶 */
+    private boolean putObject(MultipartFile file, String key, String contentType, long contentLength) {
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .contentLength(contentLength)
+                    .build();
+            s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), contentLength));
+            return true;
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
+    }
+
+    /** 上传字节数组到当前桶 */
+    private boolean putObjectBytes(byte[] bytes, String key, String contentType) {
+        try {
+            PutObjectRequest request = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .build();
+            s3Client.putObject(request, RequestBody.fromBytes(bytes));
             return true;
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -135,7 +171,10 @@ public class RustFsUtil {
             }
             case "image" -> {
                 bucketName = picBucket;
-                yield deleteFile();
+                boolean deleted = deleteFile();
+                // 连带删除缩略图（不存在则静默跳过）
+                deleteThumb();
+                yield deleted;
             }
             default -> false;
         };
@@ -152,6 +191,19 @@ public class RustFsUtil {
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return false;
+        }
+    }
+
+    /** 删除缩略图（不存在则静默跳过） */
+    private void deleteThumb() {
+        try {
+            DeleteObjectRequest request = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(THUMB_PREFIX + FileKey)
+                    .build();
+            s3Client.deleteObject(request);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
     }
 
@@ -185,6 +237,51 @@ public class RustFsUtil {
         PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
         stringRedisTemplate.opsForValue().set(fileKey, presignedRequest.url().toString(), 3, TimeUnit.DAYS);
         return presignedRequest.url().toString();
+    }
+
+    /** 由原图 key 得到缩略图 key */
+    public static String getThumbKey(String key) {
+        return THUMB_PREFIX + key;
+    }
+
+    /** 生成缩略图访问链接 */
+    public String getThumbUrl(String fileKey) {
+        return getPciUrl(THUMB_PREFIX + fileKey);
+    }
+
+    /** 判断对象是否存在 */
+    public boolean exists(String key, String fileType) {
+        String bucket = switch (fileType) {
+            case "json" -> contentBucket;
+            case "image" -> picBucket;
+            default -> null;
+        };
+        if (bucket == null || key == null || key.isEmpty()) {
+            return false;
+        }
+        try {
+            HeadObjectRequest request = HeadObjectRequest.builder().bucket(bucket).key(key).build();
+            s3Client.headObject(request);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 为已存在的原图生成缩略图（读取原图 → 缩放 → 上传缩略图） */
+    public boolean generateThumbFor(String fileKey) {
+        try {
+            GetObjectRequest request = GetObjectRequest.builder().bucket(picBucket).key(fileKey).build();
+            byte[] original = s3Client.getObject(request, ResponseTransformer.toBytes()).asByteArray();
+            byte[] thumb = ThumbnailUtil.thumbnail(new ByteArrayInputStream(original), THUMB_WIDTH);
+            if (thumb == null) {
+                return false;
+            }
+            return putObjectBytes(thumb, THUMB_PREFIX + fileKey, "image/jpeg");
+        } catch (Exception e) {
+            System.out.println("为原图生成缩略图失败: " + e.getMessage());
+            return false;
+        }
     }
 
     //创建S3客户端
