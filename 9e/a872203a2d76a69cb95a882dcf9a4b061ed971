@@ -1,0 +1,23 @@
+article_trace_front/src/components/AgentChat.vue
+  s_ab74ea15e793d1::t_4ba70f7f823727 1-314
+article_trace_front/src/views/public/publicHome.vue
+  s_ab74ea15e793d1::t_5ba624eecaf189 18,379-380
+article_trace_front/src/api/agent.js
+  s_ab74ea15e793d1::t_52fccc05fb2d08 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "9ea872203a2d76a69cb95a882dcf9a4b061ed971",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
