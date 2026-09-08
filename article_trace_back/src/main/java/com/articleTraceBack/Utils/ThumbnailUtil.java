@@ -1,5 +1,6 @@
 package com.articleTraceBack.Utils;
 
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -9,6 +10,7 @@ import java.io.InputStream;
 /**
  * 图片缩略图工具：按宽度等比缩放，输出 JPEG。
  */
+@Slf4j
 public class ThumbnailUtil {
 
     private ThumbnailUtil() {
@@ -31,7 +33,7 @@ public class ThumbnailUtil {
                     .toOutputStream(out);
             return out.toByteArray();
         } catch (Exception e) {
-            System.out.println("缩略图生成失败: " + e.getMessage());
+            log.error("thumbnail generation failed", e);
             return null;
         }
     }
@@ -43,7 +45,7 @@ public class ThumbnailUtil {
         try {
             return thumbnail(file.getInputStream(), width);
         } catch (Exception e) {
-            System.out.println("缩略图生成失败: " + e.getMessage());
+            log.error("thumbnail generation failed", e);
             return null;
         }
     }

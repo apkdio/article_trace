@@ -1,8 +1,10 @@
 package com.articleTraceBack.Utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 // BCrypt加密
 public class BcryptUtils {
@@ -17,7 +19,7 @@ public class BcryptUtils {
         try {
             return BCrypt.checkpw(rawPassword, hashedPassword);
         } catch (Exception e) {
-            System.err.println("密码验证异常: " + e.getMessage());
+            log.error("password verification failed", e);
             return false;
         }
     }

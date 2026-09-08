@@ -1,5 +1,6 @@
 package com.articleTraceBack.Service;
 
+import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
 import com.articleTraceBack.Utils.GenResetPass;
 import com.articleTraceBack.Utils.JwtUtil;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
     private final StringRedisTemplate stringRedisTemplate;
@@ -184,7 +186,7 @@ public class UserServiceImpl implements UserService {
             stringRedisTemplate.opsForValue().set(username, token, expireTime, TimeUnit.MILLISECONDS);
             return stringRedisTemplate.opsForValue().get(username) != null;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("set redis token failed", e);
             return false;
         }
     }

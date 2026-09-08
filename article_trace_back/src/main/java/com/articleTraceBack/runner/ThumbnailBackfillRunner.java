@@ -43,7 +43,7 @@ public class ThumbnailBackfillRunner implements CommandLineRunner {
             return;
         }
         int count = 0;
-
+        log.info("Thumbnail completion start!");
         // 补齐文章封面（无封面的跳过）
         List<Article> articles = articleMapper.selectList(null);
         for (Article a : articles) {
@@ -72,6 +72,6 @@ public class ThumbnailBackfillRunner implements CommandLineRunner {
             }
         }
 
-        log.info("缩略图补齐完成，共生成 {} 张缩略图", count);
+        log.info("Thumbnail completion finished, a total of {} thumbnails generated", count);
     }
 }
