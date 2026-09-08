@@ -16,6 +16,8 @@ import {
 } from "@/api/article.js";
 import router from "@/router/index.js";
 import {formatDate} from "@/utils/date.js";
+import TopArticlesList from "@/components/TopArticlesList.vue";
+import AuthorCard from "@/components/AuthorCard.vue";
 import {logout as doLogout} from "@/utils/auth.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import logo from "@/assets/defaultLogo.jpg";
@@ -298,45 +300,15 @@ const pushSearch = (type) => {
         </el-main>
 
         <el-aside width="320px" class="right-sidebar">
-          <div class="sidebar-author-widget" v-loading="writerLoading">
-            <div class="author-card-header">
-              <div class="header-bg"></div>
-              <el-avatar :size="80" :src="writerInfo.writerPicSrc || logo" class="author-avatar-main"/>
-            </div>
-            <div class="author-card-body">
-              <div class="writer-nick">{{ writerInfo.nickName || '文迹作者' }}<p class="author-username">
-                @{{ writerInfo.username }}</p></div>
-              <div class="writer-stats-grid">
-                <div class="stat-item"><span class="val">{{ writerInfo.publishCount || 0 }}</span><span
-                    class="lab">发布文章</span></div>
-                <div class="stat-item">
-                  <span class="val">
-                    <el-tag size="small" v-if="writerInfo.type === 0" type="danger" disable-transitions>站长</el-tag>
-                    <el-tag size="small" v-else type="warning" disable-transitions>作者</el-tag>
-                  </span>
-                  <span class="lab">身份</span>
-                </div>
-              </div>
-              <div class="writer-contact"><p>联系作者：{{ writerInfo.email || '未公开' }}</p></div>
-            </div>
-          </div>
+          <AuthorCard :info="writerInfo" :loading="writerLoading" default-name="文迹作者" contact-prefix="联系作者："
+                      header-bg="linear-gradient(135deg, #4ca1af 0%, #3973ac 100%)">
+            <template #role>
+              <el-tag size="small" v-if="writerInfo.type === 0" type="danger" disable-transitions>站长</el-tag>
+              <el-tag size="small" v-else type="warning" disable-transitions>作者</el-tag>
+            </template>
+          </AuthorCard>
 
-          <div class="sidebar-list-card">
-            <div class="card-header">
-              <span>热门文章</span>
-            </div>
-            <div class="top-list" v-loading="topArticleLoading">
-              <div v-if="topArticles && topArticles.length > 0" v-for="(post, index) in topArticles" :key="post.id"
-                   class="top-item">
-                <span :class="['rank-num', index < 3 ? 'top-three' : '']">{{ index + 1 }}</span>
-                <router-link class="top-title" target="_blank" :to="{name: 'ArticleInfo', params: {id: post.id}}">
-                  {{ post.title }}
-                </router-link>
-                <span class="top-views"><el-icon><View/></el-icon>{{ post.views }}</span>
-              </div>
-              <el-empty v-else description="暂无热门文章"></el-empty>
-            </div>
-          </div>
+          <TopArticlesList :articles="topArticles" :loading="topArticleLoading"/>
         </el-aside>
       </el-container>
 

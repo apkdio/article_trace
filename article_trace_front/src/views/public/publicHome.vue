@@ -17,6 +17,8 @@ import logo from "@/assets/defaultLogo.jpg";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
 import AgentChat from "@/components/AgentChat.vue";
 import {formatDate} from "@/utils/date.js";
+import TopArticlesList from "@/components/TopArticlesList.vue";
+import AuthorCard from "@/components/AuthorCard.vue";
 
 const loading = ref(true)
 const topArticleLoading = ref(true)
@@ -318,44 +320,13 @@ const searchArticleInWriter = (nickName) => {
 
 
         <el-aside width="320px" class="right-sidebar">
-          <div class="sidebar-author-widget" v-loading="masterLoading">
-            <div class="author-card-header">
-              <div class="header-bg"></div>
-              <el-avatar :size="80" :src="masterInfo.writerPicSrc || logo" class="author-avatar-main"/>
-            </div>
-            <div class="author-card-body">
-              <div class="writer-nick">{{ masterInfo.nickName || '文迹站长' }}<p class="author-username">
-                @{{ masterInfo.username }}</p></div>
-              <div class="writer-stats-grid">
-                <div class="stat-item"><span class="val">{{ masterInfo.publishCount || 0 }}</span><span
-                    class="lab">发布文章</span></div>
-                <div class="stat-item">
-                  <span class="val">
-                    <el-tag size="small" type="danger" disable-transitions>本站负责人</el-tag>
-                  </span>
-                  <span class="lab">身份</span>
-                </div>
-              </div>
-              <div class="writer-contact"><p>邮箱：{{ masterInfo.email || '未公开' }}</p></div>
-            </div>
-          </div>
-          <div class="sidebar-card">
-            <div class="card-header">
-              <span>热门文章</span>
-            </div>
-            <div class="top-list" v-loading="topArticleLoading" element-loading-text="正在加载热门文章列表...">
-              <div v-if="topArticles && topArticles.length > 0" v-for="(post, index) in topArticles" :key="post.id"
-                   class="top-item">
-                <span :class="['rank-num', index < 3 ? 'top-three' : '']">{{ index + 1 }}</span>
-                <router-link class="top-title" target="_blank"
-                             :to="{name: 'ArticleInfo', params: {id: post.id}}" :title="post.title">{{ post.title }}
-                </router-link>
-                <span class="top-views"><el-icon>
-                  <View/></el-icon>{{ post.views }}</span>
-              </div>
-              <el-empty v-else description="暂无热门文章"></el-empty>
-            </div>
-          </div>
+          <AuthorCard :info="masterInfo" :loading="masterLoading" default-name="文迹站长" contact-prefix="邮箱："
+                      header-bg="linear-gradient(135deg, #6addce 0%, #7a92f6 100%)">
+            <template #role>
+              <el-tag size="small" type="danger" disable-transitions>本站负责人</el-tag>
+            </template>
+          </AuthorCard>
+          <TopArticlesList :articles="topArticles" :loading="topArticleLoading"/>
         </el-aside>
       </el-container>
 
