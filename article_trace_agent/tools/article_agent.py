@@ -7,11 +7,11 @@
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from config_tool import load_config
-from context_store import append_message, get_recent
-from llm_tool import chat_once, stream_chat
-from log_tool import get_logger
-from prompts_tool import load_main_prompts
+from tools.config_tool import load_config
+from tools.context_store import append_message, get_recent
+from tools.llm_tool import chat_once, stream_chat
+from tools.log_tool import get_logger
+from tools.prompts_tool import load_main_prompts
 
 logger = get_logger(name="article_agent")
 
@@ -34,7 +34,7 @@ def _get_retriever():
     """懒加载双路召回器（稠密 + 稀疏 → RRF）。"""
     global _hybrid_retriever
     if _hybrid_retriever is None:
-        from hybrid_retriever import HybridRetriever
+        from tools.hybrid_retriever import HybridRetriever
         _hybrid_retriever = HybridRetriever()
         _hybrid_retriever.ensure_sparse_index()
     return _hybrid_retriever

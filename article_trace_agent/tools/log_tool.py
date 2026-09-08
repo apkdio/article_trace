@@ -4,7 +4,7 @@ import logging.handlers
 import os
 import sys
 
-from path_tool import get_abs_path
+from tools.path_tool import get_abs_path
 
 # ── ANSI 终端颜色 ─────────────────────────────────────────────────────────
 _COLORS = {

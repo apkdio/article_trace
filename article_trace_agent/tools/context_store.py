@@ -10,7 +10,7 @@ import re
 import uuid
 from datetime import datetime
 
-from path_tool import get_abs_path
+from tools.path_tool import get_abs_path
 
 _CONTEXT_DIR = get_abs_path("data/context")
 _CONTEXT_META_DATA_DIR = get_abs_path("data/context_meta")

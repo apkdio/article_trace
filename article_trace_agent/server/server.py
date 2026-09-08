@@ -13,7 +13,6 @@ from concurrent import futures
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for _p in (
     _PROJECT_ROOT,
-    os.path.join(_PROJECT_ROOT, "tools"),
     os.path.join(_PROJECT_ROOT, "generated"),
 ):
     if _p not in sys.path:

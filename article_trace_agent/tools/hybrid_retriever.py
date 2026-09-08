@@ -12,10 +12,10 @@ from typing import List, Tuple
 
 from langchain_core.documents import Document
 
-from log_tool import get_logger
-from rrf_fusion import reciprocal_rank_fusion
-from sparse_retriever import SparseRetriever
-from vector_store import DenseRetriever, build_hybrid_index, is_index_dirty
+from tools.log_tool import get_logger
+from tools.rrf_fusion import reciprocal_rank_fusion
+from tools.sparse_retriever import SparseRetriever
+from tools.vector_store import DenseRetriever, build_hybrid_index, is_index_dirty
 
 logger = get_logger(name="hybrid_retriever")
 

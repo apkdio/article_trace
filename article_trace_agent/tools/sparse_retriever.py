@@ -21,9 +21,9 @@ from typing import Dict, List, Tuple
 from langchain_core.documents import Document
 from rank_bm25 import BM25Okapi
 
-from config_tool import load_config
-from log_tool import get_logger
-from path_tool import get_abs_path
+from tools.config_tool import load_config
+from tools.log_tool import get_logger
+from tools.path_tool import get_abs_path
 
 logger = get_logger(name="sparse_retriever")
 
@@ -158,7 +158,7 @@ class SparseRetriever:
 
     @staticmethod
     def _fingerprint() -> dict:
-        from vector_store import get_vector_store
+        from tools.vector_store import get_vector_store
         store = get_vector_store()
         return {
             "chunk_count": store._collection.count(),

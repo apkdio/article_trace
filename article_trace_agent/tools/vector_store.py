@@ -15,11 +15,11 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from config_tool import load_config
-from html_util import html_to_text
-from llm_tool import get_embedding_model
-from log_tool import get_logger
-from path_tool import get_abs_path
+from tools.config_tool import load_config
+from tools.html_util import html_to_text
+from tools.llm_tool import get_embedding_model
+from tools.log_tool import get_logger
+from tools.path_tool import get_abs_path
 
 logger = get_logger(name="vector_store")
 
@@ -227,7 +227,7 @@ def build_hybrid_index(sparse_retriever=None, force: bool = False) -> int:
     force=True 时跳过 pickle 缓存强制重建（用于入库/删除后的即时刷新）。
     """
     if sparse_retriever is None:
-        from sparse_retriever import SparseRetriever
+        from tools.sparse_retriever import SparseRetriever
         sparse_retriever = SparseRetriever()
 
     if not force and sparse_retriever.load():
