@@ -7,7 +7,7 @@
 
 - 版本化命名空间 `article.agent.v1`，将来不兼容变更走 `v2`。
 - 入库按 `article.id` **幂等**（重推即覆盖，不产生重复数据）。
-- `Ask` 为同步请求-响应；`SyncArticles` 为客户端流式（全量/增量灌数据）。
+- `Ask` 为服务端流式（先发命中文章列表，再逐段发答案增量）；`SyncArticles` 为客户端流式（全量/增量灌数据）。
 - `MatchedArticle` 只回摘要片段，不回正文（正文由 Java 按 id 从 RustFS 自取）。
 
 ## 代码生成

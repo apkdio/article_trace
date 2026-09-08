@@ -29,12 +29,22 @@ article_trace_front/
     │   ├── article.js              #   文章相关接口
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口
+    │   ├── agent.js                #   AI 问答（SSE 流式）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── registerSuccess.js      #   注册成功回调
     ├── assets/                     # 静态资源
     │   ├── main.scss               #   全局样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
+    ├── components/                 # 公共组件
+    │   ├── UserLayout.vue          #   用户中心布局（侧边栏+header）
+    │   ├── UserTypeTag.vue         #   角色标签（站长/作者/读者）
+    │   ├── PageHeader.vue          #   页面标题栏
+    │   ├── StatCard.vue            #   统计卡片
+    │   ├── TopArticlesList.vue     #   热门文章榜
+    │   ├── AuthorCard.vue          #   作者/站长名片
+    │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
+    │   └── AgentChat.vue           #   文迹 AI 聊天窗
     ├── router/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
     ├── stores/                     # Pinia 状态仓库

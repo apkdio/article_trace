@@ -343,7 +343,7 @@ rpc:
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/agent/ask` | 检索 + LLM 问答（转发 agent） |
+| POST | `/agent/ask` | 检索 + LLM 问答（SSE 流式，转发 agent） |
 | GET | `/agent/health` | agent 健康/入库统计 |
 
 ## 部署

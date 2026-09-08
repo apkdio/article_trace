@@ -88,7 +88,7 @@ article_trace_agent/
 | `BatchIngestArticles` | Java → Python | 批量推送/覆盖 |
 | `DeleteArticles` | Java → Python | 删除若干篇（下线/删除时） |
 | `SyncArticles` | Java → Python | 全量/增量流式同步（客户端流式） |
-| `Ask` | Java ⇄ Python | 检索 + LLM 生成答案，返回 `answer` + 命中文章列表 |
+| `Ask` | Java ⇄ Python | 检索 + LLM 流式生成答案（服务端流式，先命中文章列表后答案增量） |
 | `Health` | Java → Python | 健康探活 + 入库统计 |
 
 要点：
@@ -103,13 +103,13 @@ article_trace_agent/
 ## 检索与问答链路
 
 ```
-用户提问 (Ask)
+用户提问 (Ask，服务端流式)
   → 稠密检索（Chroma + bge-m3 向量）
   → 稀疏检索（BM25 关键词）
   → RRF 融合去重 → top-k 分块
   → 按 article_id 分组，产出「命中文章列表」
   → 拼装 top 分块 + 对话历史 → LLM 生成答案
-  → 返回 { answer, articles[] }
+  → 流式返回：先发「命中文章列表」，再逐段发 LLM 答案增量
 ```
 
 ---
@@ -167,19 +167,20 @@ python -m server.server        # 默认监听 50051，AGENT_PORT 环境变量可
 ```mermaid
 sequenceDiagram
     participant J as article_trace(Java)
+    participant R as Redis
     participant P as article_agent(Python)
 
-    Note over J,P: 写链路（异步推送）
-    J->>J: 发布/更新文章(state=1)
-    J->>J: 从 RustFS 取正文
-    J->>P: gRPC IngestArticle(Article)
-    P->>P: 清洗 HTML → 分块 → 入库(幂等) → 重建 BM25
-    P-->>J: IngestReply
+    Note over J,P: 写链路（Redis 攒批 + 定时推送）
+    J->>R: 文章增删改 → 写入待处理 id（ingest/delete 两个 set）
+    J->>J: AgentSyncTask 定时(5min) 读 Redis
+    J->>P: gRPC BatchIngestArticles / DeleteArticles（批量）
+    P->>P: 清洗 HTML → 分块 → 批量入库(幂等) → 重建 BM25
+    P-->>J: BatchIngestReply / DeleteReply
 
-    Note over J,P: 问答链路（同步）
+    Note over J,P: 问答链路（流式）
     J->>P: gRPC Ask(query, session_id?)
-    P->>P: 双路召回 → 按文章分组 → LLM 生成
-    P-->>J: AskReply(answer, articles[])
+    P->>P: 双路召回 → 按文章分组 → LLM 流式生成
+    P-->>J: stream AskStreamChunk（命中文章 → 答案增量）
     J-->>J: 返回前端
 ```
 
@@ -195,5 +196,5 @@ sequenceDiagram
 - [x] gRPC server：实现 6 个 RPC 方法
 - [x] 配置与系统提示词（agent / rag / chroma / prompts）
 - [x] `requirements.txt` + venv 创建 + stub 生成
-- [x] Java 侧 client + 事件钩子（发布/更新/删除推送）
-- [ ] 全量同步 `SyncArticles` 联调（待 Java 侧触发全量同步验证）
+- [x] Java 侧 client + Redis 攒批定时同步（AgentSyncTask：增量 + 全量对账）
+- [x] 批量入库优化（一次删旧、一次写新、一次 embedding，`ok` 语义对齐失败重试）
