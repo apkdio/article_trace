@@ -15,6 +15,7 @@ import {tokenStorage} from "@/stores/tokenStorage.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import logo from "@/assets/defaultLogo.jpg";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
+import AgentChat from "@/components/AgentChat.vue";
 
 const loading = ref(true)
 const topArticleLoading = ref(true)
@@ -375,6 +376,8 @@ function formatDate(date) {
       </el-footer>
     </el-container>
   </div>
+
+  <AgentChat/>
 </template>
 
 <style lang="scss" scoped>
