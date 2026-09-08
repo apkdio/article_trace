@@ -522,7 +522,7 @@ const assessArticle = async (id, state) => {
                 method="PATCH"
             >
               <div v-if="articleModel.coverImgSrc" class="cover-preview">
-                <img :src="articleModel.coverImgSrc" class="avatar"/>
+                <img :src="articleModel.coverImgSrc" class="avatar" alt="封面预览"/>
                 <div class="overlay">
                   <el-icon>
                     <Edit/>

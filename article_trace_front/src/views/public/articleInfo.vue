@@ -2,7 +2,7 @@
 import {ref, onMounted, computed} from 'vue'
 import {
   Search, SwitchButton, CaretBottom, User, Timer, Calendar,
-  ChatLineRound, View, Delete
+  ChatLineRound, Delete
 } from '@element-plus/icons-vue'
 import {userInfoStore} from "@/stores/userInfo.js";
 import avatar from "@/assets/defaultLogo.jpg";
@@ -19,8 +19,6 @@ import {formatDate} from "@/utils/date.js";
 import TopArticlesList from "@/components/TopArticlesList.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
 import {logout as doLogout} from "@/utils/auth.js";
-import {tokenStorage} from "@/stores/tokenStorage.js";
-import logo from "@/assets/defaultLogo.jpg";
 import {searchConditions} from "@/stores/searchConditions.js";
 
 const props = defineProps(["id"])

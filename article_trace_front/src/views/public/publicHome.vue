@@ -13,7 +13,6 @@ import router from "@/router/index.js";
 import {logout as doLogout} from "@/utils/auth.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import {searchConditions} from "@/stores/searchConditions.js";
-import logo from "@/assets/defaultLogo.jpg";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
 import AgentChat from "@/components/AgentChat.vue";
 import {formatDate} from "@/utils/date.js";
