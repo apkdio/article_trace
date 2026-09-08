@@ -1,0 +1,39 @@
+article_trace_front/src/views/user/UserLogo.vue
+  s_ab74ea15e793d1::t_c2da58bedd1495 313
+article_trace_front/src/views/user/home.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 195
+article_trace_front/src/views/user/UserResetPassword.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 191
+article_trace_front/src/views/article/ArticleCategory.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 314
+article_trace_front/src/views/user/AccountManage.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 294-295
+article_trace_front/src/assets/main.scss
+  s_ab74ea15e793d1::t_9c86949c2352aa 20-48,50-52
+  s_ab74ea15e793d1::t_046a94e10009fc 49
+article_trace_front/src/views/user/UserInfo.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 199
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_0335bb2b0a467d 828
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "01163ceb3bd1d7cbda94eb0e0766465a1bc0f0ef",
+  "prompts": {},
+  "humans": {
+    "h_26b9a38f4942dd": {
+      "author": "apkdio <apkdio@163.com>"
+    }
+  },
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
