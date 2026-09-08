@@ -1,0 +1,25 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/RustFsUtil.java
+  s_ab74ea15e793d1::t_d4287f47c85871 3,38,93,112,130,152,182,198,208,282
+  s_ab74ea15e793d1::t_97b0ae8fe45cef 49,51,53,55-56,72-74,79,83,90,99-101,104,118-120,123,135,144-145,158,162,164,166,173,175-178,190,193-194,280,331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "64aa4faa2898e24ccfa4d80833ad9780ab1f5547",
+  "prompts": {},
+  "humans": {
+    "h_26b9a38f4942dd": {
+      "author": "apkdio <apkdio@163.com>"
+    }
+  },
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
