@@ -1,0 +1,19 @@
+article_trace_back/src/main/java/com/articleTraceBack/rpc/ArticleProtoMapper.java
+  s_ab74ea15e793d1::t_cca91e68807c5b 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "02e542d6c60d2850eefeba03d15a315dc7599ba9",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
