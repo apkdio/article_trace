@@ -7,14 +7,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 
 import java.util.*;
 
 @Component
 // 请求拦截器
 // 窝腰验Token
-public class TokenCheck implements HandlerInterceptor {
+public class TokenCheck implements AsyncHandlerInterceptor {
     @Value("${spring.tokenCheck.notAllowUrl.writer}")
     private String[] writerNotAllow;
     @Value("${spring.tokenCheck.notAllowUrl.reader}")
@@ -40,12 +40,24 @@ public class TokenCheck implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response, Object handler) {
         String uri = request.getRequestURI();
+        String token = request.getHeader("Authorization");
         if (uri.matches("/reader/.*")) {
+            // 先清除上一次遗留的user信息
+            ThreadLocalUtil.remove();
             // 针对 添加评论 、 删除评论  需要登录
             if (!uri.equals("/reader/addComment")
-                    && !uri.equals("/reader/deleteComment")) return true;
+                    && !uri.equals("/reader/deleteComment")) {
+                // 避免登录用户的信息被忽略
+                try {
+                    Map<String, Object> userInfo = jwtUtil.parseToken(token);
+                    if (userInfo.get("type") != null) {
+                        ThreadLocalUtil.set(userInfo);
+                    }
+                } catch (Exception ignored) {
+                }
+                return true;
+            }
         }
-        String token = request.getHeader("Authorization");
         if (token == null) {
             response.setStatus(401);
             return false;
@@ -85,6 +97,13 @@ public class TokenCheck implements HandlerInterceptor {
             response.setStatus(401);
             return false;
         }
+    }
+
+    // 异步（SSE 等）请求开始并发处理后及时清理，避免 ThreadLocal 随线程回池悬挂
+    @Override
+    public void afterConcurrentHandlingStarted(HttpServletRequest request,
+                                               HttpServletResponse response, Object handler) {
+        ThreadLocalUtil.remove();
     }
 
     // 完成会话后销毁ThreadLocalUtil存储的变量
