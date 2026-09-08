@@ -1,0 +1,27 @@
+article_trace_front/src/views/public/articleInfo.vue
+  s_ab74ea15e793d1::t_b7a1e2b0796315 20,303-309
+  s_ab74ea15e793d1::t_1455530c4ed77a 19,311
+article_trace_front/src/components/TopArticlesList.vue
+  s_ab74ea15e793d1::t_a2071e94bdbaf7 1-101
+article_trace_front/src/views/public/publicHome.vue
+  s_ab74ea15e793d1::t_b7a1e2b0796315 21,323-328
+  s_ab74ea15e793d1::t_1455530c4ed77a 20,329
+article_trace_front/src/components/AuthorCard.vue
+  s_ab74ea15e793d1::t_98aec6d3054f23 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "7e598aac0c3351520b1581e477624246de2c975a",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
