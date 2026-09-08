@@ -1,5 +1,6 @@
 package com.articleTraceBack.Utils;
 
+import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Component
 public class RustFsUtil {
     // 定义redis缓存
@@ -44,17 +46,14 @@ public class RustFsUtil {
     private S3Client s3Client;
     private S3Presigner s3Presigner;
     @Value("${S3.endpoint}")
-    String endpoint;
+    private String endpoint;
     @Value("${S3.accessKey}")
-    String accessKey;
+    private String accessKey;
     @Value("${S3.secretKey}")
-    String secretKey;
+    private String secretKey;
     @Value("${S3.picBucket}")
-    String picBucket;
-    @Value("${S3.contentBucket}")
-    String contentBucket;
-    String bucketName;
-    String FileKey;
+    private String picBucket;
+    @Value("${S3.contentBucket}")    private String contentBucket;
     public static final String THUMB_PREFIX = "thumb_";
     private static final int THUMB_WIDTH = 400;
 
@@ -69,46 +68,40 @@ public class RustFsUtil {
     }
 
     public boolean upload(Object file, String type, String key) {
-        this.FileKey = key;
         return switch (type) {
-            case "json" -> {
-                bucketName = contentBucket;
-                yield uploadJson(objectMapper.convertValue(file, new TypeReference<>() {
-                }));
-            }
-            case "image" -> {
-                bucketName = picBucket;
-                MultipartFile multipartFile = (MultipartFile) file;
-                yield uploadImage(multipartFile);
-            }
+            case "json" -> uploadJson(objectMapper.convertValue(file, new TypeReference<>() {
+            }), contentBucket, key);
+            case "image" -> uploadImage((MultipartFile) file, picBucket, key);
             default -> false;
         };
     }
 
-    private boolean uploadImage(MultipartFile file) {
+    private boolean uploadImage(MultipartFile file, String bucket, String key) {
         String contentType = file.getContentType();
         long fileSize = file.getSize();
         // 上传原图
-        if (!putObject(file, FileKey, contentType, fileSize)) {
+        if (!putObject(file, bucket, key, contentType, fileSize)) {
             return false;
         }
         // 生成并上传缩略图（失败不阻断主流程）
         try {
             byte[] thumb = ThumbnailUtil.thumbnail(file, THUMB_WIDTH);
             if (thumb != null) {
-                putObjectBytes(thumb, THUMB_PREFIX + FileKey, "image/jpeg");
+                putObjectBytes(thumb, bucket, THUMB_PREFIX + key, "image/jpeg");
             }
         } catch (Exception e) {
-            System.out.println("缩略图上传失败: " + e.getMessage());
+            log.error("thumbnail upload failed", e);
         }
         return true;
     }
 
-    /** 上传 MultipartFile 到当前桶 */
-    private boolean putObject(MultipartFile file, String key, String contentType, long contentLength) {
+    /**
+     * 上传 MultipartFile 到指定桶
+     */
+    private boolean putObject(MultipartFile file, String bucket, String key, String contentType, long contentLength) {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bucket)
                     .key(key)
                     .contentType(contentType)
                     .contentLength(contentLength)
@@ -116,28 +109,30 @@ public class RustFsUtil {
             s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), contentLength));
             return true;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("put object failed: key={}", key, e);
             return false;
         }
     }
 
-    /** 上传字节数组到当前桶 */
-    private boolean putObjectBytes(byte[] bytes, String key, String contentType) {
+    /**
+     * 上传字节数组到指定桶
+     */
+    private boolean putObjectBytes(byte[] bytes, String bucket, String key, String contentType) {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucketName)
+                    .bucket(bucket)
                     .key(key)
                     .contentType(contentType)
                     .build();
             s3Client.putObject(request, RequestBody.fromBytes(bytes));
             return true;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("put object bytes failed: key={}", key, e);
             return false;
         }
     }
 
-    private boolean uploadJson(Map<String, Object> file) {
+    private boolean uploadJson(Map<String, Object> file, String bucket, String key) {
         String jsonString;
         try {
             jsonString = objectMapper.writeValueAsString(file);
@@ -146,64 +141,61 @@ public class RustFsUtil {
         }
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(FileKey)
+                    .bucket(bucket)
+                    .key(key)
                     .contentType("application/json")
                     .build();
             RequestBody requestBody = RequestBody.fromString(jsonString);
             s3Client.putObject(putObjectRequest, requestBody);
             return true;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("upload json failed: key={}", key, e);
             return false;
         }
     }
 
     public boolean delete(String key, String fileType) {
-        this.FileKey = key;
-        if (key.isEmpty()) {
+        if (key == null || key.isEmpty()) {
             return true;
         }
         return switch (fileType) {
-            case "json" -> {
-                bucketName = contentBucket;
-                yield deleteFile();
-            }
+            case "json" -> deleteFile(contentBucket, key);
             case "image" -> {
-                bucketName = picBucket;
-                boolean deleted = deleteFile();
+                boolean deleted = deleteFile(picBucket, key);
                 // 连带删除缩略图（不存在则静默跳过）
-                deleteThumb();
+                deleteThumb(picBucket, key);
                 yield deleted;
             }
             default -> false;
         };
     }
 
-    private boolean deleteFile() {
+    private boolean deleteFile(String bucket, String key) {
         try {
-            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder().
-                    bucket(bucketName).
-                    key(FileKey).
-                    build();
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
             s3Client.deleteObject(deleteObjectRequest);
             return true;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("delete object failed: key={}", key, e);
             return false;
         }
     }
 
-    /** 删除缩略图（不存在则静默跳过） */
-    private void deleteThumb() {
+    /**
+     * 删除缩略图（不存在则静默跳过）
+     */
+    private void deleteThumb(String bucket, String key) {
         try {
             DeleteObjectRequest request = DeleteObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(THUMB_PREFIX + FileKey)
+                    .bucket(bucket)
+                    .key(THUMB_PREFIX + key)
                     .build();
             s3Client.deleteObject(request);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("delete thumbnail failed: key={}", key, e);
         }
     }
 
@@ -213,7 +205,7 @@ public class RustFsUtil {
             // 完整读取并解析JSON
             return extractFieldFromJson(s3Client, contentBucket, fileKey);
         } catch (Exception e) {
-            System.out.println("错误: " + e.getMessage());
+            log.error("read content failed: key={}", fileKey, e);
             return "";
         }
     }
@@ -239,17 +231,23 @@ public class RustFsUtil {
         return presignedRequest.url().toString();
     }
 
-    /** 由原图 key 得到缩略图 key */
+    /**
+     * 由原图 key 得到缩略图 key
+     */
     public static String getThumbKey(String key) {
         return THUMB_PREFIX + key;
     }
 
-    /** 生成缩略图访问链接 */
+    /**
+     * 生成缩略图访问链接
+     */
     public String getThumbUrl(String fileKey) {
         return getPciUrl(THUMB_PREFIX + fileKey);
     }
 
-    /** 判断对象是否存在 */
+    /**
+     * 判断对象是否存在
+     */
     public boolean exists(String key, String fileType) {
         String bucket = switch (fileType) {
             case "json" -> contentBucket;
@@ -268,7 +266,9 @@ public class RustFsUtil {
         }
     }
 
-    /** 为已存在的原图生成缩略图（读取原图 → 缩放 → 上传缩略图） */
+    /**
+     * 为已存在的原图生成缩略图（读取原图 → 缩放 → 上传缩略图）
+     */
     public boolean generateThumbFor(String fileKey) {
         try {
             GetObjectRequest request = GetObjectRequest.builder().bucket(picBucket).key(fileKey).build();
@@ -277,9 +277,9 @@ public class RustFsUtil {
             if (thumb == null) {
                 return false;
             }
-            return putObjectBytes(thumb, THUMB_PREFIX + fileKey, "image/jpeg");
+            return putObjectBytes(thumb, picBucket, THUMB_PREFIX + fileKey, "image/jpeg");
         } catch (Exception e) {
-            System.out.println("为原图生成缩略图失败: " + e.getMessage());
+            log.error("generate thumbnail failed: key={}", fileKey, e);
             return false;
         }
     }
