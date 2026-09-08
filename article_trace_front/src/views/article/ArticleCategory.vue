@@ -228,93 +228,6 @@ const handleClose = (done) => {
   animation: fadeIn 0.5s ease-out;
 }
 
-/* 标题栏对齐 articleManage */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f2f2f2;
-  margin-bottom: 24px;
-
-  .title-group {
-    .main-title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #1a1a1a;
-      margin: 0;
-    }
-
-    .sub-tip {
-      font-size: 13px;
-      color: #999;
-      margin: 4px 0 0;
-    }
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 12px;
-  }
-}
-
-/* 统计卡片：扁平化中层设计 */
-.stat-section {
-  margin-bottom: 30px;
-}
-
-.stat-item {
-  background: #f8fafc; /* 浅色背景替代阴影卡片 */
-  border: 1px solid #edf2f7;
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  transition: all 0.3s;
-
-  &:hover {
-    background: #ffffff;
-    border-color: #409eff;
-    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
-  }
-
-  .stat-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-
-    &.blue {
-      background: #e0e7ff;
-      color: #4f46e5;
-    }
-
-    &.green {
-      background: #dcfce7;
-      color: #16a34a;
-    }
-  }
-
-  .stat-content {
-    display: flex;
-    flex-direction: column;
-
-    .stat-label {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    .stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1e293b;
-    }
-  }
-}
 
 /* 表格内部样式保留并美化 */
 .category-info {
@@ -398,14 +311,5 @@ const handleClose = (done) => {
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 </style>

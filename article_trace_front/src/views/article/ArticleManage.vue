@@ -616,29 +616,6 @@ const assessArticle = async (id, state) => {
   animation: fadeIn 0.5s ease-out;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f2f2f2;
-
-  .title-group {
-    .main-title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #1a1a1a; // 稍微加深一点颜色更显质感
-      margin: 0; // 极其关键：重置 h2 默认外边距，否则无法与分类页面对齐
-    }
-
-    .sub-tip {
-      font-size: 13px;
-      color: #999;
-      margin: 4px 0 0; // 设置固定的上边距，确保副标题位置统一
-      padding: 0;
-    }
-  }
-}
 
 /* 搜索栏背景微调，确保各页面色值统一 */
 .search-bar {
@@ -813,16 +790,7 @@ const assessArticle = async (id, state) => {
   padding-top: 10px;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 :deep(.modern-table) {
   .el-table__header th {
@@ -857,11 +825,7 @@ const assessArticle = async (id, state) => {
 }
 
 
-.pagination-footer {
-  margin-top: 25px;
-  display: flex;
-  justify-content: flex-end;
-}
+
 
 
 .creator-tag {

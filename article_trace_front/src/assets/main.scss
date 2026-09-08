@@ -18,3 +18,35 @@ body {
   transform: translateX(30px);
   opacity: 0;
 }
+
+/* 全局 fadeIn 动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 用户头像下拉框 */
+.el-dropdown__box {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  outline: none !important;
+  cursor: pointer;
+
+  &:hover {
+    background: #ededed;
+  }
+}
+
+/* 分页右对齐 */
+.pagination-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: flex-end;
+}

@@ -223,86 +223,6 @@ const changeUserType = (id, type) => {
   height: auto;
 }
 
-/* 标题栏 */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f2f2f2;
-  margin-bottom: 24px;
-
-  .main-title {
-    font-size: 24px;
-    font-weight: bold;
-    color: #1a1a1a;
-    margin: 0;
-  }
-
-  .sub-tip {
-    font-size: 13px;
-    color: #999;
-    margin: 4px 0 0;
-  }
-}
-
-/* 统计卡片样式 */
-.stat-section {
-  margin-bottom: 24px;
-}
-
-.stat-item {
-  background: #f8fafc;
-  border: 1px solid #edf2f7;
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  transition: all 0.3s;
-
-  &:hover {
-    background: #fff;
-    border-color: #409eff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-
-  .stat-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-
-    &.purple {
-      background: #f5f3ff;
-      color: #7c3aed;
-    }
-
-    &.blue {
-      background: #eff6ff;
-      color: #2563eb;
-    }
-  }
-
-  .stat-content {
-    display: flex;
-    flex-direction: column;
-
-    .stat-label {
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    .stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1e293b;
-    }
-  }
-}
 
 /* 用户信息展示列 */
 .user-profile {
@@ -370,20 +290,7 @@ const changeUserType = (id, type) => {
   }
 }
 
-.pagination-footer {
-  margin-top: 30px;
-  display: flex;
-  justify-content: flex-end;
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
+
 </style>

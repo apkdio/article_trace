@@ -196,16 +196,7 @@ const updateUserInfo = () => {
 }
 
 /* 动画定义 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 /* 适配移动端 */
 @media (max-width: 768px) {

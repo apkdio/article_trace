@@ -192,16 +192,7 @@ onMounted(() => {
 }
 
 /* 保留原有的动画效果 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 /* 将动画应用到相应的元素上 */
 .top-section {

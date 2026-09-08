@@ -486,143 +486,7 @@ const pushSearch = (type) => {
     flex-direction: column;
     gap: 20px;
 
-    .sidebar-author-widget {
-      background: #ffffff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
 
-      .author-card-header {
-        position: relative;
-
-        .header-bg {
-          height: 75px;
-          background: linear-gradient(135deg, #4ca1af 0%, #3973ac 100%);
-        }
-
-        .author-avatar-main {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: -40px;
-          border: 4px solid #fff;
-        }
-      }
-
-      .author-card-body {
-        padding: 50px 20px 10px;
-        text-align: center;
-
-        .writer-nick {
-          font-size: 18px;
-          font-weight: 700;
-
-          .author-username {
-            font-size: 13px;
-            color: #94a3b8;
-            margin-top: 5px;
-          }
-        }
-
-        .writer-stats-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          background: #f8fafc;
-          border-radius: 8px;
-          padding: 12px 0;
-          margin: 15px 0;
-
-          .stat-item {
-            display: flex;
-            flex-direction: column;
-
-            .val {
-              font-weight: 600;
-            }
-
-            .lab {
-              font-size: 11px;
-              color: #94a3b8;
-            }
-          }
-        }
-      }
-
-      .writer-contact {
-        font-size: 12px;
-        color: #94a3b8;
-      }
-    }
-
-    .sidebar-list-card {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
-
-      .card-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: bold;
-        font-size: 16px;
-        color: #333;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #f4f6f9;
-        margin-bottom: 15px;
-
-        .el-icon {
-          color: #e6a23c;
-        }
-      }
-
-      .top-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 0;
-        font-size: 14px;
-
-        .rank-num {
-          width: 20px;
-          height: 20px;
-          background: #f0f2f5;
-          color: #909399;
-          text-align: center;
-          line-height: 20px;
-          border-radius: 4px;
-          margin-right: 12px;
-          font-size: 12px;
-
-          &.top-three {
-            background: #409eff;
-            color: #fff;
-          }
-        }
-
-        .top-title {
-          text-decoration: none;
-          flex: 1;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          color: #555;
-
-          &:hover {
-            color: #409eff;
-          }
-        }
-
-        .top-views {
-          color: #acacac;
-          font-size: 12px;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          margin-left: 8px;
-          line-height: 10px;
-        }
-      }
-    }
   }
 
   // 评论区样式优化
@@ -723,17 +587,7 @@ const pushSearch = (type) => {
   }
 }
 
-.el-dropdown__box {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  outline: none !important;
 
-  &:hover {
-    background: #ededed;
-    cursor: pointer;
-  }
-}
 
 // ========== 移动端适配 (宽度 ≤ 768px) ==========
 @media (max-width: 768px) {
@@ -849,13 +703,7 @@ const pushSearch = (type) => {
         width: 100%;
         gap: 16px;
 
-        .sidebar-author-widget .author-card-body {
-          padding: 50px 12px 16px;
-        }
 
-        .sidebar-list-card {
-          padding: 16px;
-        }
       }
     }
 

@@ -190,16 +190,7 @@ const logout = (command) => {
             }
         }
 
-        .el-dropdown__box {
-            display: flex;
-            align-items: center;
-            padding: 4px 8px;
-            outline: none !important;
 
-            &:hover {
-                background: #ededed;
-            }
-        }
     }
 
     .el-main {

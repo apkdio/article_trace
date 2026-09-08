@@ -192,18 +192,6 @@ const uploadSubmit = () => {
   height: 100%;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f2f2f2;
-  margin-bottom: 30px;
-  .title-group {
-    .main-title { font-size: 24px; font-weight: bold; color: #1a1a1a; margin: 0; }
-    .sub-tip { font-size: 13px; color: #999; margin: 4px 0 0; }
-  }
-}
 
 .section-title {
   font-size: 16px;
@@ -322,9 +310,6 @@ const uploadSubmit = () => {
   font-size: 13px; color: #909399; margin: 4px 0;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+
 
 </style>
