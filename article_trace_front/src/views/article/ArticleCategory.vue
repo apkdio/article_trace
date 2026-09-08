@@ -5,6 +5,9 @@ import {onMounted, ref, computed} from 'vue'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {checkPersonInfo} from "@/api/checkPersonInfo.js";
 import router from "@/router/index.js";
+import {confirmCompleteProfile} from "@/utils/confirm.js";
+import PageHeader from "@/components/PageHeader.vue";
+import StatCard from "@/components/StatCard.vue";
 import {checkType} from "@/api/user.js";
 
 const categories = ref([])
@@ -32,18 +35,7 @@ onMounted(() => {
   if(!checkType([0,1])) router.push({name:"ErrorPage"})
   if (checkPersonInfo()) getCategories()
   else {
-    ElMessageBox.confirm("请先完善个人信息！", "提示", {
-      type: "warning",
-      confirmButtonText: "确认",
-      showCancelButton: false,
-      closeOnClickModal: false,
-      closeOnPressEscape: false,
-      showClose: false,
-      center: true,
-      customStyle: {textAlign: "center"}
-    }).then(() => {
-      router.push({name: "UserInfo"})
-    })
+    confirmCompleteProfile(router)
   }
 })
 
@@ -121,46 +113,26 @@ const handleClose = (done) => {
 
 <template>
   <div class="category-manage-main">
-    <div class="page-header">
-      <div class="title-group">
-        <h2 class="main-title">文章分类管理</h2>
-        <p class="sub-tip">维护文章的分类体系，方便内容归档与检索</p>
-      </div>
-      <div class="header-actions">
+    <PageHeader title="文章分类管理" subtitle="维护文章的分类体系，方便内容归档与检索">
+      <template #actions>
         <el-button :icon="Refresh" circle @click="getCategories" title="刷新数据"/>
         <el-button type="primary" :icon="Plus" size="large" @click="showAddCategory=true;state=1">新增分类</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
 
     <div v-loading="isLoading" element-loading-text="正在为您加载文章类型列表...">
       <template v-if="!isLoading">
         <el-row :gutter="20" class="stat-section">
           <el-col :span="6">
-            <div class="stat-item">
-              <div class="stat-icon blue">
-                <el-icon>
-                  <Collection/>
-                </el-icon>
-              </div>
-              <div class="stat-content">
-                <span class="stat-label">全站分类</span>
-                <span class="stat-value">{{ categories.length }}</span>
-              </div>
-            </div>
+            <StatCard label="全站分类" :value="categories.length" color="indigo">
+              <template #icon><el-icon><Collection/></el-icon></template>
+            </StatCard>
           </el-col>
           <el-col :span="6">
-            <div class="stat-item">
-              <div class="stat-icon green">
-                <el-icon>
-                  <UserFilled/>
-                </el-icon>
-              </div>
-              <div class="stat-content">
-                <span class="stat-label">我创建的</span>
-                <span class="stat-value">{{ myCategoriesCount }}</span>
-              </div>
-            </div>
+            <StatCard label="我创建的" :value="myCategoriesCount" color="green">
+              <template #icon><el-icon><UserFilled/></el-icon></template>
+            </StatCard>
           </el-col>
         </el-row>
 

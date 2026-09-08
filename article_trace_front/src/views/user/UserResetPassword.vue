@@ -5,6 +5,7 @@ import { updateUserPassService} from "@/api/user.js";
 import {Lock} from '@element-plus/icons-vue'
 import router from "@/router/index.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
+import {confirmPasswordValid} from "@/utils/validators.js";
 
 const userPassRef = ref()
 const errorList = ref({})
@@ -15,11 +16,7 @@ const userPass = ref({
   confirmPass: '',
 })
 
-const confirmPasswordValid = (rule, value, callback) => {
-  if (!value) return callback(new Error('请再次确认密码'))
-  if (userPass.value.newPass !== value) return callback(new Error('两次输入密码不一致!'))
-  callback()
-}
+const confirmPasswordValidator = confirmPasswordValid(() => userPass.value.newPass)
 
 const rules = {
   oriPass: [
@@ -35,7 +32,7 @@ const rules = {
   ],
   confirmPass: [
     {required: true, message: '请输入确认密码！'},
-    {validator: confirmPasswordValid}
+    {validator: confirmPasswordValidator}
   ]
 }
 

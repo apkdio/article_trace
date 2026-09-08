@@ -1,5 +1,6 @@
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {deleteAccountService} from "@/api/user.js";
+import {promptMasterPassword} from "@/utils/confirm.js";
 
 export const confirmDeleteAccount = (id, username) => {
     return new Promise((resolve, reject) => {
@@ -20,15 +21,7 @@ export const confirmDeleteAccount = (id, username) => {
                     customStyle: {textAlign: "center"}
                 }
             ).then(() => {
-                ElMessageBox.prompt('请输入站长密码!', '提示', {
-                        confirmButtonText: "确定",
-                        cancelButtonText: "取消",
-                        type: "warning",
-                        showCancelButton: true,
-                        buttonSize: "default",
-                        inputType: "password"
-                    }
-                ).then(({value}) => {
+                promptMasterPassword().then(({value}) => {
                     deleteAccountService(id,`${value}`).then(result => {
                         if (result.code === 0) {
                             ElMessage.success("删除成功！")

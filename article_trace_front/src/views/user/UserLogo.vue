@@ -5,6 +5,8 @@ import logo from '@/assets/defaultLogo.jpg'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {removeUserLogoService} from "@/api/user.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
+import {checkImageFile, isAllowedImageType} from "@/utils/upload.js";
+import PageHeader from "@/components/PageHeader.vue";
 
 const uploadRef = ref()
 const imgSrc = ref()
@@ -46,29 +48,12 @@ const removeUserLogo = () => {
     })
   }
 }
-const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
 
-function uploadCheck(file) {
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error("上传图片不能大于5MB!")
-    return false
-  }
-  if (file.type.startsWith('image/')) {
-    if (allowedTypes.includes(file.type)) return true
-    else {
-      ElMessage.error("只支持 JPG、PNG、GIF、BMP、WEBP 格式的图片！")
-      return false
-    }
-  } else {
-    ElMessage.error("请上传图片类型文件！")
-    return false
-  }
-}
 
 function changeSetSrc(file, fileList) {
   if (fileList.length > 0) {
     const currentFile = fileList[fileList.length - 1]
-    if (currentFile.raw && allowedTypes.includes(currentFile.raw.type)) {
+    if (currentFile.raw && isAllowedImageType(currentFile.raw.type)) {
       if (currentFile.raw.size > 5 * 1024 * 1024) {
         ElMessage.error("上传图片不能大于5MB!")
         uploadRef.value.clearFiles()
@@ -101,12 +86,7 @@ const uploadSubmit = () => {
 
 <template>
   <div class="user-avatar-container">
-    <div class="page-header">
-      <div class="title-group">
-        <h2 class="main-title">更换头像</h2>
-        <p class="sub-tip">上传个性图片，展示独特自我</p>
-      </div>
-    </div>
+    <PageHeader title="更换头像" subtitle="上传个性图片，展示独特自我"/>
 
     <div class="avatar-content">
       <el-row :gutter="40">
@@ -121,7 +101,7 @@ const uploadSubmit = () => {
                   :headers="{'Authorization':tokenStorage().token}"
                   :show-file-list="false"
                   :auto-upload="false"
-                  :before-upload="uploadCheck"
+                  :before-upload="checkImageFile"
                   :on-success="uploadSuccess"
                   :on-change="changeSetSrc"
                   method="PATCH"

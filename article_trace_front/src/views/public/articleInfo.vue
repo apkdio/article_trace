@@ -15,7 +15,8 @@ import {
   getWriterInfoService
 } from "@/api/article.js";
 import router from "@/router/index.js";
-import {logoutService} from "@/api/user.js";
+import {formatDate} from "@/utils/date.js";
+import {logout as doLogout} from "@/utils/auth.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import logo from "@/assets/defaultLogo.jpg";
 import {searchConditions} from "@/stores/searchConditions.js";
@@ -153,18 +154,11 @@ const getTopArticles = async () => {
 const switchCommand = (command) => {
   if (command === "profile") router.push({name: "Home"})
   else if (command === "logout") {
-    logoutService().finally(() => {
-      userInfoStore().clearUserInfo()
-      tokenStorage().clearToken()
-      window.location.reload()
-    })
+    doLogout()
   }
 }
 
-function formatDate(date) {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+
 
 const pushSearch = (type) => {
   searchConditions().state = 1

@@ -10,12 +10,13 @@ import {
   getTopArticlesService
 } from "@/api/article.js";
 import router from "@/router/index.js";
-import {logoutService} from "@/api/user.js";
+import {logout as doLogout} from "@/utils/auth.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import logo from "@/assets/defaultLogo.jpg";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
 import AgentChat from "@/components/AgentChat.vue";
+import {formatDate} from "@/utils/date.js";
 
 const loading = ref(true)
 const topArticleLoading = ref(true)
@@ -135,17 +136,7 @@ const switchCommand = (command) => {
       else router.push({name: "MainPage"})
       break;
     case "logout":
-      logoutService().then(() => {
-        ElMessage.success("用户已登出！")
-      }).catch(() => {
-        ElMessage.warning("服务端未响应！执行本地登出！")
-      }).finally(async () => {
-        setTimeout(() => {
-          userInfoStore().clearUserInfo()
-          tokenStorage().clearToken()
-          window.location.reload()
-        }, 500)
-      })
+      doLogout()
       break;
   }
 }
@@ -196,10 +187,7 @@ const searchArticleInWriter = (nickName) => {
   }, 100)
 }
 
-function formatDate(date) {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
+
 </script>
 <template>
   <div class="front-layout">

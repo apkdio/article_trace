@@ -7,6 +7,9 @@ import {confirmDeleteAccount} from "@/api/confirmDeleteAccount.js";
 import defaultAvatar from "@/assets/defaultLogo.jpg";
 import {userInfoStore} from "@/stores/userInfo.js";
 import router from "@/router/index.js";
+import {promptMasterPassword} from "@/utils/confirm.js";
+import PageHeader from "@/components/PageHeader.vue";
+import StatCard from "@/components/StatCard.vue";
 
 const accountData = ref([])
 const isLoading = ref(true)
@@ -73,14 +76,7 @@ const changeUserType = (id, type) => {
     center: true,
   }).then(() => {
         try {
-          ElMessageBox.prompt("请输入站长密码！", "提示", {
-            confirmButtonText: "确定",
-            cancelButtonText: "取消",
-            type: "warning",
-            showCancelButton: true,
-            buttonSize: "default",
-            inputType:"password"
-          }).then(async ({value}) => {
+          promptMasterPassword().then(async ({value}) => {
             const result = await changeType(id, type, `${value}`)
             if (result.code === 0) {
               ElMessage.success("操作成功！")
@@ -102,40 +98,19 @@ const changeUserType = (id, type) => {
 <template>
 
   <div class="account-manage-container" v-loading="isLoading" element-loading-text="加载账号数据...">
-    <div class="page-header">
-      <div class="title-group">
-        <h2 class="main-title">站内账号管理</h2>
-        <p class="sub-tip">监控系统用户活跃度，管理权限与账户安全</p>
-      </div>
-    </div>
+    <PageHeader title="站内账号管理" subtitle="监控系统用户活跃度，管理权限与账户安全"/>
 
     <template v-if="!isLoading">
       <el-row :gutter="20" class="stat-section">
         <el-col :span="6">
-          <div class="stat-item">
-            <div class="stat-icon purple">
-              <el-icon>
-                <User/>
-              </el-icon>
-            </div>
-            <div class="stat-content">
-              <span class="stat-label">总注册用户</span>
-              <span class="stat-value">{{ total }}</span>
-            </div>
-          </div>
+          <StatCard label="总注册用户" :value="total" color="purple">
+            <template #icon><el-icon><User/></el-icon></template>
+          </StatCard>
         </el-col>
         <el-col :span="6">
-          <div class="stat-item">
-            <div class="stat-icon blue">
-              <el-icon>
-                <Avatar/>
-              </el-icon>
-            </div>
-            <div class="stat-content">
-              <span class="stat-label">站长</span>
-              <span class="stat-value">{{ stats.admins }}</span>
-            </div>
-          </div>
+          <StatCard label="站长" :value="stats.admins" color="blue">
+            <template #icon><el-icon><Avatar/></el-icon></template>
+          </StatCard>
         </el-col>
       </el-row>
 

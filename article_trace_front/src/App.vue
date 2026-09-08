@@ -7,16 +7,16 @@ const route = useRoute()
 const transitionName = computed(() => {
   return route.meta.noTransition ? '' : 'page-slide-right'
 })
+// 顶层路由作为 key：跨顶层路由切换时强制重建，子路由切换时不重建
+const viewKey = computed(() => {
+  return route.matched.length > 0 ? (route.matched[0].path || route.path) : route.path
+})
 </script>
 <template>
   <el-config-provider :locale="zhCn">
     <router-view v-slot="{ Component }">
-      <transition
-          :name="transitionName"
-          mode="out-in"
-          appear
-      >
-        <component :is="Component"/>
+      <transition :name="transitionName">
+        <component :is="Component" :key="viewKey"/>
       </transition>
     </router-view>
   </el-config-provider>

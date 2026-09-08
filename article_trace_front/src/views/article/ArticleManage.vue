@@ -17,6 +17,9 @@ import {userInfoStore} from "@/stores/userInfo.js";
 import {checkPersonInfo} from "@/api/checkPersonInfo.js";
 import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
+import {checkImageFile} from "@/utils/upload.js";
+import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
+import PageHeader from "@/components/PageHeader.vue";
 
 
 const categories = ref([])
@@ -80,18 +83,7 @@ onMounted(() => {
   if (!checkType([0, 1])) router.push({name: "ErrorPage"})
   if (checkPersonInfo()) getCategories()
   else {
-    ElMessageBox.confirm("请先完善个人信息！", "提示", {
-      type: "warning",
-      confirmButtonText: "确认",
-      showCancelButton: false,
-      closeOnClickModal: false,
-      closeOnPressEscape: false,
-      showClose: false,
-      center: true,
-      customStyle: {textAlign: "center"}
-    }).then(() => {
-      router.push({name: "UserInfo"})
-    })
+    confirmCompleteProfile(router)
   }
 })
 
@@ -158,24 +150,7 @@ const uploadSuccess = (result) => {
   }
 }
 
-const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
 
-function uploadCheck(file) {
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error("上传图片不能大于5MB!")
-    return false
-  }
-  if (file.type.startsWith('image/')) {
-    if (allowedTypes.includes(file.type)) return true
-    else {
-      ElMessage.error("只支持 JPG、PNG、GIF、BMP、WEBP 格式的图片！")
-      return false
-    }
-  } else {
-    ElMessage.error("请上传图片类型文件！")
-    return false
-  }
-}
 
 const cleanCover = () => {
   ElMessageBox.confirm("确认删除该封面? 此操作不可恢复！", "警告", {
@@ -307,13 +282,7 @@ const deleteArticle = (id, createUser) => {
   }).then(async () => {
     try {
       if (createUser !== userInfoStore().nickname) {
-        ElMessageBox.prompt("请输入站长密码！", "提示", {
-          confirmButtonText: "确认",
-          cancelButtonText: "取消",
-          type: "warning",
-          buttonSize: "default",
-          inputType:"password"
-        }).then(async ({value}) => {
+        promptMasterPassword().then(async ({value}) => {
           const result = await deleteArticleService(id, `${value}`)
           if (result.code === 0) {
             ElMessage.success("删除成功！")
@@ -358,15 +327,11 @@ const assessArticle = async (id, state) => {
 
 <template>
   <div class="article-manage-container">
-    <div class="page-header">
-      <div class="title-group">
-        <h2 class="main-title">文章管理</h2>
-        <p class="sub-tip">在这里发布和管理您的所有创作内容</p>
-      </div>
-      <div class="header-actions">
+    <PageHeader title="文章管理" subtitle="在这里发布和管理您的所有创作内容">
+      <template #actions>
         <el-button type="primary" :icon="Plus" size="large" @click="openAddDrawer">添加文章</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="search-bar">
       <el-form inline ref="conditionRef" :model="conditions">
@@ -552,7 +517,7 @@ const assessArticle = async (id, state) => {
                 action="/api/article/uploadCover"
                 name="cover"
                 :headers="{'Authorization':tokenStorage().token}"
-                :before-upload="uploadCheck"
+                :before-upload="checkImageFile"
                 :on-success="uploadSuccess"
                 method="PATCH"
             >

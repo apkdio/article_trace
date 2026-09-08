@@ -7,6 +7,7 @@ import router from "@/router/index.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import {userInfoStore} from "@/stores/userInfo.js";
 import {loginCheck} from "@/utils/loginCheck.js";
+import {confirmPasswordValid} from "@/utils/validators.js";
 
 
 let isRegister = ref(true)
@@ -29,18 +30,14 @@ const isAnimating = ref(false)
 // 定义是否首次载入
 const isFirstLoad = ref(true)
 
-const confirmPasswordValid = (rule, value, callback) => {
-  if (!value) return callback(new Error('请再次确认密码'))
-  if (FormData.value.password !== value) return callback(new Error('两次输入密码不一致!'))
-  callback()
-}
+const confirmPasswordValidator = confirmPasswordValid(() => FormData.value.password)
 
 const FormDataRules = computed(() => {
   if (resetPass.value) {
     return {
       username: [{required: true, message: '请输入用户名！'}],
       password: [{required: true, message: '请输入新密码！'}, {max: 60, message: "密码过长！"}],
-      confirmPassword: [{validator: confirmPasswordValid}],
+      confirmPassword: [{validator: confirmPasswordValidator}],
       resetPassword: [{required: true, message: '请输入重置码！'}]
     }
   }
@@ -53,7 +50,7 @@ const FormDataRules = computed(() => {
     return {
       username: [{required: true, message: '请输入用户名！'}, {max: 20, message: "用户名过长！"}],
       password: [{required: true, message: '请输入密码！'}, {max: 60, message: "密码过长！"}],
-      confirmPassword: [{validator: confirmPasswordValid}]
+      confirmPassword: [{validator: confirmPasswordValidator}]
     }
   }
 })
