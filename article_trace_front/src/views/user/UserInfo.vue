@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { userInfoStore } from "@/stores/userInfo.js";
 import { updateUserInfoService } from "@/api/user.js";
 import { User, Postcard, Message } from '@element-plus/icons-vue'
+import InfoFormShell from "@/components/InfoFormShell.vue";
 
 const userInfoRef = ref()
 const errorList = ref({})
@@ -74,16 +75,8 @@ const updateUserInfo = () => {
 </script>
 
 <template>
-  <div class="user-info-container">
-    <div class="info-header">
-      <div class="title-section">
-        <h2 class="main-title">基本资料</h2>
-        <p class="sub-title">管理您的账户信息，便于其他用户更好地了解您</p>
-      </div>
-    </div>
-
-    <div class="info-content">
-      <el-row>
+  <InfoFormShell title="基本资料" subtitle="管理您的账户信息，便于其他用户更好地了解您">
+    <el-row>
         <el-col :xs="24" :sm="20" :md="16" :lg="12">
           <el-form
               ref="userInfoRef"
@@ -124,42 +117,11 @@ const updateUserInfo = () => {
             </el-form-item>
           </el-form>
         </el-col>
-      </el-row>
-    </div>
-  </div>
+    </el-row>
+  </InfoFormShell>
 </template>
 
 <style lang="scss" scoped>
-.user-info-container {
-  padding: 10px;
-  /* 应用 fadeIn 动画 */
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-.info-header {
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #f2f2f2;
-
-  .main-title {
-    margin: 0;
-    font-size: 24px;
-    font-weight: bold;
-    color: #1a1a1a;
-  }
-
-  .sub-title {
-    margin: 8px 0 0;
-    font-size: 14px;
-    color: #8c8c8c;
-  }
-}
-
-.info-content {
-  /* 表单区域背景微调，提升专注感 */
-  background: #ffffff;
-  padding: 20px 0;
-}
 
 .custom-form {
   /* 调整 Form Item 之间的间距 */
@@ -198,10 +160,5 @@ const updateUserInfo = () => {
 /* 动画定义 */
 
 
-/* 适配移动端 */
-@media (max-width: 768px) {
-  .info-header {
-    .main-title { font-size: 20px; }
-  }
-}
+
 </style>

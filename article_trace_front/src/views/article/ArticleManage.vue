@@ -792,14 +792,6 @@ const assessArticle = async (id, state) => {
 
 
 
-:deep(.modern-table) {
-  .el-table__header th {
-    background-color: #fcfcfc;
-    color: #606266;
-    font-weight: bold;
-  }
-}
-
 .table-wrapper {
   flex: 1;
   display: flex;
