@@ -70,6 +70,7 @@ article_trace_back/
     │   │   ├── RichTextCleaner.java         #   富文本清洗（jsoup）
     │   │   ├── TextExtractor.java           #   纯文本提取/摘要
     │   │   ├── RustFsUtil.java              #   RustFS/S3 对象存储封装
+    │   │   ├── ThumbnailUtil.java           #   图片缩略图生成（Thumbnailator）
     │   │   ├── GenResetPass.java            #   重置码生成
     │   │   ├── IPUtil.java                  #   客户端 IP 获取
     │   │   └── GlobalExceptionHandler.java  #   全局异常捕获
@@ -78,7 +79,8 @@ article_trace_back/
     │   │   ├── RedisConfig.java             #   Redis 双库模板配置
     │   │   └── SensitiveWordConfig.java     #   敏感词 Bean 装配
     │   ├── runner/
-    │   │   └── AdminInitializer.java        #   启动时自动创建站长账号
+    │   │   ├── AdminInitializer.java        #   启动时自动创建站长账号
+    │   │   └── ThumbnailBackfillRunner.java #   存量缩略图补齐（可选）
     │   └── scheduledTask/                   # 定时任务
     │       ├── SyncRedisToDbTask.java       #   Redis 浏览量 → MySQL 同步
     │       ├── SyncSensitiveWordLoader.java #   敏感词库热更新
@@ -144,6 +146,8 @@ article_trace_back/
 ### 8. 对象存储（RustFsUtil）
 
 基于 AWS S3 SDK 封装，`图片桶（pic）` 与 `内容桶（content）` 分桶存储。图片访问通过 `S3Presigner` 生成 3 天有效期的预签名 URL，并缓存至 Redis 减少签名开销。
+
+**缩略图机制**：上传图片时自动生成缩略图（Thumbnailator 等比缩放至 400px 宽，JPEG 质量 0.8），以 `thumb_` 前缀与原图同桶存储；删除图片时连带删除缩略图。封面、头像、评论头像、作者卡头像均返回缩略图 URL（`*ThumbSrc`），列表/小尺寸展示用缩略图、详情/预览用原图。存量图片可通过 `thumbnail.backfill.enabled=true` 启动时一次性补齐（无封面/头像的记录自动跳过）。
 
 ### 9. 浏览量统计（SyncRedisToDbTask）
 
