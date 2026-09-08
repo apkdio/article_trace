@@ -3,7 +3,6 @@ package com.articleTraceBack.rpc;
 import com.articleTraceBack.rpc.gen.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.grpc.stub.StreamObserver;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,7 +34,6 @@ public class ArticleAgentClient {
 
     private ManagedChannel channel;
     private ArticleAgentServiceGrpc.ArticleAgentServiceBlockingStub blockingStub;
-    private ArticleAgentServiceGrpc.ArticleAgentServiceStub asyncStub;
 
     @PostConstruct
     public void init() {
@@ -44,7 +41,6 @@ public class ArticleAgentClient {
                 .usePlaintext()
                 .build();
         blockingStub = ArticleAgentServiceGrpc.newBlockingStub(channel);
-        asyncStub = ArticleAgentServiceGrpc.newStub(channel);
         log.info("ArticleAgentClient initialized: {}:{}", host, port);
     }
 
@@ -52,23 +48,6 @@ public class ArticleAgentClient {
     public void shutdown() {
         if (channel != null && !channel.isShutdown()) {
             channel.shutdownNow();
-        }
-    }
-
-    /** 单篇推送/覆盖（按 article.id 幂等） */
-    public boolean ingestArticle(Article article) {
-        try {
-            IngestReply reply = blockingStub
-                    .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .ingestArticle(IngestRequest.newBuilder().setArticle(article).build());
-            if (!reply.getOk()) {
-                log.warn("ingestArticle rejected: articleId={}, message={}",
-                        article.getId(), reply.getMessage());
-            }
-            return reply.getOk();
-        } catch (Exception e) {
-            log.error("ingestArticle rpc failed: articleId={}", article.getId(), e);
-            return false;
         }
     }
 
@@ -127,51 +106,5 @@ public class ArticleAgentClient {
             log.error("health rpc failed", e);
             return HealthReply.newBuilder().setOk(false).build();
         }
-    }
-
-    /** 全量/增量同步（客户端流式推送） */
-    public SyncReply syncArticles(List<Article> articles) {
-        if (articles == null || articles.isEmpty()) {
-            return SyncReply.newBuilder().setOk(true).setIngested(0).setFailed(0).build();
-        }
-        CountDownLatch latch = new CountDownLatch(1);
-        SyncReply[] result = new SyncReply[1];
-        StreamObserver<SyncReply> responseObserver = new StreamObserver<>() {
-            @Override
-            public void onNext(SyncReply value) {
-                result[0] = value;
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                log.error("syncArticles stream error", t);
-                result[0] = SyncReply.newBuilder()
-                        .setOk(false).setMessage(t.getMessage()).build();
-                latch.countDown();
-            }
-
-            @Override
-            public void onCompleted() {
-                latch.countDown();
-            }
-        };
-
-        StreamObserver<Article> requestObserver = asyncStub.syncArticles(responseObserver);
-        try {
-            for (Article article : articles) {
-                requestObserver.onNext(article);
-            }
-            requestObserver.onCompleted();
-            if (!latch.await(60, TimeUnit.SECONDS)) {
-                log.warn("syncArticles timeout after 60s");
-                return SyncReply.newBuilder().setOk(false).setMessage("timeout").build();
-            }
-        } catch (Exception e) {
-            log.error("syncArticles failed", e);
-            return SyncReply.newBuilder().setOk(false).setMessage(e.getMessage()).build();
-        }
-        return result[0] != null
-                ? result[0]
-                : SyncReply.newBuilder().setOk(false).setMessage("no response").build();
     }
 }

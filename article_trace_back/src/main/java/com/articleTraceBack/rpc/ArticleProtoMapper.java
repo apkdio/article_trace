@@ -60,7 +60,7 @@ public final class ArticleProtoMapper {
     }
 
     /** Java 侧 state 值 → proto 枚举 */
-    public static ArticleState toState(Integer state) {
+    private static ArticleState toState(Integer state) {
         if (state == null) {
             return ArticleState.DRAFT;
         }
