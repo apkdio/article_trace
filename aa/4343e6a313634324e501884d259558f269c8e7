@@ -1,0 +1,60 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/RustFsUtil.java
+  s_ab74ea15e793d1::t_c948b3c2b70559 21-284
+article_trace_back/src/main/java/com/articleTraceBack/Utils/ThumbnailUtil.java
+  s_ab74ea15e793d1::t_5fd8772ff4a613 1-50
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_96ad78b6335526 58-245
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_b04b8bf64be939 66-68
+article_trace_front/src/components/AuthorCard.vue
+  s_ab74ea15e793d1::t_75226fdb7fe919 17
+article_trace_front/src/views/public/publicHome.vue
+  s_ab74ea15e793d1::t_ae21dcbe9a884b 284
+  s_ab74ea15e793d1::t_5d897b06140d3b 254
+article_trace_back/src/main/java/com/articleTraceBack/pojo/WriterInfo.java
+  s_ab74ea15e793d1::t_75226fdb7fe919 13
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_75226fdb7fe919 92-107
+article_trace_front/src/views/public/articleInfo.vue
+  s_ab74ea15e793d1::t_75226fdb7fe919 282
+  s_ab74ea15e793d1::t_5d897b06140d3b 210
+article_trace_back/src/main/java/com/articleTraceBack/pojo/User.java
+  s_ab74ea15e793d1::t_96ad78b6335526 73-75
+article_trace_front/src/stores/userInfo.js
+  s_ab74ea15e793d1::t_5d897b06140d3b 17-87
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_d1fabe9ad955ac 385
+article_trace_front/src/views/user/AccountManage.vue
+  s_ab74ea15e793d1::t_5d897b06140d3b 122
+article_trace_back/pom.xml
+  s_ab74ea15e793d1::t_561c53bb5dd15a 94-99
+article_trace_back/src/main/java/com/articleTraceBack/Service/ReaderServiceImpl.java
+  s_ab74ea15e793d1::t_75226fdb7fe919 60-88
+article_trace_back/src/main/java/com/articleTraceBack/runner/ThumbnailBackfillRunner.java
+  s_ab74ea15e793d1::t_dab4af6735b507 1-77
+article_trace_back/src/main/java/com/articleTraceBack/pojo/Comment.java
+  s_ab74ea15e793d1::t_75226fdb7fe919 37-38
+article_trace_front/src/components/UserLayout.vue
+  s_ab74ea15e793d1::t_5d897b06140d3b 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "aa4343e6a313634324e501884d259558f269c8e7",
+  "prompts": {},
+  "humans": {
+    "h_26b9a38f4942dd": {
+      "author": "apkdio <apkdio@163.com>"
+    }
+  },
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
