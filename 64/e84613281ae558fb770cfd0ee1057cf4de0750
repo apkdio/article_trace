@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "64e84613281ae558fb770cfd0ee1057cf4de0750",
+  "prompts": {},
+  "humans": {
+    "h_26b9a38f4942dd": {
+      "author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
