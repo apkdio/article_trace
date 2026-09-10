@@ -1,0 +1,19 @@
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_28ca51f54515d1 43-44,226,230-231,240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "2cf4e0332190c9216b6a915df0b992775c600df6",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
