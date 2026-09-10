@@ -8,7 +8,7 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from tools.config_tool import load_config
-from tools.context_store import append_message, get_recent
+from tools.context_store import append_message, ensure_session_id, get_recent
 from tools.llm_tool import chat_once, stream_chat
 from tools.log_tool import get_logger
 from tools.prompts_tool import load_main_prompts
@@ -103,7 +103,7 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
     q = (query or "").strip()
     if not q:
         return {"answer": "请告诉我你想找什么文章～", "articles": []}
-    session_id = session_id or "default"
+    session_id = ensure_session_id(session_id)
 
     # 闲聊/道谢：直接 LLM 回应，不走检索
     if _is_greeting(q):
@@ -170,25 +170,26 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
     """流式问答入口：先产出命中文章，再逐段产出 LLM 答案增量。
 
     生成器每次 yield 一个 dict：
-        {"articles": [命中文章...], "delta": ""}   # 第一条：检索结果
-        {"articles": [], "delta": "片段"}          # 后续：LLM 增量
+        {"articles": [命中文章...], "delta": "", "session_id": "..."}  # 第一条：检索结果 + 会话 ID
+        {"articles": [], "delta": "片段", "session_id": "..."}         # 后续：LLM 增量
+    session_id 为空/非法时自动生成 UUID（首条回传，供前端保存复用）。
     """
+    session_id = ensure_session_id(session_id)
     q = (query or "").strip()
     if not q:
-        yield {"articles": [], "delta": "请告诉我你想找什么文章～"}
+        yield {"articles": [], "delta": "请告诉我你想找什么文章～", "session_id": session_id}
         return
-    session_id = session_id or "default"
 
     # 闲聊/道谢：直接 LLM 流式回应，不走检索
     if _is_greeting(q):
-        yield {"articles": [], "delta": ""}
+        yield {"articles": [], "delta": "", "session_id": session_id}
         messages = [SystemMessage(content=load_main_prompts()), HumanMessage(content=q)]
         full = ""
         for chunk in stream_chat(messages, model=_llm_cfg.get("model"),
                                  temperature=_llm_cfg.get("temperature", 0.3)):
             if chunk:
                 full += chunk
-                yield {"articles": [], "delta": chunk}
+                yield {"articles": [], "delta": chunk, "session_id": session_id}
         append_message(session_id, "user", q)
         append_message(session_id, "assistant", full)
         return
@@ -209,11 +210,11 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
     if _behavior.get("retrieval_only", False):
         answer = _context_block(fused, _article_cfg.get("context_chunks", 4)) or "暂无相关文章。"
         append_message(session_id, "assistant", answer)
-        yield {"articles": articles, "delta": answer}
+        yield {"articles": articles, "delta": answer, "session_id": session_id}
         return
 
     # 第一条：先发命中文章
-    yield {"articles": articles, "delta": ""}
+    yield {"articles": articles, "delta": "", "session_id": session_id}
 
     if not articles:
         user_msg = (
@@ -235,6 +236,6 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
                              temperature=_llm_cfg.get("temperature", 0.3)):
         if chunk:
             full += chunk
-            yield {"articles": [], "delta": chunk}
+            yield {"articles": [], "delta": chunk, "session_id": session_id}
     append_message(session_id, "assistant", full)
     logger.info("[AskStream] query='%.50s' → %d article(s)", q, len(articles))

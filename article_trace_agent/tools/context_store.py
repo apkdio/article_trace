@@ -107,6 +107,30 @@ def get_recent(session_id: str, n: int = None) -> list:
     return msgs
 
 
+def get_messages(session_id: str, limit: int = 0) -> list:
+    """读取会话的完整历史消息（按时间正序）。
+
+    limit > 0 时返回最近 limit 条；limit <= 0 返回全部。
+    与 get_recent 的区别：get_recent 走内存缓存（默认最多 12 条）用于拼接上下文，
+    本函数直接读文件，用于会话历史的完整回放。
+    """
+    msgs = []
+    fp = _file_path(session_id)
+    if os.path.exists(fp):
+        with open(fp, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    msgs.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    if limit and limit > 0:
+        msgs = msgs[-limit:]
+    return msgs
+
+
 def delete_session(session_id: str) -> bool:
     """删除指定会话：清理 jsonl 数据文件、meta 文件与内存缓存。"""
     _cache.pop(session_id, None)
@@ -140,15 +164,21 @@ def ensure_session_id(session_id):
     return str(uuid.uuid4())
 
 
-def list_sessions() -> list:
-    """列出所有会话：session_id + 标题 + 消息数 + 更新时间。"""
+def list_sessions(session_ids=None) -> list:
+    """列出会话：session_id + 标题 + 消息数 + 更新时间（按更新时间倒序）。
+
+    session_ids 非空时只返回其中的会话（供 Java 侧按用户过滤）。
+    """
     os.makedirs(_CONTEXT_DIR, exist_ok=True)
     os.makedirs(_CONTEXT_META_DATA_DIR, exist_ok=True)
+    want = set(session_ids) if session_ids else None
     sessions = []
     for fn in os.listdir(_CONTEXT_DIR):
         if not fn.endswith(".jsonl"):
             continue
         sid = fn[:-6]
+        if want is not None and sid not in want:
+            continue
         fp = os.path.join(_CONTEXT_DIR, fn)
         msgs = []
         with open(fp, encoding="utf-8") as f:

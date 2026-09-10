@@ -37,6 +37,15 @@ service ArticleAgentService {
   // 检索 + LLM 流式生成答案（服务端流式）
   rpc Ask(AskRequest) returns (stream AskStreamChunk);
 
+  // 列出会话（按更新时间倒序；可选按 session_ids 过滤）
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsReply);
+
+  // 获取会话历史消息
+  rpc GetSessionMessages(GetSessionMessagesRequest) returns (GetSessionMessagesReply);
+
+  // 删除会话
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionReply);
+
   // 健康/统计
   rpc Health(HealthRequest) returns (HealthReply);
 }
@@ -139,6 +148,54 @@ message AskStreamChunk {
   string message = 2;                   // 错误信息（ok=false 时，仅一条）
   repeated MatchedArticle articles = 3; // 命中文章（仅第一条携带）
   string delta = 4;                     // LLM 答案增量片段（后续多条）
+  string session_id = 5;                // 本次问答所属会话 ID（首条 chunk 携带，供前端保存复用）
+}
+
+
+// =============================================================
+// 会话管理（多轮对话历史存 agent 侧，Java 侧只维护「用户 ↔ 会话」映射）
+// =============================================================
+message SessionSummary {
+  string session_id = 1;    // 会话 ID（UUID）
+  string title = 2;         // 标题（由首条用户消息截取或 agent 生成）
+  int32  message_count = 3; // 消息条数（user + assistant）
+  string updated_at = 4;    // 最后更新时间（ISO8601）
+}
+
+message ChatMessage {
+  string role = 1;          // user / assistant
+  string content = 2;       // 消息内容
+  string ts = 3;            // 时间戳
+}
+
+message ListSessionsRequest {
+  repeated string session_ids = 1;  // 可选：只查这些会话；空则返回全部
+}
+
+message ListSessionsReply {
+  bool   ok = 1;
+  repeated SessionSummary sessions = 2;
+  string message = 3;
+}
+
+message GetSessionMessagesRequest {
+  string session_id = 1;    // 会话 ID（必填）
+  int32  limit = 2;         // 可选：最多返回最近 N 条；0/空 表示全部
+}
+
+message GetSessionMessagesReply {
+  bool   ok = 1;
+  repeated ChatMessage messages = 2;
+  string message = 3;
+}
+
+message DeleteSessionRequest {
+  string session_id = 1;    // 会话 ID（必填）
+}
+
+message DeleteSessionReply {
+  bool   ok = 1;
+  string message = 2;
 }
 
 

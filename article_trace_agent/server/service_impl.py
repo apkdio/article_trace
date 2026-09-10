@@ -5,6 +5,7 @@ import article_agent_pb2_grpc as pb_grpc
 
 from tools.article_agent import ask_stream as core_ask_stream
 from tools.config_tool import load_config
+from tools.context_store import delete_session, get_messages, list_sessions
 from tools.log_tool import get_logger
 from tools.vector_store import (
     delete_articles,
@@ -92,11 +93,42 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
                     ok=True,
                     articles=matched,
                     delta=item.get("delta", ""),
+                    session_id=item.get("session_id", ""),
                     message="",
                 )
         except Exception as e:
             logger.error("Ask stream failed: %s", e)
             yield pb.AskStreamChunk(ok=False, message=str(e))
+
+    def ListSessions(self, request, context):
+        sessions = list_sessions(list(request.session_ids) or None)
+        summaries = [
+            pb.SessionSummary(
+                session_id=s["session_id"],
+                title=s.get("title", ""),
+                message_count=s.get("messages", 0),
+                updated_at=s.get("updated_at", ""),
+            )
+            for s in sessions
+        ]
+        return pb.ListSessionsReply(ok=True, sessions=summaries, message="")
+
+    def GetSessionMessages(self, request, context):
+        msgs = get_messages(request.session_id, request.limit)
+        out = [
+            pb.ChatMessage(
+                role=m.get("role", ""),
+                content=m.get("content", ""),
+                ts=m.get("ts", ""),
+            )
+            for m in msgs
+        ]
+        return pb.GetSessionMessagesReply(ok=True, messages=out, message="")
+
+    def DeleteSession(self, request, context):
+        # 幂等：会话不存在也返回成功（Java 侧只需确认可清理映射）
+        delete_session(request.session_id)
+        return pb.DeleteSessionReply(ok=True, message="")
 
     def Health(self, request, context):
         info = list_collections_info()
