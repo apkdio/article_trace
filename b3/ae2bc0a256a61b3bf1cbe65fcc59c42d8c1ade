@@ -1,0 +1,27 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/AgentSessionServiceImpl.java
+  s_ab74ea15e793d1::t_569ae85a0a59e5 1-95
+article_trace_back/src/main/java/com/articleTraceBack/Service/AgentSessionService.java
+  s_ab74ea15e793d1::t_802953ff6f0ba0 1-28
+article_trace_back/src/test/java/com/articleTraceBack/AgentSessionServiceTest.java
+  s_ab74ea15e793d1::t_c98cf2ede5f452 1-76
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_f6d4e047d26cd7 3,45,53,56,58,80,84-85,88,109,113,134,138,145,180,194
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_df176fb0d60b91 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "b3ae2bc0a256a61b3bf1cbe65fcc59c42d8c1ade",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
