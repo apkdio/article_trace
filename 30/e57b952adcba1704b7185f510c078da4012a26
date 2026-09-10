@@ -1,0 +1,34 @@
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_4307474f02091a 3,5,7,12-14,16,18,20-22,24,26,30,35,40,45-47,49,54-55,57,60-61,63,68,75-76,78,82-153,171,174,182-187,234-270
+article_trace_back/src/main/java/com/articleTraceBack/pojo/AgentChatMessage.java
+  s_ab74ea15e793d1::t_370a5700b50a4f 1-13
+article_trace_back/src/main/java/com/articleTraceBack/pojo/AgentSession.java
+  s_ab74ea15e793d1::t_fa567f38d8b787 1-14
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_edac335cec1ae3 38,45,63-64,188-190,223-229,362-365
+article_trace_back/src/main/proto/article_agent.proto
+  s_ab74ea15e793d1::t_86713a6944802b 40-48,151-198
+article_trace_back/src/main/java/com/articleTraceBack/rpc/ArticleAgentClient.java
+  s_ab74ea15e793d1::t_6c4d469e64a2ff 99-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "30e57b952adcba1704b7185f510c078da4012a26",
+  "prompts": {},
+  "humans": {
+    "h_26b9a38f4942dd": {
+      "author": "apkdio <apkdio@163.com>"
+    }
+  },
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4-Pro-discount"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
