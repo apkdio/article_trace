@@ -1,16 +1,17 @@
 import {tokenStorage} from "@/stores/tokenStorage.js";
+import request from "@/utils/request.js";
 
 /**
  * 流式问答：调用 /agent/ask（SSE 流式），通过回调逐段接收 LLM 答案。
  *
- * 事件序列：articles（命中文章，可选）→ delta（答案增量，多次）→ done / error。
+ * 事件序列：session（会话 ID，首条，可选）→ articles（命中文章，可选）→ delta（答案增量，多次）→ done / error。
  *
  * @param {Object} params - { query, sessionId?, categoryId?, topK? }
- * @param {Object} callbacks - { onArticles?, onDelta?, onError?, onDone? }
+ * @param {Object} callbacks - { onSession?, onArticles?, onDelta?, onError?, onDone? }
  */
 export async function askAgentStream(params, callbacks) {
     const {query, sessionId, categoryId, topK} = params;
-    const {onArticles, onDelta, onError, onDone} = callbacks;
+    const {onSession, onArticles, onDelta, onError, onDone} = callbacks;
 
     const resp = await fetch('/api/agent/ask', {
         method: 'POST',
@@ -52,6 +53,9 @@ export async function askAgentStream(params, callbacks) {
             if (!data) continue;
 
             switch (event) {
+                case 'session':
+                    onSession?.(data);
+                    break;
                 case 'articles':
                     try {
                         onArticles?.(JSON.parse(data));
@@ -71,4 +75,25 @@ export async function askAgentStream(params, callbacks) {
             }
         }
     }
+}
+
+/**
+ * 列出当前用户的会话（按更新时间倒序）。
+ */
+export function listSessions() {
+    return request.get("/agent/sessions")
+}
+
+/**
+ * 获取指定会话的历史消息。
+ */
+export function getSessionMessages(sessionId, limit = 0) {
+    return request.get("/agent/sessions/" + sessionId + "/messages", {params: {limit}})
+}
+
+/**
+ * 删除指定会话。
+ */
+export function deleteSession(sessionId) {
+    return request.delete("/agent/sessions/" + sessionId)
 }
