@@ -70,6 +70,7 @@ rpc:
   agent:
     host: ${AGENT_HOST:localhost} # Python Agent gRPC 服务地址
     port: ${AGENT_PORT:50051}     # Python Agent gRPC 端口
+    sessionKeyPrefix: "agent:session:user:"  # 用户↔会话归属索引 key 前缀（Redis Set，注销时联动清理）
     sync:
       enabled: true                          # 是否启用知识库定时批量同步
       cron: "0 */5 * * * ?"                  # 增量同步：每 5 分钟检查一次

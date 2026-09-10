@@ -1,5 +1,6 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.Service.AgentSessionService;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.AgentAskRequest;
 import com.articleTraceBack.pojo.AgentChatMessage;
@@ -18,8 +19,6 @@ import com.articleTraceBack.rpc.gen.MatchedArticle;
 import com.articleTraceBack.rpc.gen.SessionSummary;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,30 +36,26 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
  * 检索问答 / 会话管理 / agent 健康探活接口。
  * <p>问答采用 SSE 流式输出，把 agent 的 LLM 增量逐段转发给前端；
- * 会话历史由 agent 侧持久化，本控制器只维护「用户 ↔ 会话」映射（Redis Set）实现按用户隔离。</p>
+ * 会话历史由 agent 侧持久化，会话归属索引由 {@link AgentSessionService} 维护。</p>
  */
 @Slf4j
 @RestController
 @RequestMapping("/agent")
 public class AgentController {
 
-    private static final String SESSION_USER_KEY_PREFIX = "agent:session:user:";
-
     private final ArticleAgentClient agentClient;
-    private final StringRedisTemplate stringRedisTemplateArticle;
+    private final AgentSessionService agentSessionService;
     private final ExecutorService askExecutor = Executors.newCachedThreadPool();
 
-    public AgentController(ArticleAgentClient agentClient,
-                           @Qualifier("stringRedisTemplateArticle") StringRedisTemplate stringRedisTemplateArticle) {
+    public AgentController(ArticleAgentClient agentClient, AgentSessionService agentSessionService) {
         this.agentClient = agentClient;
-        this.stringRedisTemplateArticle = stringRedisTemplateArticle;
+        this.agentSessionService = agentSessionService;
     }
 
     /**
@@ -82,15 +77,15 @@ public class AgentController {
     /** 列出当前用户的会话（按更新时间倒序） */
     @GetMapping("/sessions")
     public Result<List<AgentSession>> listSessions() {
-        String userId = requireUserId();
+        String userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");
         }
-        Set<String> sessionIds = stringRedisTemplateArticle.opsForSet().members(sessionKey(userId));
-        if (sessionIds == null || sessionIds.isEmpty()) {
+        List<String> sessionIds = agentSessionService.listSessionIds(userId);
+        if (sessionIds.isEmpty()) {
             return Result.success(Collections.emptyList());
         }
-        ListSessionsReply reply = agentClient.listSessions(new ArrayList<>(sessionIds));
+        ListSessionsReply reply = agentClient.listSessions(sessionIds);
         if (!reply.getOk()) {
             return Result.error("获取会话列表失败：" + reply.getMessage());
         }
@@ -111,11 +106,11 @@ public class AgentController {
     public Result<List<AgentChatMessage>> getSessionMessages(
             @PathVariable String sessionId,
             @RequestParam(required = false, defaultValue = "0") int limit) {
-        String userId = requireUserId();
+        String userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");
         }
-        if (!ownsSession(userId, sessionId)) {
+        if (!agentSessionService.owns(userId, sessionId)) {
             return Result.error("会话不存在或无权访问！");
         }
         GetSessionMessagesReply reply = agentClient.getSessionMessages(sessionId, limit);
@@ -136,18 +131,18 @@ public class AgentController {
     /** 删除指定会话 */
     @DeleteMapping("/sessions/{sessionId}")
     public Result<String> deleteSession(@PathVariable String sessionId) {
-        String userId = requireUserId();
+        String userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");
         }
-        if (!ownsSession(userId, sessionId)) {
+        if (!agentSessionService.owns(userId, sessionId)) {
             return Result.error("会话不存在或无权访问！");
         }
         DeleteSessionReply reply = agentClient.deleteSession(sessionId);
         if (!reply.getOk()) {
             return Result.error("删除会话失败：" + reply.getMessage());
         }
-        stringRedisTemplateArticle.opsForSet().remove(sessionKey(userId), sessionId);
+        agentSessionService.forget(userId, sessionId);
         return Result.success();
     }
 
@@ -182,7 +177,7 @@ public class AgentController {
                 // 首条 chunk 携带会话 ID：记录映射并转发给前端复用
                 if (sessionId == null && chunk.getSessionId() != null && !chunk.getSessionId().isBlank()) {
                     sessionId = chunk.getSessionId();
-                    rememberSession(userId, sessionId);
+                    agentSessionService.remember(userId, sessionId);
                     emitter.send(SseEmitter.event().name("session").data(sessionId));
                 }
                 if (chunk.getArticlesCount() > 0) {
@@ -196,6 +191,7 @@ public class AgentController {
             emitter.send(SseEmitter.event().name("done").data(""));
             emitter.complete();
         } catch (Exception e) {
+            log.error("agent ask stream failed: userId={}, sessionId={}", userId, req.getSessionId(), e);
             try {
                 emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
             } catch (Exception ignored) {
@@ -232,30 +228,6 @@ public class AgentController {
         return result;
     }
 
-    /** 记录「用户 ↔ 会话」映射（幂等，用于按用户隔离的列表/删除） */
-    private void rememberSession(String userId, String sessionId) {
-        if (userId == null || sessionId == null) {
-            return;
-        }
-        try {
-            stringRedisTemplateArticle.opsForSet().add(sessionKey(userId), sessionId);
-        } catch (Exception e) {
-            log.warn("remember agent session failed: userId={}, sessionId={}", userId, sessionId, e);
-        }
-    }
-
-    private boolean ownsSession(String userId, String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            return false;
-        }
-        return Boolean.TRUE.equals(
-                stringRedisTemplateArticle.opsForSet().isMember(sessionKey(userId), sessionId));
-    }
-
-    private String sessionKey(String userId) {
-        return SESSION_USER_KEY_PREFIX + userId;
-    }
-
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private String currentUserId() {
         Object info = ThreadLocalUtil.get();
@@ -264,9 +236,5 @@ public class AgentController {
             return id == null ? null : String.valueOf(id);
         }
         return null;
-    }
-
-    private String requireUserId() {
-        return currentUserId();
     }
 }
