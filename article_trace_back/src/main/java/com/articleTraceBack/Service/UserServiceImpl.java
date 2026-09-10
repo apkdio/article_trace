@@ -35,16 +35,19 @@ public class UserServiceImpl implements UserService {
     private final GenResetPass genSecurePass;
     private final RustFsUtil rustFsUtil;
     private final ArticleService articleService;
+    private final AgentSessionService agentSessionService;
 
     public UserServiceImpl(UserMapper userMapper, GenResetPass genSecurePass,
                            JwtUtil jwtUtil, RustFsUtil rustFsUtil,
-                           StringRedisTemplate stringRedisTemplate, ArticleService articleService) {
+                           StringRedisTemplate stringRedisTemplate, ArticleService articleService,
+                           AgentSessionService agentSessionService) {
         this.userMapper = userMapper;
         this.articleService = articleService;
         this.genSecurePass = genSecurePass;
         this.jwtUtil = jwtUtil;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplate = stringRedisTemplate;
+        this.agentSessionService = agentSessionService;
     }
 
     @Override
@@ -232,7 +235,12 @@ public class UserServiceImpl implements UserService {
     public boolean deleteUser(int id) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id", id);
-        return userMapper.delete(queryWrapper) == 1;
+        boolean deleted = userMapper.delete(queryWrapper) == 1;
+        if (deleted) {
+            // 账号注销后，同步清理该用户在 agent 侧的会话数据与归属索引
+            agentSessionService.clearAll(String.valueOf(id));
+        }
+        return deleted;
     }
 
     @Override
