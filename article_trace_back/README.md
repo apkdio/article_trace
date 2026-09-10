@@ -40,7 +40,8 @@ article_trace_back/
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
     │   │   ├── ReaderService.java / ReaderServiceImpl.java
-    │   │   └── UserService.java / UserServiceImpl.java
+    │   │   ├── UserService.java / UserServiceImpl.java
+    │   │   └── AgentSessionService.java / AgentSessionServiceImpl.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -222,10 +223,12 @@ flowchart LR
 
 ### 会话管理（多轮对话）
 
-会话历史由 `article_trace_agent` 侧持久化（jsonl），Java 侧只维护「用户 ↔ 会话」映射（Redis Set `agent:session:user:{userId}`）实现按用户隔离：
+会话历史由 `article_trace_agent` 侧持久化（jsonl），Java 侧由 `AgentSessionService` 维护「用户 ↔ 会话」归属索引（Redis Set `agent:session:user:{userId}`，前缀可配）实现按用户隔离：
 
 - **首次问答**：前端不传 `sessionId`，agent 生成 UUID 并通过 `AskStreamChunk.session_id` 回传，`AgentController` 将其记入当前用户的 Redis Set，并以 SSE `session` 事件转发给前端；前端保存后，后续问答带上该 `sessionId` 即维持多轮上下文。
 - **会话列表 / 历史 / 删除**：分别对应 `ListSessions` / `GetSessionMessages` / `DeleteSession` RPC，均按当前登录用户隔离（列表只查该用户映射到的会话，历史/删除先校验归属）。
+- **注销清理**：账号注销（`UserServiceImpl.deleteUser`）后调用 `AgentSessionService.clearAll`，先逐个删除 agent 侧会话，再清空索引，避免残留。
+- **索引不设 TTL**：它指向 agent 侧持久保存的会话记录，过期会导致用户凭空看不到历史会话，因此清理只发生在显式删除（用户删会话 / 账号注销）。
 
 ### 配置
 
@@ -234,6 +237,7 @@ rpc:
   agent:
     host: ${AGENT_HOST:localhost}     # agent gRPC 服务地址
     port: ${AGENT_PORT:50051}         # agent gRPC 端口
+    sessionKeyPrefix: "agent:session:user:"  # 用户↔会话索引 key 前缀
     sync:
       enabled: true                   # 是否启用知识库定时同步
       cron: "0 */5 * * * ?"           # 增量同步：每 5 分钟
