@@ -35,14 +35,14 @@ article_trace_back/
     │   │   ├── CategoryController.java      #   分类：增删改查
     │   │   ├── ReaderController.java        #   读者：文章浏览/评论/作者信息
     │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
-    │   │   └── AgentController.java         #   检索问答/探活（转发 agent）
+    │   │   └── AgentController.java         #   检索问答/会话管理/探活
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
     │   │   ├── ReaderService.java / ReaderServiceImpl.java
     │   │   └── UserService.java / UserServiceImpl.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
-    │   │   ├── ArticleAgentClient.java      #   6 个 RPC 方法封装（容错 + 超时）
+    │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
     │   ├── mapper/                          # 数据访问层（MyBatis-Plus）
     │   │   ├── ArticleMapper.java           #   文章自定义 SQL（分页/统计/批量加浏览量）
@@ -60,6 +60,8 @@ article_trace_back/
     │   │   ├── AgentAskRequest.java         #   问答请求体
     │   │   ├── AgentAskResult.java          #   问答结果
     │   │   ├── AgentMatchedArticle.java     #   问答命中的文章
+    │   │   ├── AgentSession.java            #   会话摘要（列表项）
+    │   │   ├── AgentChatMessage.java        #   会话消息
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -183,6 +185,9 @@ flowchart LR
 | `DeleteArticles` | Java → agent | 删除若干篇（下线/删除时） |
 | `SyncArticles` | Java → agent | 全量/增量流式同步（客户端流式） |
 | `Ask` | Java ⇄ agent | 检索 + LLM 流式生成答案（服务端流式） |
+| `ListSessions` | Java → agent | 列出会话（可选按 session_ids 过滤） |
+| `GetSessionMessages` | Java → agent | 获取会话历史消息 |
+| `DeleteSession` | Java → agent | 删除会话 |
 | `Health` | Java → agent | 健康探活 + 入库统计 |
 
 ### 知识库同步机制（写链路）
@@ -214,6 +219,13 @@ flowchart LR
 ### 客户端封装
 
 `ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 deadline 并捕获异常；`askStream` 返回服务端流式迭代器；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
+
+### 会话管理（多轮对话）
+
+会话历史由 `article_trace_agent` 侧持久化（jsonl），Java 侧只维护「用户 ↔ 会话」映射（Redis Set `agent:session:user:{userId}`）实现按用户隔离：
+
+- **首次问答**：前端不传 `sessionId`，agent 生成 UUID 并通过 `AskStreamChunk.session_id` 回传，`AgentController` 将其记入当前用户的 Redis Set，并以 SSE `session` 事件转发给前端；前端保存后，后续问答带上该 `sessionId` 即维持多轮上下文。
+- **会话列表 / 历史 / 删除**：分别对应 `ListSessions` / `GetSessionMessages` / `DeleteSession` RPC，均按当前登录用户隔离（列表只查该用户映射到的会话，历史/删除先校验归属）。
 
 ### 配置
 
@@ -347,7 +359,10 @@ rpc:
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/agent/ask` | 检索 + LLM 问答（SSE 流式，转发 agent） |
+| POST | `/agent/ask` | 检索 + LLM 问答（SSE 流式，转发 agent；流中含 `session` 事件回传会话 ID） |
+| GET | `/agent/sessions` | 列出当前用户的会话列表 |
+| GET | `/agent/sessions/{id}/messages` | 获取会话历史消息 |
+| DELETE | `/agent/sessions/{id}` | 删除会话 |
 | GET | `/agent/health` | agent 健康/入库统计 |
 
 ## 部署

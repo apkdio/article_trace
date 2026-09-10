@@ -78,7 +78,7 @@ article_trace_agent/
 
 ---
 
-## 接口契约（6 个 RPC 方法）
+## 接口契约（9 个 RPC 方法）
 
 完整定义见 [proto/article_agent.proto](proto/article_agent.proto)，摘要如下：
 
@@ -88,11 +88,15 @@ article_trace_agent/
 | `BatchIngestArticles` | Java → Python | 批量推送/覆盖 |
 | `DeleteArticles` | Java → Python | 删除若干篇（下线/删除时） |
 | `SyncArticles` | Java → Python | 全量/增量流式同步（客户端流式） |
-| `Ask` | Java ⇄ Python | 检索 + LLM 流式生成答案（服务端流式，先命中文章列表后答案增量） |
+| `Ask` | Java ⇄ Python | 检索 + LLM 流式生成答案（服务端流式，首条回传 `session_id`） |
+| `ListSessions` | Java → Python | 列出会话（按更新时间倒序，可按 `session_ids` 过滤） |
+| `GetSessionMessages` | Java → Python | 获取会话历史消息（可限制条数） |
+| `DeleteSession` | Java → Python | 删除会话 |
 | `Health` | Java → Python | 健康探活 + 入库统计 |
 
 要点：
 
+- **会话管理**：多轮对话历史持久化在 agent 侧（`data/context/*.jsonl`）；Java 侧只维护「用户 ↔ 会话 id」映射（Redis）实现按用户隔离，agent 不感知用户。
 - 入库**幂等**：按 `article.id` 覆盖，重推不产生重复索引。
 - `Article` 消息携带 `category_name / author / cover_url` 等 Java 侧联查好的字段，本服务不回查数据库。
 - `MatchedArticle` 只回**摘要片段**，正文由 Java 按 id 从 RustFS 自取，避免大文本来回传。
@@ -193,8 +197,9 @@ sequenceDiagram
 - [x] 文章级向量库：入库 / 删除 / 分块（按 `article.id` 幂等）
 - [x] 双路召回编排 `hybrid_retriever`
 - [x] 问答编排：检索 → 分组 → LLM 生成
-- [x] gRPC server：实现 6 个 RPC 方法
+- [x] gRPC server：实现 9 个 RPC 方法
 - [x] 配置与系统提示词（agent / rag / chroma / prompts）
 - [x] `requirements.txt` + venv 创建 + stub 生成
 - [x] Java 侧 client + Redis 攒批定时同步（AgentSyncTask：增量 + 全量对账）
 - [x] 批量入库优化（一次删旧、一次写新、一次 embedding，`ok` 语义对齐失败重试）
+- [x] 多会话管理（ListSessions / GetSessionMessages / DeleteSession + Ask 回传 session_id）
