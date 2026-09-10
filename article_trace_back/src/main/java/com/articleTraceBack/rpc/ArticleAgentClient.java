@@ -96,6 +96,51 @@ public class ArticleAgentClient {
         }
     }
 
+    /** 列出会话（可选按 sessionIds 过滤，空则返回全部） */
+    public ListSessionsReply listSessions(List<String> sessionIds) {
+        try {
+            ListSessionsRequest.Builder builder = ListSessionsRequest.newBuilder();
+            if (sessionIds != null && !sessionIds.isEmpty()) {
+                builder.addAllSessionIds(sessionIds);
+            }
+            return blockingStub
+                    .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .listSessions(builder.build());
+        } catch (Exception e) {
+            log.error("listSessions rpc failed", e);
+            return ListSessionsReply.newBuilder().setOk(false).setMessage(e.getMessage()).build();
+        }
+    }
+
+    /** 获取会话历史消息（limit<=0 表示全部） */
+    public GetSessionMessagesReply getSessionMessages(String sessionId, int limit) {
+        try {
+            GetSessionMessagesRequest.Builder builder =
+                    GetSessionMessagesRequest.newBuilder().setSessionId(sessionId);
+            if (limit > 0) {
+                builder.setLimit(limit);
+            }
+            return blockingStub
+                    .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .getSessionMessages(builder.build());
+        } catch (Exception e) {
+            log.error("getSessionMessages rpc failed: {}", sessionId, e);
+            return GetSessionMessagesReply.newBuilder().setOk(false).setMessage(e.getMessage()).build();
+        }
+    }
+
+    /** 删除会话 */
+    public DeleteSessionReply deleteSession(String sessionId) {
+        try {
+            return blockingStub
+                    .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .deleteSession(DeleteSessionRequest.newBuilder().setSessionId(sessionId).build());
+        } catch (Exception e) {
+            log.error("deleteSession rpc failed: {}", sessionId, e);
+            return DeleteSessionReply.newBuilder().setOk(false).setMessage(e.getMessage()).build();
+        }
+    }
+
     /** 健康/统计 */
     public HealthReply health() {
         try {
