@@ -1,0 +1,19 @@
+article_trace_back/src/test/java/com/articleTraceBack/AgentDisabledTest.java
+  s_ab74ea15e793d1::t_50ce385bc6939a 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "02d13819198642f837729e730f06bfefee4f2e4c",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
