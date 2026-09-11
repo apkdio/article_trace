@@ -1,0 +1,23 @@
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_6ac0c8136f2f07 180-193,252
+article_trace_back/src/test/java/com/articleTraceBack/AgentDisabledTest.java
+  s_ab74ea15e793d1::t_50ce385bc6939a 1-49
+article_trace_front/README.md
+  s_ab74ea15e793d1::t_bb0619e84968dc 32,47,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "dea8ed5119bdf04afaba370a0657f9d2a399a877",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
