@@ -29,6 +29,8 @@ public class ArticleServiceImpl implements ArticleService {
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
     private String ARTICLE_PENDING_VIEWS_KEY;
+    @Value("${rpc.agent.enabled:true}")
+    private boolean agentEnabled;
     @Value("${rpc.agent.sync.ingestKey:agent:ingest:pending}")
     private String AGENT_INGEST_KEY;
     @Value("${rpc.agent.sync.deleteKey:agent:delete:pending}")
@@ -263,7 +265,7 @@ public class ArticleServiceImpl implements ArticleService {
      * 标记文章待入库/更新到 agent 知识库（幂等，写入 Redis Set，由定时任务批量处理）。
      */
     private void markIngestPending(Integer articleId) {
-        if (articleId == null) {
+        if (!agentEnabled || articleId == null) {
             return;
         }
         String id = String.valueOf(articleId);
@@ -280,7 +282,7 @@ public class ArticleServiceImpl implements ArticleService {
      * 标记文章待从 agent 知识库删除（幂等，写入 Redis Set，由定时任务批量处理）。
      */
     private void markDeletePending(Integer articleId) {
-        if (articleId == null) {
+        if (!agentEnabled || articleId == null) {
             return;
         }
         String id = String.valueOf(articleId);

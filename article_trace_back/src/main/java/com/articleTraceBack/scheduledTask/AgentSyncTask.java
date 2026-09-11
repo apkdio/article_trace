@@ -50,6 +50,8 @@ public class AgentSyncTask {
     @Qualifier("stringRedisTemplateArticle")
     private final StringRedisTemplate stringRedisTemplateArticle;
 
+    @Value("${rpc.agent.enabled:true}")
+    private boolean agentEnabled;
     @Value("${rpc.agent.sync.enabled:true}")
     private boolean enabled;
     @Value("${rpc.agent.sync.batchSize:100}")
@@ -73,7 +75,7 @@ public class AgentSyncTask {
 
     @Scheduled(cron = "${rpc.agent.sync.cron:0 */5 * * * ?}")
     public void syncPendingUpdates() {
-        if (!enabled) {
+        if (!agentEnabled || !enabled) {
             return;
         }
         try {
@@ -114,7 +116,7 @@ public class AgentSyncTask {
      */
     @Scheduled(cron = "${rpc.agent.sync.fullSyncCron:0 0 1 * * ?}")
     public void fullSync() {
-        if (!enabled) {
+        if (!agentEnabled || !enabled) {
             return;
         }
         try {

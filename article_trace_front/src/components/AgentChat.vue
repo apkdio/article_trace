@@ -1,7 +1,7 @@
 <script setup>
-import {ref, nextTick} from 'vue'
+import {nextTick, onMounted, ref} from 'vue'
 import {ChatDotRound, Clock, Close, Delete, Plus} from '@element-plus/icons-vue'
-import {askAgentStream, deleteSession, getSessionMessages, listSessions} from "@/api/agent.js";
+import {askAgentStream, deleteSession, getAgentHealth, getSessionMessages, listSessions} from "@/api/agent.js";
 
 const open = ref(false)
 const input = ref('')
@@ -16,6 +16,19 @@ const sessionId = ref('')
 const sessions = ref([])
 const showHistory = ref(false)
 const loadingHistory = ref(false)
+
+// agent 可用性：null=探测中，false=未启用（窗口照常渲染，仅内容区提示）
+const agentEnabled = ref(null)
+
+onMounted(async () => {
+    try {
+        const res = await getAgentHealth()
+        agentEnabled.value = res?.code === 0 && res?.data?.enabled === true
+    } catch (e) {
+        // 后端不可达 / 未登录等：按未启用处理，避免弹出错误
+        agentEnabled.value = false
+    }
+})
 
 function toggle() {
     open.value = !open.value
@@ -195,7 +208,7 @@ function formatSessionTime(ts) {
                         <span class="chat-title">文迹 AI 助手</span>
                         <span class="chat-subtitle">基于站内文章的知识问答</span>
                     </div>
-                    <div class="header-actions">
+                    <div v-if="agentEnabled !== false" class="header-actions">
                         <el-tooltip content="新建会话" placement="bottom">
                             <el-icon class="action-btn" @click="newSession">
                                 <Plus/>
@@ -209,8 +222,16 @@ function formatSessionTime(ts) {
                     </div>
                 </div>
 
+                <!-- 未启用：窗口照常渲染，仅内容区提示 -->
+                <div v-if="agentEnabled === false" class="chat-disabled">
+                    <el-icon :size="40">
+                        <ChatDotRound/>
+                    </el-icon>
+                    <p>暂未启用 AI 功能</p>
+                </div>
+
                 <!-- 历史会话列表 -->
-                <div v-if="showHistory" class="session-list">
+                <div v-else-if="showHistory" class="session-list">
                     <div v-if="loadingHistory" class="session-tip">加载中...</div>
                     <div v-else-if="sessions.length === 0" class="session-tip">暂无历史会话</div>
                     <div v-for="s in sessions" v-else :key="s.sessionId"
@@ -252,7 +273,7 @@ function formatSessionTime(ts) {
                     </div>
                 </div>
 
-                <div v-if="!showHistory" class="chat-input">
+                <div v-if="agentEnabled !== false && !showHistory" class="chat-input">
                     <el-input
                         v-model="input"
                         placeholder="问我关于文章的问题..."
@@ -346,6 +367,23 @@ function formatSessionTime(ts) {
                         opacity: 1;
                     }
                 }
+            }
+        }
+
+        .chat-disabled {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #f5f7fa;
+            color: #909399;
+
+            p {
+                margin: 0;
+                font-size: 14px;
+                color: #606266;
             }
         }
 

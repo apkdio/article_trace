@@ -81,6 +81,9 @@ public class AgentController {
         if (userId == null) {
             return Result.error("未登录！");
         }
+        if (!agentClient.isEnabled()) {
+            return Result.error("AI 助手未启用");
+        }
         List<String> sessionIds = agentSessionService.listSessionIds(userId);
         if (sessionIds.isEmpty()) {
             return Result.success(Collections.emptyList());
@@ -110,6 +113,9 @@ public class AgentController {
         if (userId == null) {
             return Result.error("未登录！");
         }
+        if (!agentClient.isEnabled()) {
+            return Result.error("AI 助手未启用");
+        }
         if (!agentSessionService.owns(userId, sessionId)) {
             return Result.error("会话不存在或无权访问！");
         }
@@ -135,6 +141,9 @@ public class AgentController {
         if (userId == null) {
             return Result.error("未登录！");
         }
+        if (!agentClient.isEnabled()) {
+            return Result.error("AI 助手未启用");
+        }
         if (!agentSessionService.owns(userId, sessionId)) {
             return Result.error("会话不存在或无权访问！");
         }
@@ -148,8 +157,13 @@ public class AgentController {
 
     @GetMapping("/health")
     public Result<Map<String, Object>> health() {
-        HealthReply reply = agentClient.health();
         Map<String, Object> data = new HashMap<>();
+        data.put("enabled", agentClient.isEnabled());
+        if (!agentClient.isEnabled()) {
+            data.put("ok", false);
+            return Result.success(data);
+        }
+        HealthReply reply = agentClient.health();
         data.put("ok", reply.getOk());
         data.put("articleCount", reply.getArticleCount());
         data.put("chunkCount", reply.getChunkCount());
@@ -164,6 +178,14 @@ public class AgentController {
     }
 
     private void streamAsk(SseEmitter emitter, AgentAskRequest req, String userId) {
+        if (!agentClient.isEnabled()) {
+            try {
+                emitter.send(SseEmitter.event().name("error").data("AI 助手未启用"));
+            } catch (Exception ignored) {
+            }
+            emitter.complete();
+            return;
+        }
         try {
             Iterator<AskStreamChunk> chunks = agentClient.askStream(buildRequest(req));
             String sessionId = null;

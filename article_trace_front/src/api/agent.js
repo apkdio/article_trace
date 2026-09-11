@@ -78,6 +78,22 @@ export async function askAgentStream(params, callbacks) {
 }
 
 /**
+ * 探测 agent 是否启用（供 UI 降级）。
+ *
+ * 直接用 fetch：未登录 / 后端异常时不应触发全局 401 登出流程。
+ * 返回后端 Result：{ code, message, data: { enabled, ok, ... } }
+ */
+export async function getAgentHealth() {
+    const resp = await fetch('/api/agent/health', {
+        headers: {'Authorization': tokenStorage().token || ''}
+    });
+    if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status);
+    }
+    return resp.json();
+}
+
+/**
  * 列出当前用户的会话（按更新时间倒序）。
  */
 export function listSessions() {

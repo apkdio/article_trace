@@ -68,6 +68,7 @@ thumbnail:
     enabled: false          # 存量缩略图补齐（一次性，需要时置 true）
 rpc:
   agent:
+    enabled: true                 # 总开关：false 时 agent 全部降级（不建连、不写同步/会话数据）
     host: ${AGENT_HOST:localhost} # Python Agent gRPC 服务地址
     port: ${AGENT_PORT:50051}     # Python Agent gRPC 端口
     sessionKeyPrefix: "agent:session:user:"  # 用户↔会话归属索引 key 前缀（Redis Set，注销时联动清理）

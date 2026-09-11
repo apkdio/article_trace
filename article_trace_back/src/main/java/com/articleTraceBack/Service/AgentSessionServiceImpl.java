@@ -37,7 +37,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
 
     @Override
     public void remember(String userId, String sessionId) {
-        if (userId == null || sessionId == null || sessionId.isBlank()) {
+        if (!agentClient.isEnabled() || userId == null || sessionId == null || sessionId.isBlank()) {
             return;
         }
         try {
@@ -49,7 +49,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
 
     @Override
     public boolean owns(String userId, String sessionId) {
-        if (userId == null || sessionId == null || sessionId.isBlank()) {
+        if (!agentClient.isEnabled() || userId == null || sessionId == null || sessionId.isBlank()) {
             return false;
         }
         return Boolean.TRUE.equals(
@@ -58,7 +58,7 @@ public class AgentSessionServiceImpl implements AgentSessionService {
 
     @Override
     public List<String> listSessionIds(String userId) {
-        if (userId == null) {
+        if (!agentClient.isEnabled() || userId == null) {
             return Collections.emptyList();
         }
         Set<String> ids = stringRedisTemplateArticle.opsForSet().members(sessionKey(userId));
@@ -79,10 +79,13 @@ public class AgentSessionServiceImpl implements AgentSessionService {
             return;
         }
         try {
-            for (String sessionId : listSessionIds(userId)) {
-                // agent 侧删除幂等，失败也不阻断（索引照常清掉，避免残留脏映射）
-                agentClient.deleteSession(sessionId);
+            if (agentClient.isEnabled()) {
+                for (String sessionId : listSessionIds(userId)) {
+                    // agent 侧删除幂等，失败也不阻断（索引照常清掉，避免残留脏映射）
+                    agentClient.deleteSession(sessionId);
+                }
             }
+            // 索引照常清掉：即使 agent 已禁用，也不留本地残留映射
             stringRedisTemplateArticle.delete(sessionKey(userId));
         } catch (Exception e) {
             log.warn("clear agent sessions failed: userId={}", userId, e);

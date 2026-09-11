@@ -32,11 +32,24 @@ public class ArticleAgentClient {
     @Value("${rpc.agent.port:50051}")
     private int port;
 
+    /** agent 总开关：关闭时不建连，所有调用直接返回失败态（主业务不受影响） */
+    @Value("${rpc.agent.enabled:true}")
+    private boolean enabled;
+
     private ManagedChannel channel;
     private ArticleAgentServiceGrpc.ArticleAgentServiceBlockingStub blockingStub;
 
+    /** agent 是否启用（供各调用方做降级判断） */
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     @PostConstruct
     public void init() {
+        if (!enabled) {
+            log.info("article agent disabled (rpc.agent.enabled=false), skip gRPC channel init");
+            return;
+        }
         channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
                 .build();
@@ -53,6 +66,9 @@ public class ArticleAgentClient {
 
     /** 批量推送/覆盖 */
     public BatchIngestReply batchIngestArticles(List<Article> articles) {
+        if (!enabled) {
+            return BatchIngestReply.newBuilder().setOk(false).setMessage("agent disabled").build();
+        }
         try {
             return blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -70,6 +86,9 @@ public class ArticleAgentClient {
         if (articleIds == null || articleIds.isEmpty()) {
             return true;
         }
+        if (!enabled) {
+            return false;
+        }
         try {
             DeleteReply reply = blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -84,6 +103,11 @@ public class ArticleAgentClient {
 
     /** 检索 + LLM 流式生成答案（服务端流式，返回增量迭代器） */
     public Iterator<AskStreamChunk> askStream(AskRequest request) {
+        if (!enabled) {
+            return Collections.singletonList(
+                    AskStreamChunk.newBuilder().setOk(false).setMessage("agent disabled").build()
+            ).iterator();
+        }
         try {
             return blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS * 6, TimeUnit.SECONDS)
@@ -98,6 +122,9 @@ public class ArticleAgentClient {
 
     /** 列出会话（可选按 sessionIds 过滤，空则返回全部） */
     public ListSessionsReply listSessions(List<String> sessionIds) {
+        if (!enabled) {
+            return ListSessionsReply.newBuilder().setOk(false).setMessage("agent disabled").build();
+        }
         try {
             ListSessionsRequest.Builder builder = ListSessionsRequest.newBuilder();
             if (sessionIds != null && !sessionIds.isEmpty()) {
@@ -114,6 +141,9 @@ public class ArticleAgentClient {
 
     /** 获取会话历史消息（limit<=0 表示全部） */
     public GetSessionMessagesReply getSessionMessages(String sessionId, int limit) {
+        if (!enabled) {
+            return GetSessionMessagesReply.newBuilder().setOk(false).setMessage("agent disabled").build();
+        }
         try {
             GetSessionMessagesRequest.Builder builder =
                     GetSessionMessagesRequest.newBuilder().setSessionId(sessionId);
@@ -131,6 +161,9 @@ public class ArticleAgentClient {
 
     /** 删除会话 */
     public DeleteSessionReply deleteSession(String sessionId) {
+        if (!enabled) {
+            return DeleteSessionReply.newBuilder().setOk(false).setMessage("agent disabled").build();
+        }
         try {
             return blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -143,6 +176,9 @@ public class ArticleAgentClient {
 
     /** 健康/统计 */
     public HealthReply health() {
+        if (!enabled) {
+            return HealthReply.newBuilder().setOk(false).build();
+        }
         try {
             return blockingStub
                     .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
