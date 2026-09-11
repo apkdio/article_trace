@@ -177,6 +177,20 @@ flowchart LR
 
 后端通过 gRPC 与独立的 Python 检索问答微服务 `article_trace_agent` 通信，契约见 [src/main/proto/article_agent.proto](src/main/proto/article_agent.proto)。
 
+### 可插拔开关与降级
+
+agent 是**可选**依赖，由 `rpc.agent.enabled`（默认 `true`）统一控制。关闭时 Java 侧全部相关行为安全降级，主业务（文章增删改查、登录、注销、评论等）不受任何影响：
+
+| 组件 | 关闭时行为 |
+|---|---|
+| `ArticleAgentClient` | 不建 gRPC channel；所有 RPC 直接返回失败态，不尝试连接 |
+| `AgentController` | 接口保留但返回明确提示：`/ask` → SSE `error("AI 助手未启用")`；会话接口 → `Result.error("AI 助手未启用")`；`/health` → `{enabled:false, ok:false}` |
+| `AgentSyncTask` | 两个定时任务直接返回，不读取/推送 Redis 待处理集合 |
+| `ArticleServiceImpl` | 文章增删改审核时**不再写入** Redis 待同步集合（避免无消费者地堆积） |
+| `AgentSessionService` | 不写会话索引；`clearAll` 仍清掉本地索引残留（不调 RPC） |
+
+> 关闭期间的文章变更不会进入同步队列，重新启用后由「全量对账」（每天凌晨 1 点）兜底补齐。
+
 ### 契约方法
 
 | 方法 | 方向 | 作用 |
@@ -235,6 +249,7 @@ flowchart LR
 ```yaml
 rpc:
   agent:
+    enabled: true                     # 总开关：false 时 agent 全部降级（不建连、不写同步/会话数据）
     host: ${AGENT_HOST:localhost}     # agent gRPC 服务地址
     port: ${AGENT_PORT:50051}         # agent gRPC 端口
     sessionKeyPrefix: "agent:session:user:"  # 用户↔会话索引 key 前缀

@@ -29,7 +29,7 @@ article_trace_front/
     │   ├── article.js              #   文章相关接口
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口
-    │   ├── agent.js                #   AI 问答 + 多会话管理（SSE 流式）
+    │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── registerSuccess.js      #   注册成功回调
@@ -44,7 +44,7 @@ article_trace_front/
     │   ├── TopArticlesList.vue     #   热门文章榜
     │   ├── AuthorCard.vue          #   作者/站长名片
     │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
-    │   └── AgentChat.vue           #   文迹 AI 聊天窗（多会话）
+    │   └── AgentChat.vue           #   文迹 AI 聊天窗（多会话，含未启用降级）
     ├── router/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
     ├── stores/                     # Pinia 状态仓库
@@ -107,6 +107,7 @@ article_trace_front/
 - **流式问答**：`api/agent.js` 的 `askAgentStream` 用 fetch + SSE，回调 `session` / `articles` / `delta` / `error` / `done` 事件。
 - **多会话**：头部提供「新建会话」与「历史会话」入口；历史列表调 `GET /agent/sessions`，切换会话调 `GET /agent/sessions/{id}/messages` 加载记录，删除调 `DELETE /agent/sessions/{id}`。
 - **会话 ID**：首次提问不带 `sessionId`，后端通过 SSE `session` 事件回传新建的会话 ID，前端保存后，后续提问带上以维持多轮上下文。
+- **可用性探测与降级**：挂载时调用 `GET /agent/health` 读取后端的 `enabled` 字段（对应后端总开关 `rpc.agent.enabled`）。未启用时窗口**照常渲染**，仅内容区提示「暂未启用 AI 功能」并隐藏操作按钮与输入框；探测用原生 `fetch` 而非 axios 实例，避免未登录时的 401 触发全局登出跳转。
 
 ### 页面视图（views/）
 
