@@ -1,0 +1,33 @@
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_c0cb68c96bcc8a 84-86,116-118,144-146,161-166,181-188
+article_trace_front/src/api/agent.js
+  s_ab74ea15e793d1::t_e22d4e53a58177 81-95
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/AgentSyncTask.java
+  s_ab74ea15e793d1::t_475deecbd3ed53 53-54,78,119
+article_trace_back/src/main/java/com/articleTraceBack/Service/AgentSessionServiceImpl.java
+  s_ab74ea15e793d1::t_54b4c315ed5ee6 40,52,61,82-86,88
+article_trace_front/src/components/AgentChat.vue
+  s_ab74ea15e793d1::t_8e3713ceaefe44 2,4,20-32,211,225-232,234,276,373-386
+article_trace_back/src/main/java/com/articleTraceBack/rpc/ArticleAgentClient.java
+  s_ab74ea15e793d1::t_c99d8dc28803c5 35-38,42-46,49-52,69-71,89-91,106-110,125-127,144-146,164-166,179-181
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_ab74ea15e793d1::t_4802a0918fc596 32-33,268,285
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_41f37b738f697f 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "9545703d827222d80847760ee8fb05583a5f3fc8",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
