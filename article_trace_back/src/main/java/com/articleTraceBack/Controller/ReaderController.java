@@ -31,6 +31,17 @@ public class ReaderController {
         this.userService = userService;
     }
 
+    /**
+     * 邮件链路测试：向指定邮箱发送一封测试邮件（不传 to 则发到 email.testTo）。
+     */
+    @GetMapping("/mail/test")
+    public Result<String> mailTest(@RequestParam(required = false) String to) {
+        if (readerService.sendTestMail(to)) {
+            return Result.success("邮件已发送");
+        }
+        return Result.error("邮件发送失败，请查看服务端日志");
+    }
+
     @GetMapping("/getArticles")
     public Result<PageBean<Article>> getArticles(
             @RequestParam(defaultValue = "1") int pageNum,

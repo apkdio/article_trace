@@ -24,4 +24,7 @@ public interface ReaderService {
     int findPublishCounts(@NotNull Integer id);
 
     String getIPMixUA(HttpServletRequest request);
+
+    /** 发信链路测试：向指定邮箱发一封测试邮件（to 为空时用配置的默认收件人） */
+    boolean sendTestMail(String to);
 }
