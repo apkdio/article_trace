@@ -1,0 +1,103 @@
+# =============================================================================
+# 容器内后端配置（compose 挂载为 /app/config/application.yml）
+# 优先级高于镜像内 classpath 配置，所有外部依赖均指向 compose 服务名。
+# 凭据类项（密码 / 密钥）故意不设默认值，必须由 compose 从 .env 注入；
+# 缺失时应用启动即报错，便于尽早暴露配置问题。
+# =============================================================================
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  data:
+    redis:
+      database: 0
+      articleDB: 1
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      timeout: 1500
+      password: ${REDIS_PASSWORD}
+      viewKey: "article:view"
+      infoKey: "article:info"
+      lettuce:
+        shutdown-timeout: 100ms
+        pool:
+          max-wait: 2s
+        cluster:
+          refresh:
+            adaptive: false
+  tokenCheck:
+    # 不同用户组的访问权限
+    excludeUrls: /user/login, /user/register,/user/forgetPass,/error
+    notAllowUrl:
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType
+      reader: /category/**,/article/**
+  application:
+    name: articleTraceBack
+    admin:
+      enableAutoConfig: true
+      defaultUser: ${DEFAULT_USER_ID:apkdio}
+      defaultPass: ${DEFAULT_USER_PASS}
+      defaultResetPass: ${DEFAULT_USER_RESET_PASS}
+      defaultEmail: ${DEFAULT_USER_EMAIL:article_trace@trace.com}
+      defaultNickName: ${DEFAULT_USER_NICK_NAME:测试昵称}
+  datasource:
+    url: "${DB_CONNECT_URL:jdbc:mysql://mysql:3306/article_trace?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}"
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      auto-commit: true
+      pool-name: hikariPool
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    com.articleTraceBack.mapper: DEBUG
+
+JWT:
+  Secure_KEY: ${JWT_SECURE_KEY}
+  longTime: 259200000     # 72 小时
+  shortTime: 86400000     # 24 小时
+
+Password:
+  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  registerPass: ${REGISTER_PASS}
+  masterPass: ${MASTER_PASS}
+
+S3:
+  endpoint: ${RUSTFS_ENDPOINT:http://rustfs:9000}
+  accessKey: ${RUSTFS_ACCESS_KEY}
+  secretKey: ${RUSTFS_SECRET_KEY}
+  picBucket: "pic"
+  contentBucket: "content"
+
+thumbnail:
+  backfill:
+    enabled: false        # 存量缩略图补齐：需要时一次性置 true
+
+rpc:
+  agent:
+    enabled: ${AGENT_ENABLED:true}        # false 时 agent 全部降级，主业务不受影响
+    host: ${AGENT_HOST:agent}
+    port: ${AGENT_PORT:50051}
+    sessionKeyPrefix: "agent:session:user:"
+    sync:
+      enabled: true
+      cron: "0 */5 * * * ?"               # 增量同步：每 5 分钟
+      fullSyncCron: "0 0 1 * * ?"         # 全量对账：每天凌晨 1 点
+      batchSize: 100
+      ingestKey: "agent:ingest:pending"
+      deleteKey: "agent:delete:pending"
+
+sensitive_word:
+  # 外部词库不存在时自动降级到 classpath 内置词库；需要挂载时见 docker-compose.yml 注释
+  filePath: ./res/sensitive_words.txt
+  cron: "0 */30 * * * ?"
+
+scheduler:
+  sync:
+    enabled: true
+    cron: "0 */10 * * * ?"                # Redis 浏览量 → MySQL

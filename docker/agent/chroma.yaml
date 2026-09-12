@@ -1,0 +1,16 @@
+# =============================================================================
+# 容器内向量库配置（compose 挂载为 /app/config/chroma.yaml）
+# 与仓库默认配置的唯一区别：embedding 地址由 localhost 改为 compose 服务名 ollama。
+# =============================================================================
+
+# 持久化目录（相对容器内项目根目录，已挂载 agent-data 卷）
+persist_dir: data/vector_store
+
+# 向量集合名称
+collection_name: article_kb
+
+# Embedding 模型（Ollama，OpenAI 兼容端点）
+embedding:
+  base_url: http://ollama:11434/v1
+  api_key: ollama
+  model: bge-m3

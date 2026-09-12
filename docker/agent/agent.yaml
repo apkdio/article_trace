@@ -1,0 +1,18 @@
+# =============================================================================
+# 容器内 agent 配置（compose 挂载为 /app/config/agent.yaml）
+# 与仓库默认配置的唯一区别：LLM 地址由 localhost 改为 compose 服务名 ollama。
+# 如需接入云端 OpenAI 兼容服务，改这里的 base_url / api_key / model 即可。
+# =============================================================================
+
+# LLM 设置
+llm:
+  model: qwen2.5:7b
+  base_url: http://ollama:11434/v1
+  api_key: ollama
+  temperature: 0.3
+  max_tokens: 1024
+
+# 行为开关
+behavior:
+  retrieval_only: false   # true=直接返回检索片段原文；false=走 LLM 生成答案
+  verbose_log: false

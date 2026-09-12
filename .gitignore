@@ -28,3 +28,8 @@
 Thumbs.db
 *.log
 **/CLAUDE.md
+
+# Docker 部署凭据（本地/服务器各自维护，仅提交 .env.example）
+.env
+.env.local
+.env.*.local

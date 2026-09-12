@@ -1,0 +1,13 @@
+# 构建产物
+target/
+out/
+
+# IDE
+.idea/
+*.iml
+
+# 本地真实配置（含数据库/Redis/RustFS 口令），不入镜像；
+# 容器内由 docker-compose 挂载 docker/backend/application-container.yml 提供
+src/main/resources/application.yml
+
+Dockerfile

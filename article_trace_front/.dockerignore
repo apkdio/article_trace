@@ -1,0 +1,10 @@
+# 依赖与构建产物（镜像内重新安装/构建）
+node_modules/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+Dockerfile

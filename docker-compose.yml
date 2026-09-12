@@ -1,0 +1,233 @@
+# =============================================================================
+# 文迹 · article_trace 全栈一键启动
+# =============================================================================
+# 启动：docker compose up -d --build
+# 访问：http://localhost:8080         前端（Nginx 静态资源 + /api 反代）
+#       http://localhost:9001         RustFS 控制台（S3 对象存储）
+#       http://localhost:8081/actuator/health   后端直连（调试用）
+#
+# 首次使用还需拉取模型（数 GB，只做一次，存放在 ollama-data 卷里）：
+#   docker compose exec ollama ollama pull bge-m3       # embedding
+#   docker compose exec ollama ollama pull qwen2.5:7b   # 生成模型
+#
+# 不需要 AI 问答时（agent 为可选依赖，关闭后主业务不受影响）：
+#   docker compose up -d --build mysql redis rustfs rustfs-init backend frontend
+#   或设置环境变量 AGENT_ENABLED=false
+#
+# 凭据统一由同目录 .env 注入（.env 已被 .gitignore 忽略，不会提交到仓库）：
+#   cp .env.example .env && vi .env      # 首次必须执行，凭据缺失时 compose 会直接报错
+# 端口等非敏感项同样可在 .env 中覆盖。
+# =============================================================================
+
+name: article-trace
+
+services:
+  # ---------------------------------------------------------------------------
+  # 基础设施
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: article-trace-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+      MYSQL_DATABASE: article_trace
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次启动自动执行建库脚本（含 CREATE DATABASE / 4 张表）
+      - ./article_trace.sql:/docker-entrypoint-initdb.d/01-article_trace.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: article-trace-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+    # 后端使用 db0（登录态）+ db1（浏览量/agent 同步队列），开启 AOF 持久化
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # S3 兼容对象存储：图片桶 pic、内容桶 content
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: article-trace-rustfs
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      TZ: Asia/Shanghai
+    command: ["/data"]
+    ports:
+      - "${RUSTFS_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs-data:/data
+
+  # 一次性任务：等待 RustFS 就绪后创建两个私有桶（后端不会自动建桶）
+  rustfs-init:
+    image: minio/mc:latest
+    container_name: article-trace-rustfs-init
+    depends_on:
+      rustfs:
+        condition: service_started
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
+      PIC_BUCKET: ${RUSTFS_PIC_BUCKET:-pic}
+      CONTENT_BUCKET: ${RUSTFS_CONTENT_BUCKET:-content}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        until mc alias set rustfs http://rustfs:9000 "$$RUSTFS_ACCESS_KEY" "$$RUSTFS_SECRET_KEY" >/dev/null 2>&1; do
+          echo "waiting for rustfs ..."
+          sleep 2
+        done
+        mc mb --ignore-existing "rustfs/$$PIC_BUCKET" "rustfs/$$CONTENT_BUCKET"
+        # 两个桶保持私有，访问统一走后端签发的预签名 URL
+        mc anonymous set none "rustfs/$$PIC_BUCKET" || true
+        mc anonymous set none "rustfs/$$CONTENT_BUCKET" || true
+        echo "rustfs buckets ready: $$PIC_BUCKET $$CONTENT_BUCKET"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # AI 能力（agent 的 LLM / embedding 均走 OpenAI 兼容端点）
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: article-trace-ollama
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # 有 NVIDIA GPU 且装了 nvidia-container-toolkit 时，取消下面注释可显著加速
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ---------------------------------------------------------------------------
+  # 应用服务
+  # ---------------------------------------------------------------------------
+  # Python 检索问答微服务（gRPC :50051）：双路召回 + RRF + LLM 流式生成
+  agent:
+    build:
+      context: ./article_trace_agent
+    container_name: article-trace-agent
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      AGENT_PORT: "50051"
+      TZ: Asia/Shanghai
+    volumes:
+      # 容器内覆盖配置：LLM / embedding 指向 ollama 服务（仓库内默认是 localhost）
+      - ./docker/agent/agent.yaml:/app/config/agent.yaml:ro
+      - ./docker/agent/chroma.yaml:/app/config/chroma.yaml:ro
+      # 向量库 / BM25 缓存 / 会话 jsonl 等运行时产物
+      - agent-data:/app/data
+    ports:
+      - "${AGENT_HOST_PORT:-50051}:50051"
+
+  # Spring Boot 3 主后端（REST + 定时任务 + gRPC 客户端）
+  backend:
+    build:
+      context: ./article_trace_back
+    container_name: article-trace-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
+    environment:
+      TZ: Asia/Shanghai
+      # MySQL
+      DB_CONNECT_URL: jdbc:mysql://mysql:3306/article_trace?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+      # RustFS（S3）
+      RUSTFS_ENDPOINT: http://rustfs:9000
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
+      # 应用侧密钥与默认站长账号
+      JWT_SECURE_KEY: ${JWT_SECURE_KEY:?请在 .env 中设置 JWT_SECURE_KEY}
+      REGISTER_PASS: ${REGISTER_PASS:?请在 .env 中设置 REGISTER_PASS}
+      MASTER_PASS: ${MASTER_PASS:?请在 .env 中设置 MASTER_PASS}
+      # 默认站长账号：用户名/邮箱/昵称非敏感，保留默认值
+      DEFAULT_USER_ID: ${DEFAULT_USER_ID:-apkdio}
+      DEFAULT_USER_PASS: ${DEFAULT_USER_PASS:?请在 .env 中设置 DEFAULT_USER_PASS}
+      DEFAULT_USER_RESET_PASS: ${DEFAULT_USER_RESET_PASS:?请在 .env 中设置 DEFAULT_USER_RESET_PASS}
+      DEFAULT_USER_EMAIL: ${DEFAULT_USER_EMAIL:-article_trace@trace.com}
+      DEFAULT_USER_NICK_NAME: ${DEFAULT_USER_NICK_NAME:-测试昵称}
+      # agent 可选开关：false 时全部降级，不影响主业务
+      AGENT_ENABLED: ${AGENT_ENABLED:-true}
+      AGENT_HOST: agent
+      AGENT_PORT: "50051"
+    volumes:
+      # ⚠️ 源文件名不能叫 application.yml（根 .gitignore 忽略了它），挂载进容器后仍是标准配置名
+      - ./docker/backend/application-container.yml:/app/config/application.yml:ro
+    ports:
+      - "${BACKEND_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Vue 3 前端：Nginx 托管构建产物，并把 /api 反代到后端
+  frontend:
+    build:
+      context: ./article_trace_front
+    container_name: article-trace-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  mysql-data:
+  redis-data:
+  rustfs-data:
+  ollama-data:
+  agent-data:

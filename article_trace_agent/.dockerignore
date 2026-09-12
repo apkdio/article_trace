@@ -1,0 +1,19 @@
+# Python 虚拟环境与缓存
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 生成产物（镜像内重新生成）
+generated/
+
+# 运行时产物（compose 用数据卷挂载）
+data/
+logs/
+
+# IDE
+.idea/
+*.iml
+
+Dockerfile
