@@ -44,7 +44,8 @@ article_trace_back/
     │   │   ├── ReaderService.java / ReaderServiceImpl.java
     │   │   ├── UserService.java / UserServiceImpl.java
     │   │   ├── AgentSessionService.java / AgentSessionServiceImpl.java
-    │   │   └── NotificationService.java / NotificationServiceImpl.java
+    │   │   ├── NotificationService.java / NotificationServiceImpl.java
+    │   │   └── MailService.java / MailServiceImpl.java / MailDeliverer.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -88,14 +89,17 @@ article_trace_back/
     │   ├── config/                          # 配置类
     │   │   ├── WebConfig.java               #   拦截器注册
     │   │   ├── RedisConfig.java             #   Redis 双库模板配置
-    │   │   └── SensitiveWordConfig.java     #   敏感词 Bean 装配
+    │   │   ├── SensitiveWordConfig.java     #   敏感词 Bean 装配
+    │   │   ├── NotificationProperties.java  #   通知/邮件配置绑定
+    │   │   └── AsyncConfig.java             #   邮件异步线程池
     │   ├── runner/
     │   │   ├── AdminInitializer.java        #   启动时自动创建站长账号
     │   │   └── ThumbnailBackfillRunner.java #   存量缩略图补齐（可选）
     │   └── scheduledTask/                   # 定时任务
     │       ├── SyncRedisToDbTask.java       #   Redis 浏览量 → MySQL 同步
     │       ├── SyncSensitiveWordLoader.java #   敏感词库热更新
-    │       └── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
+    │       ├── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
+    │       └── MailRetryTask.java           #   失败邮件重试
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
@@ -252,14 +256,44 @@ flowchart LR
 - **注销清理**：账号注销（`UserServiceImpl.deleteUser`）后调用 `AgentSessionService.clearAll`，先逐个删除 agent 侧会话，再清空索引，避免残留。
 - **索引不设 TTL**：它指向 agent 侧持久保存的会话记录，过期会导致用户凭空看不到历史会话，因此清理只发生在显式删除（用户删会话 / 账号注销）。
 
-### 邮件能力（SMTP）
+### 站内通知与邮件投递
 
-已接入 Spring Mail，提供 `EmailUtil`（`Utils` 包）作为发信基础设施。当前**尚未接入注册 / 找回密码主链路**，仅提供能力与链路验证：
+分两层：`EmailUtil`（纯发信基础）与 `NotificationService`（业务通知门面）。
 
-- `sendText(to, subject, content)`：纯文本邮件；`sendHtml(to, subject, html)`：HTML 邮件（为后续验证码邮件准备）
+**① 发信基础 `EmailUtil`**
+
+- `sendText(to, subject, content)` / `sendHtml(to, subject, html)`
 - 发送失败只记日志并返回 `false`，不影响调用方主流程
-- 链路测试接口：`GET /reader/mail/test?to=xxx`（不传 `to` 则发到配置的 `email.testTo`）
-- 链路测试（需显式指定收件人，否则自动跳过）：`mvn test -Dtest=EmailUtilTest -Dmail.to=your@mail.com`
+- 链路测试接口：`GET /reader/mail/test?to=xxx`（不传则发到 `email.testTo`）
+- 链路测试：`mvn test -Dtest=EmailUtilTest -Dmail.to=your@mail.com`（未指定收件人自动跳过）
+
+**② 通知门面 `NotificationService`**
+
+业务只调这一个入口，投递渠道由 `notification.scenes` 按场景解析（`inbox` / `mail` / `both` / `none`）：
+
+| 方法 | 作用 |
+|---|---|
+| `notify(receiverId, scene, title, content)` | 给单个用户发通知（站内 + 可选邮件）|
+| `notifyRole(roleType, scene, title, content)` | 发给某角色全部用户（逐人一条）|
+| `listByReceiver` / `unreadCount` / `markRead` / `markAllRead` | 站内信查询与已读 |
+
+**调用方不感知成败**：全流程 try-catch，失败只记日志，绝不影响主业务。
+
+**③ 邮件投递链路**
+
+```
+notify(...) → mailService.send(to, subject, content)      # 先落库 notification_mail(pending)
+            → MailDeliverer.deliver(id) @Async(mailExecutor)  # 独立线程池异步投递
+            → EmailUtil 发信 → 回写 status=sent / failed(失败次数+1)
+MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ maxRetry 的记录
+```
+
+- **落库先行**：即使异步任务被丢弃，记录仍在库里，重试任务能补 → 不丢邮件
+- **重试上限**：默认 2 次重发（首次 + 2 次重试 = 最多 3 次尝试），超限停止并留日志（避免打爆 SMTP 日限额）
+- **邮箱为空则跳过邮件渠道**，只投站内并记日志
+- 测试：`mvn test -Dtest=MailServiceTest -Dmail.to=your@mail.com`
+
+> ⚠️ **命名坑**：投递器类**不能叫 `MailSender`** —— Spring Boot 邮件自动配置已注册同名 bean，会抛 `BeanDefinitionOverrideException`，故命名为 `MailDeliverer`。
 
 ### 配置
 
@@ -287,6 +321,21 @@ email:
   from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
   testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
   subjectPrefix: "[文迹]"            # 邮件主题前缀
+notification:
+  scenes:                            # 场景 → 渠道: inbox(仅站内) / mail(仅邮件) / both / none
+    author-apply-submitted: both
+    author-apply-approved: inbox
+    author-apply-rejected: inbox
+    author-apply-remind: mail
+    email-code: mail
+  defaultChannel: inbox              # 未配置场景的默认渠道
+  mail:
+    enabled: true                    # 邮件渠道总开关（false 时 mail/both 降级为仅站内）
+    maxRetry: 2                      # 最多重发次数
+    retryCron: "0 */10 * * * ?"      # 失败邮件重试扫描
+  cleanup:
+    cron: "0 0 3 * * ?"              # 站内信清理（P3 落地）
+    keepDays: 30
 ```
 
 ## 数据库设计

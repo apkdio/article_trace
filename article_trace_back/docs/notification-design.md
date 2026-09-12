@@ -371,10 +371,12 @@ notification:
 
 ## 12. 分期实施
 
+> **进度**：P1、P2 已实现并通过测试（含真实 SMTP 发信）；P3 待「作者申请」模块。
+
 | 阶段 | 内容 | 可验证结果 |
 |---|---|---|
-| **P1** | 2 张表 + 实体/Mapper + `NotificationService`（站内信）+ `NotificationController` + 前端铃铛/列表 | 手动插入一条站内信，前端可见并可标记已读 |
-| **P2** | 邮件投递落库 + `@EnableAsync` 线程池 + `MailRetryTask` | 通知能发邮件；断网后失败邮件能自动重发 |
+| **P1** ✅ | 2 张表 + 实体/Mapper + `NotificationService`（站内信）+ `NotificationController` + 前端铃铛/列表 | 手动插入一条站内信，前端可见并可标记已读 |
+| **P2** ✅ | 邮件投递落库 + `@EnableAsync` 线程池 + `MailRetryTask` | 通知能发邮件；断网后失败邮件能自动重发 |
 | **P3** | 接入作者申请业务（申请提交 / 审批 / 业务侧催办） | 完整闭环 |
 
 ---
