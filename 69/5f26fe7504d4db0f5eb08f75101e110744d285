@@ -1,0 +1,19 @@
+article_trace_back/src/test/java/com/articleTraceBack/EmailUtilTest.java
+  s_ab74ea15e793d1::t_edb035285aa474 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "695f26fe7504d4db0f5eb08f75101e110744d285",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
