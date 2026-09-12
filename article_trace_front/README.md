@@ -30,6 +30,7 @@ article_trace_front/
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
+    │   ├── notification.js         #   站内通知（列表/未读数/已读）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── registerSuccess.js      #   注册成功回调
@@ -37,7 +38,7 @@ article_trace_front/
     │   ├── main.scss               #   全局样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
     ├── components/                 # 公共组件
-    │   ├── UserLayout.vue          #   用户中心布局（侧边栏+header）
+    │   ├── UserLayout.vue          #   用户中心布局（侧边栏+header+通知铃铛）
     │   ├── UserTypeTag.vue         #   角色标签（站长/作者/读者）
     │   ├── PageHeader.vue          #   页面标题栏
     │   ├── StatCard.vue            #   统计卡片
@@ -108,6 +109,15 @@ article_trace_front/
 - **多会话**：头部提供「新建会话」与「历史会话」入口；历史列表调 `GET /agent/sessions`，切换会话调 `GET /agent/sessions/{id}/messages` 加载记录，删除调 `DELETE /agent/sessions/{id}`。
 - **会话 ID**：首次提问不带 `sessionId`，后端通过 SSE `session` 事件回传新建的会话 ID，前端保存后，后续提问带上以维持多轮上下文。
 - **可用性探测与降级**：挂载时调用 `GET /agent/health` 读取后端的 `enabled` 字段（对应后端总开关 `rpc.agent.enabled`）。未启用时窗口**照常渲染**，仅内容区提示「暂未启用 AI 功能」并隐藏操作按钮与输入框；探测用原生 `fetch` 而非 axios 实例，避免未登录时的 401 触发全局登出跳转。
+
+### 站内通知（UserLayout.vue）
+
+通知中心挂在用户中心的 header 上，不单独占页面：
+
+- **铃铛 + 未读角标**：进入用户中心时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
+- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示；
+- **已读**：点击单条调 `PATCH /notification/read/{id}`，角标即时递减；「全部已读」调 `PATCH /notification/readAll`；
+- **展示规则**：`senderId === -1` 为系统通知（当前全部通知均为系统发送），本期不做业务跳转。
 
 ### 页面视图（views/）
 

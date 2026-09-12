@@ -16,6 +16,7 @@
 | 密码加密 | BCrypt（jbcrypt） | 0.4 |
 | HTML 解析 | jsoup | 1.17.2 |
 | RPC | gRPC / Protobuf | 1.68.1 / 3.25.5 |
+| 邮件 | Spring Mail（SMTP） | — |
 | 其他 | Lombok / Validation / Actuator | — |
 
 ## 目录结构
@@ -35,13 +36,15 @@ article_trace_back/
     │   │   ├── CategoryController.java      #   分类：增删改查
     │   │   ├── ReaderController.java        #   读者：文章浏览/评论/作者信息
     │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
-    │   │   └── AgentController.java         #   检索问答/会话管理/探活
+    │   │   ├── AgentController.java         #   检索问答/会话管理/探活
+    │   │   └── NotificationController.java  #   站内信（列表/未读数/已读）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
     │   │   ├── ReaderService.java / ReaderServiceImpl.java
     │   │   ├── UserService.java / UserServiceImpl.java
-    │   │   └── AgentSessionService.java / AgentSessionServiceImpl.java
+    │   │   ├── AgentSessionService.java / AgentSessionServiceImpl.java
+    │   │   └── NotificationService.java / NotificationServiceImpl.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -49,6 +52,8 @@ article_trace_back/
     │   │   ├── ArticleMapper.java           #   文章自定义 SQL（分页/统计/批量加浏览量）
     │   │   ├── CategoryMapper.java
     │   │   ├── CommentMapper.java
+    │   │   ├── NotificationMapper.java      #   站内信（含分页/统计）
+    │   │   ├── NotificationMailMapper.java  #   邮件投递记录
     │   │   └── UserMapper.java
     │   ├── pojo/                            # 实体与数据对象
     │   │   ├── Article.java                 #   文章实体
@@ -63,6 +68,8 @@ article_trace_back/
     │   │   ├── AgentMatchedArticle.java     #   问答命中的文章
     │   │   ├── AgentSession.java            #   会话摘要（列表项）
     │   │   ├── AgentChatMessage.java        #   会话消息
+    │   │   ├── Notification.java            #   站内信
+    │   │   ├── NotificationMail.java        #   邮件投递记录
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -74,6 +81,7 @@ article_trace_back/
     │   │   ├── TextExtractor.java           #   纯文本提取/摘要
     │   │   ├── RustFsUtil.java              #   RustFS/S3 对象存储封装
     │   │   ├── ThumbnailUtil.java           #   图片缩略图生成（Thumbnailator）
+    │   │   ├── EmailUtil.java               #   邮件发送（SMTP）
     │   │   ├── GenResetPass.java            #   重置码生成
     │   │   ├── IPUtil.java                  #   客户端 IP 获取
     │   │   └── GlobalExceptionHandler.java  #   全局异常捕获
@@ -244,9 +252,24 @@ flowchart LR
 - **注销清理**：账号注销（`UserServiceImpl.deleteUser`）后调用 `AgentSessionService.clearAll`，先逐个删除 agent 侧会话，再清空索引，避免残留。
 - **索引不设 TTL**：它指向 agent 侧持久保存的会话记录，过期会导致用户凭空看不到历史会话，因此清理只发生在显式删除（用户删会话 / 账号注销）。
 
+### 邮件能力（SMTP）
+
+已接入 Spring Mail，提供 `EmailUtil`（`Utils` 包）作为发信基础设施。当前**尚未接入注册 / 找回密码主链路**，仅提供能力与链路验证：
+
+- `sendText(to, subject, content)`：纯文本邮件；`sendHtml(to, subject, html)`：HTML 邮件（为后续验证码邮件准备）
+- 发送失败只记日志并返回 `false`，不影响调用方主流程
+- 链路测试接口：`GET /reader/mail/test?to=xxx`（不传 `to` 则发到配置的 `email.testTo`）
+- 链路测试（需显式指定收件人，否则自动跳过）：`mvn test -Dtest=EmailUtilTest -Dmail.to=your@mail.com`
+
 ### 配置
 
 ```yaml
+spring:
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}    # SMTP 服务器
+    port: ${MAIL_PORT:465}            # 465=SMTPS；587 用 STARTTLS
+    username: ${MAIL_USERNAME}        # 发件邮箱
+    password: ${MAIL_PASSWORD}        # SMTP 授权码（非邮箱登录密码）
 rpc:
   agent:
     enabled: true                     # 总开关：false 时 agent 全部降级（不建连、不写同步/会话数据）
@@ -260,11 +283,15 @@ rpc:
       batchSize: 100                   # 每批最多推送文章数
       ingestKey: "agent:ingest:pending"  # 待入库/更新文章 id 集合
       deleteKey: "agent:delete:pending"  # 待删除文章 id 集合
+email:
+  from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
+  testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
+  subjectPrefix: "[文迹]"            # 邮件主题前缀
 ```
 
 ## 数据库设计
 
-数据库 `article_trace`，共 4 张表（见根目录 `article_trace.sql`）。
+数据库 `article_trace`，共 6 张表（见根目录 `article_trace.sql`）。
 
 ### `user` 用户表
 
@@ -314,6 +341,32 @@ rpc:
 | user_id | int | 用户外键（级联删除） |
 | user_pic | varchar(128) | 用户头像 |
 | create_time | datetime | 时间戳 |
+
+### `notification` 站内信表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int | 主键 |
+| title | varchar(120) | 标题 |
+| sender_id | int | 发送方：`-1` 系统消息 / 用户 ID / `NULL` 发送方已注销 |
+| receiver_id | int | 接收方：用户 ID / `NULL` 接收方已注销 |
+| content | text | 正文 |
+| create_time | datetime | 发送时间 |
+| is_read | tinyint(1) | 0 未读 / 1 已读 |
+
+> 索引：`(receiver_id, is_read, create_time)` 服务分页与未读数统计；单独的 `create_time` 索引服务每日清理任务。
+
+### `notification_mail` 邮件投递记录表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | bigint | 主键 |
+| to_email | varchar(128) | 收件邮箱 |
+| subject / content | varchar(200) / text | 主题与正文 |
+| status | varchar(16) | pending / sent / failed |
+| retry_count | int | 已重试次数 |
+| error | varchar(500) | 失败原因 |
+| create_time / sent_time | datetime | 时间戳 |
 
 ## 核心接口概览
 
@@ -371,8 +424,20 @@ rpc:
 | POST | `/reader/addComment` | 发表评论 |
 | DELETE | `/reader/deleteComment` | 删除评论 |
 | GET | `/reader/comments` | 评论分页 |
+| GET | `/reader/mail/test` | 邮件链路测试（`to` 为空则发到 `email.testTo`） |
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
+
+### 站内通知 `/notification`
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/notification/list` | 我的站内信分页（倒序） |
+| GET | `/notification/unreadCount` | 未读数（前端角标） |
+| PATCH | `/notification/read/{id}` | 标记单条已读 |
+| PATCH | `/notification/readAll` | 全部标记已读 |
+
+> 接收方一律取登录态，不接受前端传 `userId`，避免越权读取他人消息。
 
 ### 检索问答 `/agent`
 
