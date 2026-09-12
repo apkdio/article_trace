@@ -1,0 +1,40 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_5ebd71744a11a8 235-240,244-245
+  s_ab74ea15e793d1::t_765b06b6f9d792 241-243
+article_trace_back/src/main/java/com/articleTraceBack/pojo/ForgetPassPojo.java
+  s_ab74ea15e793d1::t_7456d62032c6c9 7-24
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserService.java
+  s_ab74ea15e793d1::t_5ebd71744a11a8 47-49
+article_trace_back/pom.xml
+  s_ab74ea15e793d1::t_a4d9603590706c 99-104
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_6f4aa79b84ad93 36
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_c84fa1198d87bf 3,32,38-39,42,46-56,61-69,76-85,283-289,292-311
+  s_ab74ea15e793d1::t_765b06b6f9d792 108-116
+article_trace_front/src/api/user.js
+  s_ab74ea15e793d1::t_2662a3da2e468e 8-12
+article_trace_back/src/main/java/com/articleTraceBack/Service/CaptchaServiceImpl.java
+  s_ab74ea15e793d1::t_5ebd71744a11a8 16
+  s_ab74ea15e793d1::t_ad2e10c5359195 1-15,17-66
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_2662a3da2e468e 2,4-10,29,39-59,70-75,77,94,117-119,123,129-132,135-140,154-155,157-160,276-282,286,331-332,334-347,376-383
+article_trace_back/src/main/java/com/articleTraceBack/Service/CaptchaService.java
+  s_ab74ea15e793d1::t_50a26bc9284901 1-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "408a4ff7f4a474aa5d66da3d4ccacd1badcaddb7",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
