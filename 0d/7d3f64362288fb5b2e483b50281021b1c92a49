@@ -1,0 +1,37 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/CaptchaServiceImpl.java
+  s_ab74ea15e793d1::t_c791690178d493 25-27,39-43,57-76
+article_trace_back/src/main/java/com/articleTraceBack/Service/ReaderServiceImpl.java
+  s_ab74ea15e793d1::t_c791690178d493 120
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_765b06b6f9d792 243
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_b9c04696eda798 60-77,101-104,143-147,215-221,223,236-254,358-366,375-376,569-571
+article_trace_back/src/main/java/com/articleTraceBack/pojo/User.java
+  s_ab74ea15e793d1::t_c791690178d493 70-76
+article_trace_back/src/main/java/com/articleTraceBack/Service/LoginAttemptService.java
+  s_ab74ea15e793d1::t_c52c90a454e549 1-41
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_c791690178d493 5,7,9,36,43,47,54-59,149-150,152-170,195-196,202,204-215
+article_trace_back/src/main/java/com/articleTraceBack/Service/CaptchaService.java
+  s_ab74ea15e793d1::t_c791690178d493 16-18,20
+article_trace_back/src/main/java/com/articleTraceBack/Utils/IPUtil.java
+  s_ab74ea15e793d1::t_c791690178d493 5-7,33-43
+article_trace_back/src/main/java/com/articleTraceBack/Service/LoginAttemptServiceImpl.java
+  s_ab74ea15e793d1::t_b2b2fc2eb9f281 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "0d7d3f64362288fb5b2e483b50281021b1c92a49",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
