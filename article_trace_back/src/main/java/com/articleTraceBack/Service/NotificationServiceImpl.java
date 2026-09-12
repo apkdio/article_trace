@@ -38,13 +38,16 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationMapper notificationMapper;
     private final UserMapper userMapper;
     private final NotificationProperties properties;
+    private final MailService mailService;
 
     public NotificationServiceImpl(NotificationMapper notificationMapper,
                                    UserMapper userMapper,
-                                   NotificationProperties properties) {
+                                   NotificationProperties properties,
+                                   MailService mailService) {
         this.notificationMapper = notificationMapper;
         this.userMapper = userMapper;
         this.properties = properties;
+        this.mailService = mailService;
     }
 
     @Override
@@ -62,8 +65,12 @@ public class NotificationServiceImpl implements NotificationService {
                 notificationMapper.insert(notification);
             }
             if (supportsMail(channel)) {
-                // P2：写入 notification_mail 并异步发送（含失败重试）
-                log.info("mail channel pending (P2): receiverId={}, scene={}", receiverId, scene);
+                String toEmail = findUserEmail(receiverId);
+                if (toEmail == null || toEmail.isBlank()) {
+                    log.warn("skip mail channel: receiver has no email, receiverId={}, scene={}", receiverId, scene);
+                } else {
+                    mailService.send(toEmail, title, content);
+                }
             }
         } catch (Exception e) {
             log.error("notify failed: receiverId={}, scene={}", receiverId, scene, e);
@@ -114,6 +121,12 @@ public class NotificationServiceImpl implements NotificationService {
         UpdateWrapper<Notification> wrapper = new UpdateWrapper<>();
         wrapper.eq("receiver_id", receiverId).eq("is_read", UNREAD).set("is_read", READ);
         return notificationMapper.update(null, wrapper);
+    }
+
+    /** 取接收方邮箱；用户不存在或未填邮箱时返回 null */
+    private String findUserEmail(int receiverId) {
+        User user = userMapper.selectById(receiverId);
+        return user == null ? null : user.getEmail();
     }
 
     /** 解析场景对应的投递渠道；未配置时取 defaultChannel */
