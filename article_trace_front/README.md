@@ -31,6 +31,7 @@ article_trace_front/
     │   ├── user.js                 #   用户相关接口
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
     │   ├── notification.js         #   站内通知（列表/未读数/已读）
+    │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── registerSuccess.js      #   注册成功回调

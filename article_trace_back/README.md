@@ -37,7 +37,8 @@ article_trace_back/
     │   │   ├── ReaderController.java        #   读者：文章浏览/评论/作者信息
     │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
     │   │   ├── AgentController.java         #   检索问答/会话管理/探活
-    │   │   └── NotificationController.java  #   站内信（列表/未读数/已读）
+    │   │   ├── NotificationController.java  #   站内信（列表/未读数/已读）
+    │   │   └── AuthorApplyController.java   #   作者申请（提交/列表/审批）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
@@ -45,7 +46,8 @@ article_trace_back/
     │   │   ├── UserService.java / UserServiceImpl.java
     │   │   ├── AgentSessionService.java / AgentSessionServiceImpl.java
     │   │   ├── NotificationService.java / NotificationServiceImpl.java
-    │   │   └── MailService.java / MailServiceImpl.java / MailDeliverer.java
+    │   │   ├── MailService.java / MailServiceImpl.java
+    │   │   └── AuthorApplyService.java / AuthorApplyServiceImpl.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -55,6 +57,7 @@ article_trace_back/
     │   │   ├── CommentMapper.java
     │   │   ├── NotificationMapper.java      #   站内信（含分页/统计）
     │   │   ├── NotificationMailMapper.java  #   邮件投递记录
+    │   │   ├── AuthorApplyMapper.java       #   作者申请（含联查/统计）
     │   │   └── UserMapper.java
     │   ├── pojo/                            # 实体与数据对象
     │   │   ├── Article.java                 #   文章实体
@@ -71,6 +74,7 @@ article_trace_back/
     │   │   ├── AgentChatMessage.java        #   会话消息
     │   │   ├── Notification.java            #   站内信
     │   │   ├── NotificationMail.java        #   邮件投递记录
+    │   │   ├── AuthorApply.java             #   作者申请
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -340,7 +344,7 @@ notification:
 
 ## 数据库设计
 
-数据库 `article_trace`，共 6 张表（见根目录 `article_trace.sql`）。
+数据库 `article_trace`，共 7 张表（见根目录 `article_trace.sql`）。
 
 ### `user` 用户表
 
@@ -404,6 +408,19 @@ notification:
 | is_read | tinyint(1) | 0 未读 / 1 已读 |
 
 > 索引：`(receiver_id, is_read, create_time)` 服务分页与未读数统计；单独的 `create_time` 索引服务每日清理任务。
+
+### `author_apply` 作者申请表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int | 主键 |
+| user_id | int | 申请人 |
+| reason | varchar(500) | 申请理由 |
+| status | tinyint | 0 待审 / 1 通过 / 2 拒绝 |
+| reject_reason | varchar(255) | 拒绝原因 |
+| review_user | int | 审批人 |
+| review_time | datetime | 审批时间 |
+| create_time | datetime | 提交时间 |
 
 ### `notification_mail` 邮件投递记录表
 
@@ -476,6 +493,18 @@ notification:
 | GET | `/reader/mail/test` | 邮件链路测试（`to` 为空则发到 `email.testTo`） |
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
+
+### 作者申请 `/apply`
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/apply/author` | 提交作者申请（body 可选 `reason`）|
+| GET | `/apply/author/mine` | 我的最新申请状态 |
+| GET | `/apply/author/list` | 申请列表（站长）|
+| GET | `/apply/author/pendingCount` | 待审数量（站长）|
+| PATCH | `/apply/author/review/{id}` | 审批（站长）：`pass=true/false` |
+
+> 审批通过会把申请人提升为作者（type=1）并失效其登录态；提交与结果均通过站内信/邮件通知。
 
 ### 站内通知 `/notification`
 
