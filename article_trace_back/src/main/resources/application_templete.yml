@@ -102,6 +102,8 @@ email:
   from: ${MAIL_FROM:}            # 发件人，留空则用 spring.mail.username
   testTo: ${MAIL_TEST_TO:}       # 发信链路测试的默认收件人
   subjectPrefix: "[文迹]"        # 邮件主题前缀
+author-apply:
+  remindCron: "0 0 1 * * ?"      # 每天凌晨 1 点检查是否有待审作者申请，有则邮件提醒站长
 notification:
   scenes:                        # 场景 → 投递渠道: inbox(仅站内) / mail(仅邮件) / both / none
     author-apply-submitted: both
