@@ -159,6 +159,28 @@ CREATE TABLE `notification_mail` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='邮件投递记录';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Table structure for table `author_apply`
+--
+
+DROP TABLE IF EXISTS `author_apply`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `author_apply` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `user_id` int NOT NULL COMMENT '申请人 user.id',
+  `reason` varchar(500) DEFAULT NULL COMMENT '申请理由',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待审 1-通过 2-拒绝',
+  `reject_reason` varchar(255) DEFAULT NULL COMMENT '拒绝原因',
+  `review_user` int DEFAULT NULL COMMENT '审批人 user.id',
+  `review_time` datetime DEFAULT NULL COMMENT '审批时间',
+  `create_time` datetime NOT NULL COMMENT '提交时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_status_time` (`status`,`create_time`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='作者申请';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

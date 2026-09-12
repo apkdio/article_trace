@@ -2,6 +2,7 @@
 import {
     Crop,
     EditPen,
+    Promotion,
     User,
     UserFilled
 } from '@element-plus/icons-vue'
@@ -41,6 +42,12 @@ const route = useRoute()
                         <EditPen/>
                     </el-icon>
                     <span>修改密码</span>
+                </el-menu-item>
+                <el-menu-item index="/reader/apply">
+                    <el-icon>
+                        <Promotion/>
+                    </el-icon>
+                    <span>申请成为作者</span>
                 </el-menu-item>
             </el-sub-menu>
         </template>

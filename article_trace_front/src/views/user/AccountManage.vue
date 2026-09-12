@@ -3,6 +3,7 @@
 import {Delete, Timer, User, Avatar, Top, Bottom} from '@element-plus/icons-vue'
 import {onMounted, ref, computed} from 'vue'
 import {changeType, checkType, getAllAccountsService} from "@/api/user.js";
+import {listApplies, reviewApply} from "@/api/apply.js";
 import {confirmDeleteAccount} from "@/api/confirmDeleteAccount.js";
 import defaultAvatar from "@/assets/defaultLogo.jpg";
 import {userInfoStore} from "@/stores/userInfo.js";
@@ -17,6 +18,9 @@ const pageNum = ref(1)
 const total = ref(0)
 const pageSize = ref(10) // 默认 10 条更适合管理页
 
+// 作者申请（待审）
+const pendingApplies = ref([])
+
 // 统计逻辑
 const stats = computed(() => {
   return {
@@ -29,10 +33,65 @@ const stats = computed(() => {
 onMounted(async () => {
   if (!checkType([0])) router.push({name: "ErrorPage"})
   await getAccounts()
+  getPendingApplies()
   setTimeout(() => {
     isLoading.value = false
   },100)
 })
+
+const getPendingApplies = async () => {
+  try {
+    const res = await listApplies(0, 1, 20) // status=0 待审
+    if (res.code === 0) {
+      pendingApplies.value = res.data?.items || []
+    }
+  } catch (e) {
+    // 申请列表获取失败不影响账号管理主功能
+  }
+}
+
+const approveApply = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+        `确定通过「${item.nickname || item.username}」的作者申请？通过后该用户将升级为作者。`,
+        "提示",
+        {confirmButtonText: "通过", cancelButtonText: "取消", type: "warning", center: true}
+    )
+  } catch (e) {
+    return
+  }
+  try {
+    const res = await reviewApply(item.id, true, '')
+    if (res.code === 0) {
+      ElMessage.success('已通过该申请')
+      await getPendingApplies()
+      await getAccounts()
+    } else {
+      ElMessage.error(res.message || '操作失败！')
+    }
+  } catch (e) {
+    ElMessage.error('服务器响应失败！')
+  }
+}
+
+const rejectApply = async (item) => {
+  try {
+    const {value} = await ElMessageBox.prompt("请填写拒绝原因（可留空）", "拒绝申请", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      inputPlaceholder: "如：暂不符合要求"
+    })
+    const res = await reviewApply(item.id, false, value || '')
+    if (res.code === 0) {
+      ElMessage.success('已拒绝该申请')
+      await getPendingApplies()
+    } else {
+      ElMessage.error(res.message || '操作失败！')
+    }
+  } catch (e) {
+    // 用户取消
+  }
+}
 
 const getAccounts = async () => {
   try {
@@ -113,6 +172,30 @@ const changeUserType = (id, type) => {
           </StatCard>
         </el-col>
       </el-row>
+
+      <!-- 作者申请待审 -->
+      <el-card v-if="pendingApplies.length > 0" class="apply-card" shadow="never">
+        <template #header>
+          <div class="apply-header">
+            <span class="apply-title">作者申请待审</span>
+            <el-tag type="warning" size="small" disable-transitions>{{ pendingApplies.length }}</el-tag>
+          </div>
+        </template>
+        <div v-for="a in pendingApplies" :key="a.id" class="apply-item">
+          <div class="apply-main">
+            <div class="apply-user">
+              {{ a.nickname || '未设置昵称' }}
+              <span class="apply-username">@{{ a.username }}</span>
+            </div>
+            <div class="apply-reason">{{ a.reason || '（未填写理由）' }}</div>
+            <div class="apply-time">{{ a.createTime }}</div>
+          </div>
+          <div class="apply-actions">
+            <el-button type="success" size="small" @click="approveApply(a)">通过</el-button>
+            <el-button type="danger" size="small" @click="rejectApply(a)">拒绝</el-button>
+          </div>
+        </div>
+      </el-card>
 
       <div class="table-container">
         <el-table :data="accountData" style="width: 100%" class="modern-table" row-key="id">
@@ -221,6 +304,70 @@ const changeUserType = (id, type) => {
   flex-direction: column;
   animation: fadeIn 0.5s ease-out;
   height: auto;
+}
+
+/* 作者申请待审卡片 */
+.apply-card {
+  margin-bottom: 20px;
+
+  .apply-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .apply-title {
+    font-weight: 600;
+    color: #2c3e50;
+  }
+
+  .apply-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f2f3f5;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .apply-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .apply-user {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+
+    .apply-username {
+      margin-left: 4px;
+      font-size: 12px;
+      font-weight: 400;
+      color: #909399;
+    }
+  }
+
+  .apply-reason {
+    margin-top: 4px;
+    font-size: 13px;
+    color: #606266;
+    word-break: break-word;
+  }
+
+  .apply-time {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #a8abb2;
+  }
+
+  .apply-actions {
+    flex-shrink: 0;
+  }
 }
 
 

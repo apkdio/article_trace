@@ -10,6 +10,7 @@ import home from "@/views/user/home.vue"
 import accountManage from '@/views/user/AccountManage.vue'
 import publicHome from "@/views/public/publicHome.vue";
 import readerHome from "@/views/public/readerHome.vue";
+import authorApply from "@/views/public/AuthorApply.vue";
 import articleInfo from "@/views/public/articleInfo.vue";
 
 
@@ -20,6 +21,7 @@ const routes = [
     {
         path: "/reader/home", component: readerHome, redirect: "/reader/info", name: "ReaderHome", children: [
             {path: "/reader/info", component: userInfo, name: "ReaderInfo"},
+            {path: "/reader/apply", component: authorApply, name: "ReaderApply", meta: {noTransition: true}},
             {path: "/reader/updateLogo", component: UserLogo, name: "ReaderLogo", meta: {noTransition: true}},
             {
                 path: "/reader/updatePassword",
