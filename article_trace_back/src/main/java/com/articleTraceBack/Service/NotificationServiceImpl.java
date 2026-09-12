@@ -123,6 +123,23 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationMapper.update(null, wrapper);
     }
 
+    @Override
+    public int cleanupExpired(int keepDays) {
+        if (keepDays <= 0) {
+            return 0;
+        }
+        try {
+            QueryWrapper<Notification> wrapper = new QueryWrapper<>();
+            wrapper.lt("create_time", LocalDateTime.now().minusDays(keepDays));
+            int deleted = notificationMapper.delete(wrapper);
+            log.info("notification cleanup: {} record(s) older than {} day(s) removed", deleted, keepDays);
+            return deleted;
+        } catch (Exception e) {
+            log.error("notification cleanup failed", e);
+            return 0;
+        }
+    }
+
     /** 取接收方邮箱；用户不存在或未填邮箱时返回 null */
     private String findUserEmail(int receiverId) {
         User user = userMapper.selectById(receiverId);

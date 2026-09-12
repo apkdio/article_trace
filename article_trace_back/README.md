@@ -103,7 +103,8 @@ article_trace_back/
     │       ├── SyncRedisToDbTask.java       #   Redis 浏览量 → MySQL 同步
     │       ├── SyncSensitiveWordLoader.java #   敏感词库热更新
     │       ├── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
-    │       └── MailRetryTask.java           #   失败邮件重试
+    │       ├── MailRetryTask.java           #   失败邮件重试
+    │       └── NotificationCleanupTask.java #   站内信清理（30 天）
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
@@ -297,6 +298,10 @@ MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ max
 - **邮箱为空则跳过邮件渠道**，只投站内并记日志
 - 测试：`mvn test -Dtest=MailServiceTest -Dmail.to=your@mail.com`
 
+**④ 站内信清理**
+
+`NotificationCleanupTask` 每天凌晨 3 点删除 **30 天前**的站内信（**无论是否已读**），保留天数与 cron 由 `notification.cleanup.*` 配置；清理按 `create_time` 过滤，依赖 `notification` 表上的 `create_time` 索引。
+
 > ⚠️ **命名坑**：投递器类**不能叫 `MailSender`** —— Spring Boot 邮件自动配置已注册同名 bean，会抛 `BeanDefinitionOverrideException`，故命名为 `MailDeliverer`。
 
 ### 配置
@@ -338,8 +343,8 @@ notification:
     maxRetry: 2                      # 最多重发次数
     retryCron: "0 */10 * * * ?"      # 失败邮件重试扫描
   cleanup:
-    cron: "0 0 3 * * ?"              # 站内信清理（P3 落地）
-    keepDays: 30
+    cron: "0 0 3 * * ?"              # 站内信清理：每天凌晨 3 点
+    keepDays: 30                     # 保留 30 天（无论是否已读）
 ```
 
 ## 数据库设计

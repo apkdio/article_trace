@@ -36,4 +36,7 @@ public interface NotificationService {
 
     /** 全部标记已读，返回受影响行数 */
     int markAllRead(int receiverId);
+
+    /** 清理超过 keepDays 天的站内信（无论是否已读），返回删除行数 */
+    int cleanupExpired(int keepDays);
 }
