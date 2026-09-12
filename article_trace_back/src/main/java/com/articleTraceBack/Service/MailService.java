@@ -3,7 +3,7 @@ package com.articleTraceBack.Service;
 /**
  * 邮件投递服务：负责落库与失败重试扫描。
  *
- * <p>投递本身由 {@link MailDeliverer} 异步完成（独立 bean 才能被 {@code @Async} 代理）。</p>
+ * <p>投递由实现内部提交到邮件线程池异步执行，调用方无需关心。</p>
  */
 public interface MailService {
 

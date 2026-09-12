@@ -1,6 +1,6 @@
 package com.articleTraceBack;
 
-import com.articleTraceBack.Service.MailDeliverer;
+import com.articleTraceBack.Service.MailServiceImpl;
 import com.articleTraceBack.Service.MailService;
 import com.articleTraceBack.mapper.NotificationMailMapper;
 import com.articleTraceBack.pojo.NotificationMail;
@@ -43,7 +43,7 @@ public class MailServiceTest {
         assertEquals(to, latest.getToEmail());
 
         NotificationMail done = awaitSent(latest.getId());
-        assertEquals(MailDeliverer.STATUS_SENT, done.getStatus(), "真实 SMTP 下应投递成功");
+        assertEquals(MailServiceImpl.STATUS_SENT, done.getStatus(), "真实 SMTP 下应投递成功");
         assertNotNull(done.getSentTime(), "成功时应记录发送时间");
 
         mailMapper.deleteById(latest.getId());
@@ -58,7 +58,7 @@ public class MailServiceTest {
         failed.setToEmail(to);
         failed.setSubject("P2 重试测试");
         failed.setContent("这条记录模拟一次投递失败。");
-        failed.setStatus(MailDeliverer.STATUS_FAILED);
+        failed.setStatus(MailServiceImpl.STATUS_FAILED);
         failed.setRetryCount(1);
         failed.setCreateTime(LocalDateTime.now());
         mailMapper.insert(failed);
@@ -67,7 +67,7 @@ public class MailServiceTest {
         assertTrue(retried >= 1, "应至少提交 1 条重试");
 
         NotificationMail done = awaitSent(failed.getId());
-        assertEquals(MailDeliverer.STATUS_SENT, done.getStatus(), "重试后应投递成功");
+        assertEquals(MailServiceImpl.STATUS_SENT, done.getStatus(), "重试后应投递成功");
 
         mailMapper.deleteById(failed.getId());
     }
@@ -93,7 +93,7 @@ public class MailServiceTest {
     private NotificationMail awaitSent(Long id) throws InterruptedException {
         for (int i = 0; i < 40; i++) {
             NotificationMail mail = mailMapper.selectById(id);
-            if (mail != null && MailDeliverer.STATUS_SENT.equals(mail.getStatus())) {
+            if (mail != null && MailServiceImpl.STATUS_SENT.equals(mail.getStatus())) {
                 return mail;
             }
             Thread.sleep(1000);
