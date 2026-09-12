@@ -1,0 +1,29 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/ReaderServiceImpl.java
+  s_ab74ea15e793d1::t_82d6d8ab9cbe3f 3,14-15,24,31-34,38,43-56
+article_trace_back/src/main/java/com/articleTraceBack/Service/ReaderService.java
+  s_ab74ea15e793d1::t_82d6d8ab9cbe3f 27-29
+article_trace_back/src/main/java/com/articleTraceBack/Utils/EmailUtil.java
+  s_ab74ea15e793d1::t_e8957a47ff4702 1-105
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_82d6d8ab9cbe3f 34-44
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_5660d36da64bda 23-33,101-104
+article_trace_back/pom.xml
+  s_ab74ea15e793d1::t_dc34171c4c9c83 94-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "e3f95a6726cf7b04c047c53d8b64c9708bb735a9",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
