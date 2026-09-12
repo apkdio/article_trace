@@ -1,7 +1,7 @@
 <script setup>
-import {Avatar, Lock, User} from '@element-plus/icons-vue'
+import {Key, Lock, Message, User} from '@element-plus/icons-vue'
 import {computed, onMounted, ref, watch} from 'vue'
-import {forgetPassService, loginService, registerService} from "@/api/user.js";
+import {forgetPassService, loginService, registerService, sendEmailCodeService} from "@/api/user.js";
 import {showResetPassword} from "@/api/registerSuccess.js";
 import router from "@/router/index.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
@@ -18,11 +18,16 @@ const FormData = ref({
   username: '',
   password: '',
   confirmPassword: '',
-  registerPassword: "",
+  email: '',
+  emailCode: '',
   resetPassword: "",
-  rememberMe: 0,
-  type: 2
+  rememberMe: 0
 })
+
+// 邮箱验证码发送状态
+const codeSending = ref(false)
+const codeCountdown = ref(0)
+let countdownTimer = null
 const errorsList = ref({})
 
 // 动画标志位
@@ -50,7 +55,12 @@ const FormDataRules = computed(() => {
     return {
       username: [{required: true, message: '请输入用户名！'}, {max: 20, message: "用户名过长！"}],
       password: [{required: true, message: '请输入密码！'}, {max: 60, message: "密码过长！"}],
-      confirmPassword: [{validator: confirmPasswordValidator}]
+      confirmPassword: [{validator: confirmPasswordValidator}],
+      email: [
+        {required: true, message: '请输入邮箱！', trigger: 'blur'},
+        {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
+      ],
+      emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}]
     }
   }
 })
@@ -75,11 +85,39 @@ watch([isRegister, resetPass], () => {
 }, {immediate: true})
 
 
+function sendCode() {
+  const email = FormData.value.email
+  if (!email) {
+    ElMessage.warning('请先填写邮箱！')
+    return
+  }
+  if (codeCountdown.value > 0 || codeSending.value) return
+  codeSending.value = true
+  sendEmailCodeService(email).then((result) => {
+    if (result.code === 0) {
+      ElMessage.success('验证码已发送，请查收邮箱')
+      codeCountdown.value = 60
+      countdownTimer = setInterval(() => {
+        codeCountdown.value -= 1
+        if (codeCountdown.value <= 0) {
+          clearInterval(countdownTimer)
+          countdownTimer = null
+        }
+      }, 1000)
+    } else {
+      ElMessage.error(result.message || '发送失败！')
+    }
+  })
+      .catch(() => ElMessage.warning('服务器响应失败！'))
+      .finally(() => {
+        codeSending.value = false
+      })
+}
+
 function register() {
   errorsList.value = {}
   FormRef.value.validate((valid) => {
     if (valid) {
-      if (FormData.value.registerPassword !== "") FormData.value.type = 1
       registerService(FormData.value).then((result) => {
         if (result.code === 0) {
           showResetPassword(result.data?.success)
@@ -183,9 +221,16 @@ function clearInf() {
                 <el-input :prefix-icon="Lock" type="password" placeholder="确认密码" show-password
                           v-model="FormData.confirmPassword"/>
               </el-form-item>
-              <el-form-item prop="registerPassword" :error="errorsList.registerPassword">
-                <el-input :prefix-icon="Avatar" placeholder="请输入邀请注册码（留空注册为读者）"
-                          v-model="FormData.registerPassword"/>
+              <el-form-item prop="email" :error="errorsList.email">
+                <el-input :prefix-icon="Message" placeholder="请输入邮箱" v-model="FormData.email"/>
+              </el-form-item>
+              <el-form-item prop="emailCode" :error="errorsList.emailCode">
+                <div class="code-row">
+                  <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
+                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode">
+                    {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
+                  </el-button>
+                </div>
               </el-form-item>
               <el-button class="submit-btn" type="primary" @click="register">注 册</el-button>
               <div class="footer-ops">
@@ -255,6 +300,16 @@ function clearInf() {
 </template>
 
 <style lang="scss" scoped>
+.code-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+
+  .el-input {
+    flex: 1;
+  }
+}
+
 .login-container {
   height: 100vh;
   background: radial-gradient(circle at top right, #fdfcfb 0%, #e2d1c3 100%);

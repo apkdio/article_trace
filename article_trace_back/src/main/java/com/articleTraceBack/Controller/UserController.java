@@ -1,5 +1,6 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.*;
@@ -12,20 +13,47 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
+    /** 注册一律为读者；成为作者走「申请-审批」流程 */
+    private static final int ROLE_READER = 2;
+
+    /** 邮箱格式（宽松校验，真实可达性由验证码保证） */
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
     private final UserService userService;
-    @Value("${Password.registerPass}")
-    private String registerPass;
+    private final EmailCodeService emailCodeService;
     @Value("${spring.application.admin.defaultUser}")
     private String defaultUser;
     @Value("${Password.masterPass}")
     private String masterPassword;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, EmailCodeService emailCodeService) {
         this.userService = userService;
+        this.emailCodeService = emailCodeService;
+    }
+
+    /**
+     * 发送邮箱验证码（注册场景）。
+     */
+    @PostMapping("/email/code")
+    public Result<String> sendEmailCode(@RequestBody(required = false) Map<String, String> body) {
+        String email = (body == null) ? null : body.get("email");
+        if (email == null || email.isBlank()) {
+            return Result.error("邮箱不能为空！");
+        }
+        if (!EMAIL_PATTERN.matcher(email.trim()).matches()) {
+            return Result.error("邮箱格式不正确！");
+        }
+        if (!emailCodeService.send(email, EmailCodeService.SCENE_REGISTER)) {
+            return Result.error("发送过于频繁，请稍后再试！");
+        }
+        return Result.success("验证码已发送");
     }
 
     @GetMapping("/loginCheck")
@@ -37,37 +65,37 @@ public class UserController {
         Map<String, Object> error = new HashMap<>();
         String username = user.getUsername();
         String password = user.getPassword();
-        String registerPassword = user.getRegisterPassword();
         String confirmPassword = user.getConfirmPassword();
-        int type = user.getType();
+        String email = user.getEmail();
+        String emailCode = user.getEmailCode();
+
         if (!password.equals(confirmPassword)) {
             error.put("confirmPassword", "两次密码不一致！");
             return Result.error(error);
         }
-        if (!registerPassword.equals(registerPass) && type == 1) {
-            error.put("registerPassword", "注册码不正确！");
+        // 邮箱验证码：一次性，校验成功即失效
+        if (!emailCodeService.verify(email, EmailCodeService.SCENE_REGISTER, emailCode)) {
+            error.put("emailCode", "验证码错误或已过期！");
             return Result.error(error);
         }
-        if (type != 1 && type != 2) {
-            error.put("error", "类型错误！");
+        if (userService.findUserByName(username) != null) {
+            error.put("username", "用户名已占用！");
             return Result.error(error);
         }
-        if (userService.findUserByName(username) == null) {
-            User registerUser = new User();
-            registerUser.setUsername(username);
-            registerUser.setPassword(password);
-            registerUser.setType(type);
-            String resetPassOri = userService.genResetPassOri(10);
-            registerUser.setResetPass(resetPassOri);
-            if (userService.userRegister(registerUser)) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("success", resetPassOri);
-                return Result.success(map);
-            }
-            error.put("error", "注册失败！请重试！");
-            return Result.error(error);
+        // 注册一律为读者；成为作者请走「申请成为作者」
+        User registerUser = new User();
+        registerUser.setUsername(username);
+        registerUser.setPassword(password);
+        registerUser.setEmail(email);
+        registerUser.setType(ROLE_READER);
+        String resetPassOri = userService.genResetPassOri(10);
+        registerUser.setResetPass(resetPassOri);
+        if (userService.userRegister(registerUser)) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("success", resetPassOri);
+            return Result.success(map);
         }
-        error.put("username", "用户名已占用！");
+        error.put("error", "注册失败！请重试！");
         return Result.error(error);
     }
 

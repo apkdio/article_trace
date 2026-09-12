@@ -33,7 +33,7 @@ spring:
       mail.smtp.connectiontimeout: 5000
   tokenCheck:
     # 不同用户组的访问权限
-    excludeUrls: /user/login, /user/register,/user/forgetPass,/error
+    excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code
     notAllowUrl:
       writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType
       reader: /category/**,/article/**
@@ -66,7 +66,6 @@ JWT:
   shortTime: 86400000 # 毫秒（24小时）
 Password:
   character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  registerPass: ${REGISTER_PASS} # 注册密码
   masterPass: ${MASTER_PASS} # 站长密码
 S3:
   endpoint: ${RUSTFS_ENDPOINT} # rustfs存储服务端地址
