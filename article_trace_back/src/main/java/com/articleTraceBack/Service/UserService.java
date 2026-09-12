@@ -44,4 +44,7 @@ public interface UserService {
     User findUserByNickName(String nickName);
 
     User findUserById(int userId);
+
+    /** 按邮箱查用户（找回密码用） */
+    User findUserByEmail(String email);
 }

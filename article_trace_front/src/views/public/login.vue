@@ -1,7 +1,13 @@
 <script setup>
-import {Key, Lock, Message, User} from '@element-plus/icons-vue'
+import {Key, Lock, Message, Picture, User} from '@element-plus/icons-vue'
 import {computed, onMounted, ref, watch} from 'vue'
-import {forgetPassService, loginService, registerService, sendEmailCodeService} from "@/api/user.js";
+import {
+  forgetPassService,
+  getCaptchaService,
+  loginService,
+  registerService,
+  sendEmailCodeService
+} from "@/api/user.js";
 import {showResetPassword} from "@/api/registerSuccess.js";
 import router from "@/router/index.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
@@ -20,7 +26,7 @@ const FormData = ref({
   confirmPassword: '',
   email: '',
   emailCode: '',
-  resetPassword: "",
+  captcha: '',
   rememberMe: 0
 })
 
@@ -29,6 +35,27 @@ const codeSending = ref(false)
 const codeCountdown = ref(0)
 let countdownTimer = null
 const errorsList = ref({})
+
+// 图形验证码（人机校验，发送邮箱验证码前一道门槛）
+const captchaId = ref('')
+const captchaImage = ref('')
+
+async function loadCaptcha() {
+  try {
+    const result = await getCaptchaService()
+    if (result.code === 0) {
+      captchaId.value = result.data.captchaId
+      captchaImage.value = result.data.image
+    }
+  } catch {
+    // 静默失败：用户可点击图片重试
+  }
+}
+
+function refreshCaptcha() {
+  FormData.value.captcha = ''
+  loadCaptcha()
+}
 
 // 动画标志位
 const isAnimating = ref(false)
@@ -40,10 +67,14 @@ const confirmPasswordValidator = confirmPasswordValid(() => FormData.value.passw
 const FormDataRules = computed(() => {
   if (resetPass.value) {
     return {
-      username: [{required: true, message: '请输入用户名！'}],
+      email: [
+        {required: true, message: '请输入邮箱！', trigger: 'blur'},
+        {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
+      ],
+      captcha: [{required: true, message: '请输入图形验证码！', trigger: 'blur'}],
+      emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}],
       password: [{required: true, message: '请输入新密码！'}, {max: 60, message: "密码过长！"}],
-      confirmPassword: [{validator: confirmPasswordValidator}],
-      resetPassword: [{required: true, message: '请输入重置码！'}]
+      confirmPassword: [{validator: confirmPasswordValidator}]
     }
   }
   if (isRegister.value) {
@@ -60,6 +91,7 @@ const FormDataRules = computed(() => {
         {required: true, message: '请输入邮箱！', trigger: 'blur'},
         {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
       ],
+      captcha: [{required: true, message: '请输入图形验证码！', trigger: 'blur'}],
       emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}]
     }
   }
@@ -82,18 +114,30 @@ watch([isRegister, resetPass], () => {
 
   if (resetPass.value) document.title = "重置密码"
   else document.title = isRegister.value ? "登录" : "注册"
+
+  // 注册/重置表单需要图形验证码，切换时换一张（图形码一次性）
+  if (!isRegister.value || resetPass.value) refreshCaptcha()
 }, {immediate: true})
 
 
-function sendCode() {
+function sendCode(scene) {
   const email = FormData.value.email
   if (!email) {
     ElMessage.warning('请先填写邮箱！')
     return
   }
+  if (!FormData.value.captcha) {
+    ElMessage.warning('请先填写图形验证码！')
+    return
+  }
   if (codeCountdown.value > 0 || codeSending.value) return
   codeSending.value = true
-  sendEmailCodeService(email).then((result) => {
+  sendEmailCodeService({
+    email,
+    scene,
+    captchaId: captchaId.value,
+    captchaCode: FormData.value.captcha
+  }).then((result) => {
     if (result.code === 0) {
       ElMessage.success('验证码已发送，请查收邮箱')
       codeCountdown.value = 60
@@ -107,8 +151,13 @@ function sendCode() {
     } else {
       ElMessage.error(result.message || '发送失败！')
     }
+    // 图形验证码一次性，无论成败都换一张
+    refreshCaptcha()
   })
-      .catch(() => ElMessage.warning('服务器响应失败！'))
+      .catch(() => {
+        ElMessage.warning('服务器响应失败！')
+        refreshCaptcha()
+      })
       .finally(() => {
         codeSending.value = false
       })
@@ -224,10 +273,17 @@ function clearInf() {
               <el-form-item prop="email" :error="errorsList.email">
                 <el-input :prefix-icon="Message" placeholder="请输入邮箱" v-model="FormData.email"/>
               </el-form-item>
+              <el-form-item prop="captcha" :error="errorsList.captcha">
+                <div class="code-row">
+                  <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="FormData.captcha"/>
+                  <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
+                       @click="refreshCaptcha"/>
+                </div>
+              </el-form-item>
               <el-form-item prop="emailCode" :error="errorsList.emailCode">
                 <div class="code-row">
                   <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
-                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode">
+                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode('register')">
                     {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
                   </el-button>
                 </div>
@@ -272,11 +328,23 @@ function clearInf() {
             <!--重置密码-->
             <el-form ref="FormRef" size="large" v-else :model="FormData" :rules="FormDataRules">
               <h1 class="gradient-title">重置密码</h1>
-              <el-form-item prop="username" :error="errorsList.username">
-                <el-input :prefix-icon="User" placeholder="用户名" v-model="FormData.username"/>
+              <el-form-item prop="email" :error="errorsList.email">
+                <el-input :prefix-icon="Message" placeholder="注册时使用的邮箱" v-model="FormData.email"/>
               </el-form-item>
-              <el-form-item prop="resetPassword" :error="errorsList.resetPassword">
-                <el-input :prefix-icon="Lock" type="password" placeholder="重置码" v-model="FormData.resetPassword"/>
+              <el-form-item prop="captcha" :error="errorsList.captcha">
+                <div class="code-row">
+                  <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="FormData.captcha"/>
+                  <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
+                       @click="refreshCaptcha"/>
+                </div>
+              </el-form-item>
+              <el-form-item prop="emailCode" :error="errorsList.emailCode">
+                <div class="code-row">
+                  <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
+                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode('reset')">
+                    {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
+                  </el-button>
+                </div>
               </el-form-item>
               <el-form-item prop="password" :error="errorsList.password">
                 <el-input :prefix-icon="Lock" type="password" placeholder="新密码（60位以内）" show-password
@@ -304,6 +372,15 @@ function clearInf() {
   display: flex;
   gap: 8px;
   width: 100%;
+
+  .captcha-img {
+    height: 40px;
+    width: 130px;
+    border-radius: 8px;
+    cursor: pointer;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
 
   .el-input {
     flex: 1;

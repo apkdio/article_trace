@@ -5,8 +5,11 @@ import {userInfoStore} from "@/stores/userInfo.js";
 export const registerService = (registerData) => {
     return request.post('/user/register', registerData)
 }
-export const sendEmailCodeService = (email) => {
-    return request.post('/user/email/code', {email})
+export const getCaptchaService = () => {
+    return request.get('/user/captcha')
+}
+export const sendEmailCodeService = (data) => {
+    return request.post('/user/email/code', data)
 }
 export const loginService = (loginData) => {
     return request.post('/user/login', loginData)

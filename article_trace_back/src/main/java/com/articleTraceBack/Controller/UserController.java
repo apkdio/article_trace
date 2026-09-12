@@ -1,5 +1,6 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
@@ -28,29 +29,60 @@ public class UserController {
 
     private final UserService userService;
     private final EmailCodeService emailCodeService;
+    private final CaptchaService captchaService;
     @Value("${spring.application.admin.defaultUser}")
     private String defaultUser;
     @Value("${Password.masterPass}")
     private String masterPassword;
 
-    public UserController(UserService userService, EmailCodeService emailCodeService) {
+    public UserController(UserService userService, EmailCodeService emailCodeService,
+                          CaptchaService captchaService) {
         this.userService = userService;
         this.emailCodeService = emailCodeService;
+        this.captchaService = captchaService;
     }
 
     /**
-     * 发送邮箱验证码（注册场景）。
+     * 生成图形验证码（人机校验，发送邮箱验证码前使用）。
+     */
+    @GetMapping("/captcha")
+    public Result<Map<String, String>> captcha() {
+        return Result.success(captchaService.generate());
+    }
+
+    /**
+     * 发送邮箱验证码。
+     *
+     * <p>需先通过图形验证码（人机校验）；{@code scene} 默认 register，找回密码传 reset。</p>
      */
     @PostMapping("/email/code")
     public Result<String> sendEmailCode(@RequestBody(required = false) Map<String, String> body) {
         String email = (body == null) ? null : body.get("email");
+        String scene = (body == null) ? null : body.getOrDefault("scene", EmailCodeService.SCENE_REGISTER);
+        String captchaId = (body == null) ? null : body.get("captchaId");
+        String captchaCode = (body == null) ? null : body.get("captchaCode");
+
+        // 1. 人机校验（图形验证码，一次性）
+        if (!captchaService.verify(captchaId, captchaCode)) {
+            return Result.error("图形验证码错误或已过期！");
+        }
+        // 2. 邮箱格式
         if (email == null || email.isBlank()) {
             return Result.error("邮箱不能为空！");
         }
         if (!EMAIL_PATTERN.matcher(email.trim()).matches()) {
             return Result.error("邮箱格式不正确！");
         }
-        if (!emailCodeService.send(email, EmailCodeService.SCENE_REGISTER)) {
+        // 3. 场景校验
+        if (EmailCodeService.SCENE_RESET.equals(scene)) {
+            if (userService.findUserByEmail(email.trim()) == null) {
+                return Result.error("该邮箱尚未注册！");
+            }
+        } else {
+            scene = EmailCodeService.SCENE_REGISTER;
+        }
+        // 4. 发码
+        if (!emailCodeService.send(email, scene)) {
             return Result.error("发送过于频繁，请稍后再试！");
         }
         return Result.success("验证码已发送");
@@ -73,13 +105,18 @@ public class UserController {
             error.put("confirmPassword", "两次密码不一致！");
             return Result.error(error);
         }
+        // 先查占用，避免无效请求白白消耗验证码
+        if (userService.findUserByName(username) != null) {
+            error.put("username", "用户名已占用！");
+            return Result.error(error);
+        }
+        if (userService.findUserByEmail(email) != null) {
+            error.put("email", "该邮箱已被注册！");
+            return Result.error(error);
+        }
         // 邮箱验证码：一次性，校验成功即失效
         if (!emailCodeService.verify(email, EmailCodeService.SCENE_REGISTER, emailCode)) {
             error.put("emailCode", "验证码错误或已过期！");
-            return Result.error(error);
-        }
-        if (userService.findUserByName(username) != null) {
-            error.put("username", "用户名已占用！");
             return Result.error(error);
         }
         // 注册一律为读者；成为作者请走「申请成为作者」
@@ -243,30 +280,35 @@ public class UserController {
     @PostMapping("/forgetPass")
     public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo) {
         Map<String, Object> error = new HashMap<>();
-        String username = passInfo.getUsername();
-        if (userService.findUserByName(username) != null) {
-            String securePass = passInfo.getResetPassword();
-            if (userService.checkPass(securePass, username, "reset_pass")) {
-                String newPass = passInfo.getPassword();
-                String confirmPass = passInfo.getConfirmPassword();
-                if (newPass.equals(confirmPass)) {
-                    User user = new User();
-                    user.setUsername(username);
-                    user.setPassword(newPass);
-                    if (userService.update(user, 1)) {
-                        return Result.success();
-                    }
-                    error.put("error", "设置新密码失败！请重试！");
-                    return Result.error(error);
-                }
-                error.put("confirmPassword", "两次密码不一致！");
-                return Result.error(error);
-            }
-            error.put("resetPassword", "重置码错误！");
+        String email = passInfo.getEmail();
+        String emailCode = passInfo.getEmailCode();
+        String newPass = passInfo.getPassword();
+        String confirmPass = passInfo.getConfirmPassword();
+
+        if (!newPass.equals(confirmPass)) {
+            error.put("confirmPassword", "两次密码不一致！");
             return Result.error(error);
         }
-        error.put("username", "用户名不存在！");
-        return Result.error(error);
+        // 邮箱验证码（一次性，校验成功即失效）
+        if (!emailCodeService.verify(email, EmailCodeService.SCENE_RESET, emailCode)) {
+            error.put("emailCode", "验证码错误或已过期！");
+            return Result.error(error);
+        }
+        User user = userService.findUserByEmail(email);
+        if (user == null) {
+            error.put("email", "该邮箱尚未注册！");
+            return Result.error(error);
+        }
+        User update = new User();
+        update.setUsername(user.getUsername());
+        update.setPassword(newPass);
+        if (!userService.update(update, 1)) {
+            error.put("error", "设置新密码失败！请重试！");
+            return Result.error(error);
+        }
+        // 改密后让其现有登录态失效
+        userService.deleteRedisToken(user.getUsername());
+        return Result.success();
     }
 
     @GetMapping("/logout")

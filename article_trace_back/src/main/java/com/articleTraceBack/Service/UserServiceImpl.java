@@ -232,6 +232,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User findUserByEmail(String email) {
+        if (StringUtils.isBlank(email)) {
+            return null;
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("email", email.trim());
+        List<User> users = userMapper.selectList(queryWrapper);
+        // 历史数据可能同邮箱多账号，取首条，避免 selectOne 抛异常
+        return users.isEmpty() ? null : users.get(0);
+    }
+
+    @Override
     public boolean deleteUser(int id) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id", id);

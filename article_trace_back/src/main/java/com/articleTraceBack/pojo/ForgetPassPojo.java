@@ -1,27 +1,26 @@
 package com.articleTraceBack.pojo;
 
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
+/**
+ * 找回密码请求体（邮箱 + 验证码方式）。
+ */
 @Data
 public class ForgetPassPojo {
-    @NotEmpty
-    @NotNull
-    private String username;
 
-    @NotNull
-    @NotEmpty
-    private String resetPassword;
+    @NotEmpty(message = "不能为空！")
+    private String email;
 
-    @NotNull
-    @NotEmpty
-    @Pattern(regexp = "^\\S{1,72}$",message = "长度不符合！")
+    @NotEmpty(message = "不能为空！")
+    private String emailCode;
+
+    @NotEmpty(message = "不能为空！")
+    @Pattern(regexp = "^\\S{1,72}$", message = "长度不符合！")
     private String password;
 
-    @NotNull
-    @NotEmpty
-    @Pattern(regexp = "^\\S{1,72}$",message = "长度不符合！")
+    @NotEmpty(message = "不能为空！")
+    @Pattern(regexp = "^\\S{1,72}$", message = "长度不符合！")
     private String confirmPassword;
 }
