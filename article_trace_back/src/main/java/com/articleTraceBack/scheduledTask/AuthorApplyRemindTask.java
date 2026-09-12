@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * 作者申请待审提醒任务。
  *
- * <p>每天凌晨检查是否有待审批的作者申请，有则向站长发送提醒（场景 {@code author-apply-remind}
+ * <p>每 12 小时检查是否有待审批的作者申请，有则向站长发送提醒（场景 {@code author-apply-remind}
  * 在配置中为 mail，即只发邮件，不产生站内信）。</p>
  */
 @Slf4j
@@ -33,7 +33,7 @@ public class AuthorApplyRemindTask {
         this.notificationService = notificationService;
     }
 
-    @Scheduled(cron = "${author-apply.remindCron:0 0 1 * * ?}")
+    @Scheduled(cron = "${author-apply.remindCron:0 0 0/12 * * ?}")
     public void remindPendingApplies() {
         try {
             int pending = applyService.pendingCount();
