@@ -57,6 +57,24 @@ function refreshCaptcha() {
   loadCaptcha()
 }
 
+// 登录防爆破：失败达阈值后要求图形验证码；连续失败过多会被短暂锁定
+const loginNeedCaptcha = ref(false)
+const blockedSeconds = ref(0)
+let blockTimer = null
+
+function startBlockCountdown(seconds) {
+  blockedSeconds.value = seconds
+  if (blockTimer) clearInterval(blockTimer)
+  blockTimer = setInterval(() => {
+    blockedSeconds.value -= 1
+    if (blockedSeconds.value <= 0) {
+      clearInterval(blockTimer)
+      blockTimer = null
+      blockedSeconds.value = 0
+    }
+  }, 1000)
+}
+
 // 动画标志位
 const isAnimating = ref(false)
 // 定义是否首次载入
@@ -80,7 +98,10 @@ const FormDataRules = computed(() => {
   if (isRegister.value) {
     return {
       username: [{required: true, message: "请输入用户名！"}],
-      password: [{required: true, message: "请输入密码！"}]
+      password: [{required: true, message: "请输入密码！"}],
+      ...(loginNeedCaptcha.value
+          ? {captcha: [{required: true, message: '请输入图形验证码！', trigger: 'blur'}]}
+          : {})
     }
   } else {
     return {
@@ -118,6 +139,11 @@ watch([isRegister, resetPass], () => {
   // 注册/重置表单需要图形验证码，切换时换一张（图形码一次性）
   if (!isRegister.value || resetPass.value) refreshCaptcha()
 }, {immediate: true})
+
+// 登录被要求出示图形码时，立即加载一张
+watch(loginNeedCaptcha, (need) => {
+  if (need) refreshCaptcha()
+})
 
 
 function sendCode(scene) {
@@ -186,8 +212,15 @@ function login() {
   isLoading.value = true
   FormRef.value.validate((valid) => {
     if (valid) {
-      loginService(FormData.value).then(async (result) => {
+      const payload = {...FormData.value}
+      // 只有被要求时后端才校验图形码
+      if (loginNeedCaptcha.value) {
+        payload.captchaId = captchaId.value
+        payload.captchaCode = FormData.value.captcha
+      }
+      loginService(payload).then(async (result) => {
         if (result.code === 0) {
+          loginNeedCaptcha.value = false
           ElMessage.success("登录成功！")
           tokenStorage().processed = false
           tokenStorage().setToken(result.data.token)
@@ -200,9 +233,25 @@ function login() {
           }, 800)
         } else {
           isLoading.value = false
-          errorsList.value = result.message || {}
-          if (result.message.error) {
-            ElMessage.error(result.message.error)
+          const msg = result.message || {}
+          errorsList.value = msg
+
+          if (msg.blocked) {
+            startBlockCountdown(msg.blocked * 60)
+            ElMessage.error(`登录尝试过于频繁，请 ${msg.blocked} 分钟后再试！`)
+          } else if (msg.needCaptcha) {
+            // 再来一次就需要图形码了；本次若已出示过，图形码也已被消费，换一张
+            loginNeedCaptcha.value = true
+            refreshCaptcha()
+            if (msg.remaining !== undefined && msg.remaining <= 2) {
+              ElMessage.warning(`再失败 ${msg.remaining} 次将锁定 5 分钟`)
+            }
+          } else if (loginNeedCaptcha.value) {
+            // 用户名/密码错了：本次图形码已通过并被消费，换一张
+            refreshCaptcha()
+          }
+          if (msg.error) {
+            ElMessage.error(msg.error)
           }
         }
       })
@@ -306,6 +355,15 @@ function clearInf() {
                 <el-input :prefix-icon="Lock" type="password" placeholder="密码" show-password
                           v-model="FormData.password"/>
               </el-form-item>
+              <el-form-item v-if="loginNeedCaptcha" prop="captcha" :error="errorsList.captcha">
+                <div class="code-row">
+                  <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="FormData.captcha"/>
+                  <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
+                       @click="refreshCaptcha"/>
+                </div>
+              </el-form-item>
+              <el-alert v-if="blockedSeconds > 0" type="error" :closable="false" show-icon
+                        :title="`登录已被锁定，请 ${blockedSeconds} 秒后再试`" class="block-alert"/>
               <el-checkbox v-model="FormData.rememberMe" :true-value="1" :false-value="0">
                 当前登录时效：{{ FormData.rememberMe === 1 ? "(72小时)" : "(24小时)" }}
               </el-checkbox>
@@ -314,7 +372,8 @@ function clearInf() {
                 <el-link :underline="'never'" class="small-text" @click="resetPass = true; clearInf()">忘记密码？
                 </el-link>
               </div>
-              <el-button class="submit-btn login-gradient" :loading="isLoading" type="primary" @click="login">登 录
+              <el-button class="submit-btn login-gradient" :loading="isLoading" type="primary"
+                         :disabled="blockedSeconds > 0" @click="login">登 录
               </el-button>
               <div class="footer-ops">
                 <el-link :underline="'never'" class="el-link__inner"
@@ -505,6 +564,11 @@ function clearInf() {
       box-shadow: 0 0 0 1px rgba(245, 108, 108, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
     }
   }
+}
+
+.block-alert {
+  margin-bottom: 12px;
+  border-radius: 12px;
 }
 
 .submit-btn {

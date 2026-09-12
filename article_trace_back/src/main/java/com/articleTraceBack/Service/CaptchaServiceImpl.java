@@ -22,6 +22,9 @@ public class CaptchaServiceImpl implements CaptchaService {
     /** 有效期（秒） */
     private static final long TTL_SECONDS = 120;
     private static final String KEY_PREFIX = "captcha:";
+    /** 同一客户端每分钟最多拉取的图形验证码数量 */
+    private static final long RATE_LIMIT_PER_MINUTE = 30;
+    private static final String KEY_RATE = "captcha:rate:%s";
     private static final int WIDTH = 130;
     private static final int HEIGHT = 44;
     private static final int LENGTH = 4;
@@ -33,7 +36,11 @@ public class CaptchaServiceImpl implements CaptchaService {
     }
 
     @Override
-    public Map<String, String> generate() {
+    public Map<String, String> generate(String clientKey) {
+        if (!allowGenerate(clientKey)) {
+            log.warn("captcha generate rejected by rate limit: key={}", clientKey);
+            return null;
+        }
         SpecCaptcha captcha = new SpecCaptcha(WIDTH, HEIGHT, LENGTH);
         String code = captcha.text().toLowerCase(Locale.ROOT);
         String captchaId = UUID.randomUUID().toString().replace("-", "");
@@ -45,6 +52,28 @@ public class CaptchaServiceImpl implements CaptchaService {
         result.put("captchaId", captchaId);
         result.put("image", captcha.toBase64());
         return result;
+    }
+
+    /** 拉图频率限制：同一客户端每分钟最多 {@link #RATE_LIMIT_PER_MINUTE} 张 */
+    private boolean allowGenerate(String clientKey) {
+        if (clientKey == null || clientKey.isBlank()) {
+            // 拿不到指纹就不限流，宁可放过也不误伤
+            return true;
+        }
+        try {
+            String key = String.format(KEY_RATE, clientKey);
+            Long count = stringRedisTemplate.opsForValue().increment(key);
+            if (count == null) {
+                return true;
+            }
+            if (count == 1) {
+                stringRedisTemplate.expire(key, 1, TimeUnit.MINUTES);
+            }
+            return count <= RATE_LIMIT_PER_MINUTE;
+        } catch (Exception e) {
+            log.error("captcha rate limit check failed: key={}", clientKey, e);
+            return true;
+        }
     }
 
     @Override

@@ -13,9 +13,11 @@ public interface CaptchaService {
     /**
      * 生成一张图形验证码。
      *
-     * @return {@code captchaId}（回传校验用）与 {@code image}（data URI，可直接给 img src）
+     * @param clientKey 客户端指纹（IP+UA），用于限制拉图频率；可为 null
+     * @return {@code captchaId}（回传校验用）与 {@code image}（data URI，可直接给 img src）；
+     * 触发频率限制时返回 {@code null}
      */
-    Map<String, String> generate();
+    Map<String, String> generate(String clientKey);
 
     /**
      * 校验图形验证码；无论成败都立即失效（防止暴力尝试）。

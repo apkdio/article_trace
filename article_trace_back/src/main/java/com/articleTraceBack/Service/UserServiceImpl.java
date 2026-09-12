@@ -240,7 +240,7 @@ public class UserServiceImpl implements UserService {
         queryWrapper.eq("email", email.trim());
         List<User> users = userMapper.selectList(queryWrapper);
         // 历史数据可能同邮箱多账号，取首条，避免 selectOne 抛异常
-        return users.isEmpty() ? null : users.get(0);
+        return users.isEmpty() ? null : users.getFirst();
     }
 
     @Override

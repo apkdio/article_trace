@@ -2,6 +2,9 @@ package com.articleTraceBack.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.util.DigestUtils;
+
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class IPUtil {
@@ -26,5 +29,17 @@ public class IPUtil {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * IP + User-Agent 的混合指纹（md5），用于按客户端维度限流与失败计数。
+     */
+    public static String mixOf(HttpServletRequest request) {
+        String ip = getClientIp(request);
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null || userAgent.isBlank()) {
+            userAgent = "unknown";
+        }
+        return DigestUtils.md5DigestAsHex((ip + "/" + userAgent).getBytes(StandardCharsets.UTF_8));
     }
 }

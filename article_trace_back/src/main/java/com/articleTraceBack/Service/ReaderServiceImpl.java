@@ -14,9 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -119,10 +117,6 @@ public class ReaderServiceImpl implements ReaderService {
 
     @Override
     public String getIPMixUA(HttpServletRequest request) {
-        String ip = IPUtil.getClientIp(request);
-        String userAgent = request.getHeader("User-Agent");
-        if (userAgent == null) userAgent = "unknown";
-        String raw = ip + "/" + userAgent;
-        return DigestUtils.md5DigestAsHex(raw.getBytes(StandardCharsets.UTF_8));
+        return IPUtil.mixOf(request);
     }
 }

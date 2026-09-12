@@ -67,6 +67,13 @@ public class User {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private int rememberMe;
 
+    // 登录防爆破：失败次数超阈值后随登录请求一起提交的图形验证码
+    @TableField(exist = false)
+    private String captchaId;
+
+    @TableField(exist = false)
+    private String captchaCode;
+
     @TableField(exist = false)
     private String userPicSrc;
 

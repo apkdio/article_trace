@@ -2,8 +2,11 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
+import com.articleTraceBack.Service.LoginAttemptService;
 import com.articleTraceBack.Service.UserService;
+import com.articleTraceBack.Utils.IPUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import com.articleTraceBack.pojo.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
@@ -30,24 +33,30 @@ public class UserController {
     private final UserService userService;
     private final EmailCodeService emailCodeService;
     private final CaptchaService captchaService;
+    private final LoginAttemptService loginAttemptService;
     @Value("${spring.application.admin.defaultUser}")
     private String defaultUser;
     @Value("${Password.masterPass}")
     private String masterPassword;
 
     public UserController(UserService userService, EmailCodeService emailCodeService,
-                          CaptchaService captchaService) {
+                          CaptchaService captchaService, LoginAttemptService loginAttemptService) {
         this.userService = userService;
         this.emailCodeService = emailCodeService;
         this.captchaService = captchaService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     /**
      * 生成图形验证码（人机校验，发送邮箱验证码前使用）。
      */
     @GetMapping("/captcha")
-    public Result<Map<String, String>> captcha() {
-        return Result.success(captchaService.generate());
+    public Result<Map<String, String>> captcha(HttpServletRequest request) {
+        Map<String, String> captcha = captchaService.generate(IPUtil.mixOf(request));
+        if (captcha == null) {
+            return Result.error("请求过于频繁，请稍后再试！");
+        }
+        return Result.success(captcha);
     }
 
     /**
@@ -137,8 +146,28 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(@RequestBody @Validated(User.login.class) User user) {
+    public Result<Map<String, Object>> login(@RequestBody @Validated(User.login.class) User user,
+                                             HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
+        String clientKey = IPUtil.mixOf(request);
+
+        // 1. 黑名单：连续失败过多，直接拒绝
+        long blockedSeconds = loginAttemptService.blockRemainingSeconds(clientKey);
+        if (blockedSeconds > 0) {
+            long minutes = (blockedSeconds + 59) / 60;
+            error.put("blocked", minutes);
+            error.put("error", "登录尝试过于频繁，请 " + minutes + " 分钟后再试！");
+            return Result.error(error);
+        }
+
+        // 2. 失败超过阈值后必须出示图形验证码；图形码错误不计入失败次数
+        boolean needCaptcha = loginAttemptService.needCaptcha(clientKey);
+        if (needCaptcha && !captchaService.verify(user.getCaptchaId(), user.getCaptchaCode())) {
+            error.put("captcha", "图形验证码错误或已过期！");
+            error.put("needCaptcha", true);
+            return Result.error(error);
+        }
+
         String username = user.getUsername();
         String password = user.getPassword();
         int rememberMe = user.getRememberMe();
@@ -163,15 +192,27 @@ public class UserController {
                     );
                 }
                 userService.updateLoginTime(username);
+                // 登录成功立即清零，避免正常用户被历史失败继续累计
+                loginAttemptService.clear(clientKey);
                 Map<String, Object> loginResult = new HashMap<>();
                 loginResult.put("token", token);
                 loginResult.put("lastLogin", lastLogin);
                 return Result.success(loginResult);
             }
-            error.put("password", "密码错误！");
-            return Result.error(error);
+            return loginFailure(error, clientKey, "password", "密码错误！");
         }
-        error.put("username", "用户名不存在！");
+        return loginFailure(error, clientKey, "username", "用户名不存在！");
+    }
+
+    /**
+     * 记一次登录失败，并把「下次是否需要图形码 / 距离锁定还剩几次」带回前端。
+     */
+    private Result<Map<String, Object>> loginFailure(Map<String, Object> error, String clientKey,
+                                                     String field, String message) {
+        long failures = loginAttemptService.recordFailure(clientKey);
+        error.put(field, message);
+        error.put("needCaptcha", failures >= LoginAttemptService.CAPTCHA_THRESHOLD);
+        error.put("remaining", Math.max(0, LoginAttemptService.BLOCK_THRESHOLD - failures));
         return Result.error(error);
     }
 

@@ -23,6 +23,9 @@
 # 敏感配置文件（不提交）
 **/application.yml
 
+# 内部设计/待办文档（含安全实现细节，不入库）
+article_trace_back/docs/
+
 # 系统文件
 .DS_Store
 Thumbs.db
