@@ -115,6 +115,50 @@ CREATE TABLE `user` (
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `notification`
+--
+
+DROP TABLE IF EXISTS `notification`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notification` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `title` varchar(120) NOT NULL COMMENT '标题',
+  `sender_id` int DEFAULT NULL COMMENT '发送方: -1=系统消息; 正整数=用户ID; NULL=发送方已注销',
+  `receiver_id` int DEFAULT NULL COMMENT '接收方: 用户ID; NULL=接收方已注销',
+  `content` text COMMENT '正文',
+  `create_time` datetime NOT NULL COMMENT '发送时间',
+  `is_read` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否已读: 0-未读 1-已读',
+  PRIMARY KEY (`id`),
+  KEY `idx_receiver_read_time` (`receiver_id`,`is_read`,`create_time`),
+  KEY `idx_notification_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='站内信';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `notification_mail`
+--
+
+DROP TABLE IF EXISTS `notification_mail`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notification_mail` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `to_email` varchar(128) NOT NULL COMMENT '收件邮箱',
+  `subject` varchar(200) NOT NULL COMMENT '主题',
+  `content` text COMMENT '正文',
+  `status` varchar(16) NOT NULL DEFAULT 'pending' COMMENT '状态: pending/sent/failed',
+  `retry_count` int NOT NULL DEFAULT '0' COMMENT '已重试次数',
+  `error` varchar(500) DEFAULT NULL COMMENT '失败原因',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `sent_time` datetime DEFAULT NULL COMMENT '发送成功时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_mail_status_retry` (`status`,`retry_count`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='邮件投递记录';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

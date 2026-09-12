@@ -102,3 +102,18 @@ email:
   from: ${MAIL_FROM:}            # 发件人，留空则用 spring.mail.username
   testTo: ${MAIL_TEST_TO:}       # 发信链路测试的默认收件人
   subjectPrefix: "[文迹]"        # 邮件主题前缀
+notification:
+  scenes:                        # 场景 → 投递渠道: inbox(仅站内) / mail(仅邮件) / both / none
+    author-apply-submitted: both
+    author-apply-approved: inbox
+    author-apply-rejected: inbox
+    author-apply-remind: mail
+    email-code: mail
+  defaultChannel: inbox          # 未配置场景的默认渠道
+  mail:
+    enabled: true                # 邮件渠道总开关（关闭后 mail/both 降级为仅站内）
+    maxRetry: 2                  # 邮件最多重发次数
+    retryCron: "0 */10 * * * ?"  # 失败邮件重试扫描
+  cleanup:
+    cron: "0 0 3 * * ?"          # 站内信清理任务
+    keepDays: 30                 # 站内信保留天数
