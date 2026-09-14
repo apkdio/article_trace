@@ -135,8 +135,14 @@ public class UserController {
         registerUser.setPassword(password);
         registerUser.setEmail(email);
         registerUser.setType(ROLE_READER);
-        if (userService.userRegister(registerUser)) {
-            return Result.success();
+        try {
+            if (userService.userRegister(registerUser)) {
+                return Result.success();
+            }
+        } catch (DuplicateKeyException e) {
+            // 并发下两个请求可能同时通过查重，由唯一索引（uk_email）兜底
+            error.put("email", "该邮箱已被注册！");
+            return Result.error(error);
         }
         error.put("error", "注册失败！请重试！");
         return Result.error(error);
@@ -251,8 +257,8 @@ public class UserController {
                     return Result.success();
                 }
             } catch (DuplicateKeyException e) {
-                // 并发下由唯一索引 uk_nickname 兜底（空昵称视为 NULL，不冲突）
-                error.put("nickname", "昵称已存在！");
+                // 并发下由唯一索引兜底：昵称（uk_nickname）或邮箱（uk_email）
+                error.put("nickname", "昵称或邮箱已存在！");
                 return Result.error(error);
             }
             error.put("error", "更新失败！请重试！");
