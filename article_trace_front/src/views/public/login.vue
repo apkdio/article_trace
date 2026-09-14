@@ -8,7 +8,6 @@ import {
   registerService,
   sendEmailCodeService
 } from "@/api/user.js";
-import {showResetPassword} from "@/api/registerSuccess.js";
 import router from "@/router/index.js";
 import {tokenStorage} from "@/stores/tokenStorage.js";
 import {userInfoStore} from "@/stores/userInfo.js";
@@ -222,7 +221,7 @@ function register() {
     if (valid) {
       registerService(FormData.value).then((result) => {
         if (result.code === 0) {
-          showResetPassword(result.data?.success)
+          ElMessage.success('注册成功，请登录')
           isRegister.value = true
           FormRef.value.resetFields()
         } else {

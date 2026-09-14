@@ -54,7 +54,6 @@ public class AuthorApplyServiceTest {
         user.setUsername(testUsername);
         user.setNickname("申请测试");
         user.setPassword("x");
-        user.setResetPass("x");
         user.setEmail("");
         user.setType(2); // 读者
         user.setCreateTime(LocalDateTime.now());

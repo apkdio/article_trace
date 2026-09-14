@@ -194,7 +194,6 @@ services:
       # 默认站长账号：用户名/邮箱/昵称非敏感，保留默认值
       DEFAULT_USER_ID: ${DEFAULT_USER_ID:-apkdio}
       DEFAULT_USER_PASS: ${DEFAULT_USER_PASS:?请在 .env 中设置 DEFAULT_USER_PASS}
-      DEFAULT_USER_RESET_PASS: ${DEFAULT_USER_RESET_PASS:?请在 .env 中设置 DEFAULT_USER_RESET_PASS}
       DEFAULT_USER_EMAIL: ${DEFAULT_USER_EMAIL:-article_trace@trace.com}
       DEFAULT_USER_NICK_NAME: ${DEFAULT_USER_NICK_NAME:-测试昵称}
       # agent 可选开关：false 时全部降级，不影响主业务

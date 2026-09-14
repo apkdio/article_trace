@@ -2,7 +2,6 @@ package com.articleTraceBack.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
-import com.articleTraceBack.Utils.GenResetPass;
 import com.articleTraceBack.Utils.JwtUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.UserMapper;
@@ -32,18 +31,16 @@ public class UserServiceImpl implements UserService {
     private long shortTime;
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
-    private final GenResetPass genSecurePass;
     private final RustFsUtil rustFsUtil;
     private final ArticleService articleService;
     private final AgentSessionService agentSessionService;
 
-    public UserServiceImpl(UserMapper userMapper, GenResetPass genSecurePass,
+    public UserServiceImpl(UserMapper userMapper,
                            JwtUtil jwtUtil, RustFsUtil rustFsUtil,
                            StringRedisTemplate stringRedisTemplate, ArticleService articleService,
                            AgentSessionService agentSessionService) {
         this.userMapper = userMapper;
         this.articleService = articleService;
-        this.genSecurePass = genSecurePass;
         this.jwtUtil = jwtUtil;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplate = stringRedisTemplate;
@@ -71,11 +68,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean userRegister(User user) {
         String encoderPass = BcryptUtils.encodePass(user.getPassword());
-        String resetPass = BcryptUtils.encodePass(user.getResetPass());
         LocalDateTime now = LocalDateTime.now();
         user.setCreateTime(now);
         user.setPassword(encoderPass);
-        user.setResetPass(resetPass);
         return userMapper.insert(user) == 1;
     }
 
@@ -117,11 +112,6 @@ public class UserServiceImpl implements UserService {
         queryWrapper.eq("username", username).select(checkColumn);
         String userOriPass = (String) userMapper.selectObjs(queryWrapper).getFirst();
         return BcryptUtils.checkPass(oriPass, userOriPass);
-    }
-
-    @Override
-    public String genResetPassOri(int i) {
-        return genSecurePass.generatePass(i);
     }
 
     @Override

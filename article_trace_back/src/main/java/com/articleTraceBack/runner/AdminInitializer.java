@@ -28,8 +28,6 @@ public class AdminInitializer implements CommandLineRunner {
     private String adminUsername;
     @Value("${spring.application.admin.defaultPass}")
     private String adminPassword;
-    @Value("${spring.application.admin.defaultResetPass}")
-    private String adminResetPass;
     @Value("${spring.application.admin.defaultEmail}")
     private String adminEmail;
     @Value("${spring.application.admin.defaultNickName}")
@@ -59,10 +57,8 @@ public class AdminInitializer implements CommandLineRunner {
 
         // 3. 参数校验
         if (adminUsername == null || adminUsername.trim().isEmpty() ||
-                adminPassword == null || adminPassword.trim().isEmpty() ||
-                adminResetPass == null || adminResetPass.trim().isEmpty()) {
-            log.warn("default username or password or reset_password are not configured ! " +
-                    "skip auto create.");
+                adminPassword == null || adminPassword.trim().isEmpty()) {
+            log.warn("default username or password are not configured ! skip auto create.");
             throw new IllegalStateException("unable to create default administrator! check your configuration in (application.yaml) !");
         }
 
@@ -70,7 +66,6 @@ public class AdminInitializer implements CommandLineRunner {
         User admin = new User();
         admin.setUsername(adminUsername);
         admin.setPassword(BcryptUtils.encodePass(adminPassword)); // BCrypt 加密
-        admin.setResetPass(BcryptUtils.encodePass(adminResetPass)); // BCrypt 加密
         admin.setCreateTime(LocalDateTime.now());
         admin.setEmail(adminEmail);
         admin.setNickname(adminNickname);

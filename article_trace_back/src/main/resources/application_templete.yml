@@ -43,7 +43,6 @@ spring:
       enableAutoConfig: true
       defaultUser: ${DEFAULT_USER_ID} # 默认用户名
       defaultPass: ${DEFAULT_USER_PASS} # 默认密码
-      defaultResetPass: ${DEFAULT_USER_RESET_PASS} # 默认重置密码
       defaultEmail: ${DEFAULT_USER_EMAIL} # 默认邮箱
       defaultNickName: ${DEFAULT_USER_NICK_NAME} # 默认昵称
   datasource:

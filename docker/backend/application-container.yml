@@ -39,7 +39,6 @@ spring:
       enableAutoConfig: true
       defaultUser: ${DEFAULT_USER_ID:apkdio}
       defaultPass: ${DEFAULT_USER_PASS}
-      defaultResetPass: ${DEFAULT_USER_RESET_PASS}
       defaultEmail: ${DEFAULT_USER_EMAIL:article_trace@trace.com}
       defaultNickName: ${DEFAULT_USER_NICK_NAME:测试昵称}
   datasource:

@@ -102,7 +102,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public Result<Map<String, Object>> register(@RequestBody @Validated RegisterUserPojo user) {
+    public Result<String> register(@RequestBody @Validated RegisterUserPojo user) {
         Map<String, Object> error = new HashMap<>();
         String username = user.getUsername();
         String password = user.getPassword();
@@ -134,12 +134,8 @@ public class UserController {
         registerUser.setPassword(password);
         registerUser.setEmail(email);
         registerUser.setType(ROLE_READER);
-        String resetPassOri = userService.genResetPassOri(10);
-        registerUser.setResetPass(resetPassOri);
         if (userService.userRegister(registerUser)) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("success", resetPassOri);
-            return Result.success(map);
+            return Result.success();
         }
         error.put("error", "注册失败！请重试！");
         return Result.error(error);

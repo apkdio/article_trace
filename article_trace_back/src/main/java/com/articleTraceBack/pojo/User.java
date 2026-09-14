@@ -2,7 +2,6 @@ package com.articleTraceBack.pojo;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
@@ -28,10 +27,6 @@ public class User {
     @Pattern(regexp = "^\\S{1,72}$", message = "为1-72个非空白字符！")
     @NotEmpty(groups = login.class)
     private String password; // 用户密码
-
-    @TableField("reset_pass")
-    @JsonIgnore
-    private String resetPass; // 忘记密码时的校验密码
 
     @NotEmpty
     @Pattern(regexp = "^\\S{1,10}$", message = "为1-10个非空白字符！")

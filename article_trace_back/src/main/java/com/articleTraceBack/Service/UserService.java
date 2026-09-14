@@ -19,8 +19,6 @@ public interface UserService {
 
     boolean checkPass(String oriPass, String username, String checkColumn);
 
-    String genResetPassOri(int i);
-
     boolean isValidFile(MultipartFile file);
 
     boolean upload(MultipartFile userLogo, String username);
