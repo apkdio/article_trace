@@ -133,7 +133,7 @@ article_trace_back/
 
 ### 2. 用户模块（UserController / UserServiceImpl）
 
-- **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。
+- **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。注册时无需填昵称，后端会自动生成一个默认昵称（`文迹探索者` + 6 位随机串）。
 - **登录**：校验密码 → 签发 Token → 写 Redis → 记录最后登录时间。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 图片桶。
@@ -407,15 +407,15 @@ notification:
 | id | int | 主键，自增 |
 | username | varchar(20) | 用户名（唯一） |
 | password | varchar(60) | 密码（BCrypt） |
-| nickname | varchar(15) | 昵称 |
-| email | varchar(128) | 邮箱 |
+| nickname | varchar(15) | 昵称（**允许重复**；注册未填时后端生成「文迹探索者+6 位随机串」）|
+| email | varchar(128) | 邮箱（NOT NULL，唯一）|
 | user_pic | varchar(128) | 头像文件名 |
 | create_time / update_time / last_login | datetime | 时间戳 |
 | type | int | 0 站长 / 1 作者 / 2 读者 |
-| nickname_uniq | varchar(15) | **生成列**：`IF(nickname = '', NULL, nickname)`，仅为承载唯一约束 |
-| email_uniq | varchar(128) | **生成列**：`IF(email = '', NULL, email)`，同上 |
 
-> 索引：`username` 唯一；`nickname_uniq` 唯一（`uk_nickname`）；`email_uniq` 唯一（`uk_email`）。用生成列是因为 `nickname` / `email` 默认值都是 `''`，直接加唯一索引会导致**第二个用户注册就失败**；空值映射为 `NULL` 后不参与唯一性。
+> 索引：`username` 唯一（`username`）；`email` 唯一（`uk_email`）。
+>
+> **昵称不做唯一约束**——昵称重复是正常现象（按昵称查询的作者页取首条）。邮箱则是必填项：注册时 `RegisterUserPojo` 校验，改资料时 `User` 的 `@NotEmpty(groups = update.class)` 校验，DB 侧再用 `NOT NULL + UNIQUE` 兜底。
 
 ### `category` 分类表
 
