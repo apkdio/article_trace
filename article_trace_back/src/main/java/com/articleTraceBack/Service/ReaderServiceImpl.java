@@ -97,7 +97,8 @@ public class ReaderServiceImpl implements ReaderService {
 
     @Override
     public User findUserByNickName(String nickName) {
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("nickname", nickName));
+        // nickname 无唯一索引，重复时取首条，避免 selectOne 抛 TooManyResultsException
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("nickname", nickName).last("limit 1"));
         if (user != null) {
             if (!Objects.equals(user.getUserPic(), "")) {
                 user.setUserPicSrc(rustFsUtil.getPciUrl(user.getUserPic()));

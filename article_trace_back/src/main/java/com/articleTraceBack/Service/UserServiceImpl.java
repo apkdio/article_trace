@@ -270,7 +270,8 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findUserByNickName(String nickName) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("nickname", nickName);
+        // nickname 无唯一索引，重复时取首条，避免 selectOne 抛 TooManyResultsException
+        queryWrapper.eq("nickname", nickName).last("limit 1");
         return userMapper.selectOne(queryWrapper);
     }
 

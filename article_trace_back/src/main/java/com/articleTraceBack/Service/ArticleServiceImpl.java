@@ -100,7 +100,8 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public Article findArticleByName(String articleTitle) {
         QueryWrapper<Article> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("title", articleTitle);
+        // title 没有唯一索引，历史数据可能同名；取首条而不是让 selectOne 抛 TooManyResultsException
+        queryWrapper.eq("title", articleTitle).last("limit 1");
         return articleMapper.selectOne(queryWrapper);
     }
 
