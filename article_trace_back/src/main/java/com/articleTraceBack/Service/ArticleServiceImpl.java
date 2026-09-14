@@ -245,11 +245,49 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
+    public boolean canTransfer(int from, int to, int roleType) {
+        boolean master = (roleType == ROLE_MASTER);
+        switch (to) {
+            case STATE_DRAFT:
+                // 任何已存在的状态都可以回到草稿（下架 / 撤回 / 放弃）
+                return from == STATE_DRAFT || from == STATE_PUBLISHED
+                        || from == STATE_PENDING || from == STATE_REJECTED;
+            case STATE_PENDING:
+                // 送审：草稿首投、已发布改后重送、已驳回改后重投
+                return from == STATE_DRAFT || from == STATE_PUBLISHED
+                        || from == STATE_REJECTED || from == STATE_PENDING;
+            case STATE_PUBLISHED:
+                // 仅站长：审核通过（2→1），或直接发布自己的草稿（0→1）
+                return master && (from == STATE_PENDING || from == STATE_DRAFT);
+            case STATE_REJECTED:
+                // 仅站长：驳回待审（2→3），或追回已误审发布的文章（1→3）
+                return master && (from == STATE_PENDING || from == STATE_PUBLISHED);
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public boolean updateState(int id, int state) {
+        Article raw = articleMapper.selectById(id);
+        if (raw == null || raw.getState() == null) {
+            return false;
+        }
+        // 审核入口只做「发布 / 驳回」两类动作；「撤回为草稿」属于作者侧操作，不走这里
+        if (state != STATE_PUBLISHED && state != STATE_REJECTED) {
+            log.warn("article assess rejected non-assess target: id={}, target={}", id, state);
+            return false;
+        }
+        // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3
+        if (!canTransfer(raw.getState(), state, ROLE_MASTER)) {
+            log.warn("illegal article state transfer rejected: id={}, {} -> {}", id, raw.getState(), state);
+            return false;
+        }
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
+                .eq("state", raw.getState())   // 条件更新：状态被并发改动过就失败
                 .set("state", state);
-        boolean updated = articleMapper.update(updateWrapper) == 1;
+        boolean updated = articleMapper.update(null, updateWrapper) == 1;
         if (updated) {
             // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除
             if (state == 1) {

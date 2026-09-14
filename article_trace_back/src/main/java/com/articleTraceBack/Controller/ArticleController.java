@@ -85,6 +85,10 @@ public class ArticleController {
         }
         if (categoryService.findById(categoryId) != null) {
             article.setCreateUser(uid);
+            // 新增不接受客户端 id（防止借 insertOrUpdate 覆盖他人文章）
+            article.setId(null);
+            // 目标状态由服务端按「草稿 / 提交」意图 + 角色决定，不信任请求体
+            article.setState(resolveTargetState(article.getState(), (int) userInfo.get("type")));
             if (articleService.articleAddOrUpdate(article, 0)) {
                 return Result.success();
             }
@@ -114,10 +118,17 @@ public class ArticleController {
             error.put("error", "文章不存在！");
             return Result.error(error);
         }
-        if (article.getState() == 0 || article.getState() == 1
-                || article.getState() == 2 || article.getState() == 3) {
+        {
             Map<String, Object> userInfo = ThreadLocalUtil.get();
             int uid = (int) userInfo.get("id");
+            int roleType = (int) userInfo.get("type");
+            // 目标状态由服务端决定，再校验当前状态能否流转过去
+            int target = resolveTargetState(article.getState(), roleType);
+            if (!articleService.canTransfer(art.getState(), target, roleType)) {
+                error.put("state", "当前文章状态不允许该操作！");
+                return Result.error(error);
+            }
+            article.setState(target);
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -148,8 +159,21 @@ public class ArticleController {
             error.put("categoryId", "文章类型不存在！");
             return Result.error(error);
         }
-        error.put("state", "非合理值！");
-        return Result.error(error);
+    }
+
+    /**
+     * 由「草稿 / 提交」意图 + 角色决定目标状态，不信任请求体里的具体数值。
+     *
+     * <p>前端仍沿用 state=0 表示「存为草稿」，其余一律按「提交」处理：
+     * 站长直接发布（1），其他人送审（2）。</p>
+     */
+    private int resolveTargetState(Integer requested, int roleType) {
+        if (requested != null && requested == ArticleService.STATE_DRAFT) {
+            return ArticleService.STATE_DRAFT;
+        }
+        return (roleType == ArticleService.ROLE_MASTER)
+                ? ArticleService.STATE_PUBLISHED
+                : ArticleService.STATE_PENDING;
     }
 
     @DeleteMapping("/delete")

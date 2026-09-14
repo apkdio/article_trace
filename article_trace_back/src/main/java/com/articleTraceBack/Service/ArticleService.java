@@ -44,7 +44,23 @@ public interface ArticleService {
                                               Integer categoryId, Integer state, Integer userId,
                                               String search, Integer searchType, String nickName);
 
+    /** 文章状态：0 草稿 / 1 已发布 / 2 待审核 / 3 已驳回 */
+    int STATE_DRAFT = 0;
+    int STATE_PUBLISHED = 1;
+    int STATE_PENDING = 2;
+    int STATE_REJECTED = 3;
+
+    /** 站长角色 type */
+    int ROLE_MASTER = 0;
+
     boolean updateState(int id, int state);
+
+    /**
+     * 判断某角色能否把文章状态从 {@code from} 流转到 {@code to}。
+     *
+     * <p>站长可跳过审核直接发布自己的草稿，因此该判断必须带角色维度。</p>
+     */
+    boolean canTransfer(int from, int to, int roleType);
 
     void addViews(String username, int articleId);
 
