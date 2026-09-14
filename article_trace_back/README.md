@@ -47,9 +47,12 @@ article_trace_back/
     │   │   ├── AgentSessionService.java / AgentSessionServiceImpl.java
     │   │   ├── NotificationService.java / NotificationServiceImpl.java
     │   │   ├── MailService.java / MailServiceImpl.java
+    │   │   ├── EmailCodeService.java / EmailCodeServiceImpl.java      # 邮箱验证码（注册/找回密码）
+    │   │   ├── CaptchaService.java / CaptchaServiceImpl.java          # 图形验证码（人机校验）
+    │   │   ├── LoginAttemptService.java / LoginAttemptServiceImpl.java # 登录失败计数与黑名单
     │   │   └── AuthorApplyService.java / AuthorApplyServiceImpl.java
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
-    │   │   ├── ArticleAgentClient.java      #   9 个 RPC 方法封装（容错 + 超时）
+    │   │   ├── ArticleAgentClient.java      #   7 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
     │   ├── mapper/                          # 数据访问层（MyBatis-Plus）
     │   │   ├── ArticleMapper.java           #   文章自定义 SQL（分页/统计/批量加浏览量）
@@ -68,7 +71,6 @@ article_trace_back/
     │   │   ├── PageBean.java                #   分页包装
     │   │   ├── WriterInfo.java              #   作者信息视图对象
     │   │   ├── AgentAskRequest.java         #   问答请求体
-    │   │   ├── AgentAskResult.java          #   问答结果
     │   │   ├── AgentMatchedArticle.java     #   问答命中的文章
     │   │   ├── AgentSession.java            #   会话摘要（列表项）
     │   │   ├── AgentChatMessage.java        #   会话消息
@@ -103,6 +105,7 @@ article_trace_back/
     │       ├── SyncSensitiveWordLoader.java #   敏感词库热更新
     │       ├── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
     │       ├── MailRetryTask.java           #   失败邮件重试
+    │       ├── AuthorApplyRemindTask.java   #   待审作者申请提醒（每 12 小时邮件站长）
     │       └── NotificationCleanupTask.java #   站内信清理（30 天）
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
@@ -139,13 +142,16 @@ article_trace_back/
 ### 3. 文章模块（ArticleController / ArticleServiceImpl）
 
 - **新增/更新**：标题 + 内容先做敏感词校验 → 内容以 JSON 形式上传 RustFS 内容桶（文件名 `时间戳-用户ID.json`）→ 数据库仅存文件名，读取时实时从 RustFS 拉取。
-- **封面**：独立上传至图片桶，预签名 URL 缓存于 Redis（3 天有效期）。
-- **审核**：站长通过 `assess` 接口将文章状态置为已发布（1）或驳回（3）。
+  - **新增不接受客户端传入的 `id`**（强制 `setId(null)`），避免借 `insertOrUpdate` 覆盖他人文章。
+  - **标题在同一作者内唯一**（`uk_user_title`）：应用层按 `(create_user, title)` 查重，并发冲突由唯一索引兜底并转成友好提示；不同作者可以同名。
+  - **目标状态由服务端决定**：请求体里的 `state` 只当作「草稿 / 提交」的意图（`resolveTargetState`），作者只能落到草稿(0) 或送审(2)，只有站长才能直接发布(1)。取值不在 `{0,1,2,3}` 内报「非合理值！」。
+- **封面**：独立上传至图片桶，预签名 URL 缓存于 Redis（3 天有效期）；**删除封面需该 key 属于当前用户的文章**，否则拒绝。
+- **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先按状态机校验当前状态能否流转（`2→1`、`2→3`、`1→3`），再带「当前状态」条件更新 —— 两个站长并发审批时只有先到者成功。
 - **删除**：级联删除 RustFS 图片/内容文件 + 清理 Redis 浏览量 + 删除数据库记录。
 
 ### 4. 分类模块（CategoryController / CategoryServiceImpl）
 
-作者创建分类，支持增删改查；删除分类时校验「仅创建人可删」。文章关联分类外键，分类删除后文章 `category_id` 置空。
+作者创建分类，支持增删改查；**更新与删除均校验「仅创建人可操作」**。分类名全局唯一（`uk_category_name`）。文章关联分类外键，分类删除后文章 `category_id` 置空。
 
 ### 5. 评论模块（ReaderController / ReaderServiceImpl）
 
@@ -211,10 +217,10 @@ agent 是**可选**依赖，由 `rpc.agent.enabled`（默认 `true`）统一控�
 
 | 方法 | 方向 | 作用 |
 |---|---|---|
-| `IngestArticle` | Java → agent | 单篇推送/覆盖（按 article.id 幂等，由定时任务批量阶段使用） |
+| `IngestArticle` | Java → agent | 单篇推送/覆盖（按 article.id 幂等）。**Java 侧未使用**，批量场景走 `BatchIngestArticles` |
 | `BatchIngestArticles` | Java → agent | 批量推送/覆盖 |
 | `DeleteArticles` | Java → agent | 删除若干篇（下线/删除时） |
-| `SyncArticles` | Java → agent | 全量/增量流式同步（客户端流式） |
+| `SyncArticles` | Java → agent | 全量/增量流式同步（客户端流式）。**Java 侧未使用**，对账走 `BatchIngestArticles` + `DeleteArticles` |
 | `Ask` | Java ⇄ agent | 检索 + LLM 流式生成答案（服务端流式） |
 | `ListSessions` | Java → agent | 列出会话（可选按 session_ids 过滤） |
 | `GetSessionMessages` | Java → agent | 获取会话历史消息 |
@@ -329,6 +335,12 @@ email:
   from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
   testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
   subjectPrefix: "[文迹]"            # 邮件主题前缀
+email:
+  from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
+  testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
+  subjectPrefix: "[文迹]"            # 邮件主题前缀
+author-apply:
+  remindCron: "0 0 0/12 * * ?"       # 每 12 小时检查待审作者申请，有则邮件提醒站长
 notification:
   scenes:                            # 场景 → 渠道: inbox(仅站内) / mail(仅邮件) / both / none
     author-apply-submitted: both
@@ -400,6 +412,9 @@ notification:
 | user_pic | varchar(128) | 头像文件名 |
 | create_time / update_time / last_login | datetime | 时间戳 |
 | type | int | 0 站长 / 1 作者 / 2 读者 |
+| nickname_uniq | varchar(15) | **生成列**：`IF(nickname = '', NULL, nickname)`，仅为承载唯一约束 |
+
+> 索引：`username` 唯一；`nickname_uniq` 唯一（`uk_nickname`）。用生成列是因为 `nickname` 默认值为 `''`，直接加唯一索引会导致**第二个用户注册就失败**；空昵称映射为 `NULL` 后不参与唯一性。
 
 ### `category` 分类表
 
@@ -410,6 +425,8 @@ notification:
 | category_alias | varchar(30) | 分类别名 |
 | create_user / last_update_user | int | 创建人 / 最后更新人 |
 | create_time / update_time | datetime | 时间戳 |
+
+> 索引：`category_name` 唯一（`uk_category_name`）；`create_user`、`last_update_user` 为外键索引。
 
 ### `article` 文章表
 
@@ -424,6 +441,8 @@ notification:
 | create_user | int | 创建人外键 |
 | create_time / update_time | datetime | 时间戳 |
 | views | bigint | 浏览量 |
+
+> 索引：`(create_user, title)` 唯一（`uk_user_title`）—— 标题**同一作者内唯一**，不同作者可同名。
 
 ### `comments` 评论表
 
@@ -462,6 +481,9 @@ notification:
 | review_user | int | 审批人 |
 | review_time | datetime | 审批时间 |
 | create_time | datetime | 提交时间 |
+| pending_flag | tinyint | **生成列**：`IF(status = 0, 1, NULL)`，仅为承载唯一约束 |
+
+> 索引：`(user_id, pending_flag)` 唯一（`uk_pending`）—— 保证「每个用户最多一条待审」；`NULL` 不参与唯一性，所以已通过/已拒绝的历史记录不受影响。另有 `(status, create_time)` 与 `user_id` 两个普通索引。
 
 ### `notification_mail` 邮件投递记录表
 
@@ -483,8 +505,11 @@ notification:
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/user/register` | 注册 |
-| POST | `/user/login` | 登录 |
+| GET | `/user/captcha` | 获取图形验证码（人机校验，发码前使用）|
+| POST | `/user/email/code` | 发送邮箱验证码（`scene=register\|reset`，需带 `captchaId`/`captchaCode`）|
+| POST | `/user/register` | 注册（校验邮箱验证码 + 邮箱唯一）|
+| POST | `/user/login` | 登录（失败 3 次后需携带图形验证码；10 次锁定 5 分钟）|
+| GET | `/user/loginCheck` | 登录态校验 |
 | GET | `/user/userInfo` | 获取个人信息 |
 | PATCH | `/user/update` | 更新信息 |
 | PATCH | `/user/updateUserLogo` | 上传头像 |
@@ -494,6 +519,7 @@ notification:
 | GET | `/user/accountManage` | 账号分页（站长） |
 | PATCH | `/user/changeType` | 变更身份（站长） |
 | DELETE | `/user/delete` | 删除账号（站长） |
+| DELETE | `/user/removeUserLogo` | 移除头像 |
 
 ### 文章 `/article`
 
@@ -598,6 +624,25 @@ mvn clean package && java -jar target/article_trace-*.jar
 在服务启动的工作目录下创建 `res/sensitive_words.txt`，一行一词。默认每 30 分钟检查一次文件变化并热更新，无需重启服务。
 
 ## 测试
+
+### 单元 / 集成测试清单
+
+除下面的 Ask 集成测试外，其余测试都不需要启动 agent：
+
+| 测试类 | 覆盖点 |
+|---|---|
+| `ArticleStateMachineTest` | 文章状态转移表（11 条合法 / 7 条非法）+ `updateState` 集成行为 |
+| `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
+| `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
+| `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
+| `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
+| `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
+| `AgentDisabledTest` | agent 关闭时主业务降级 |
+| `EmailUtilTest` · `MailServiceTest` | 发信链路与邮件投递重试（需 `-Dmail.to=` 才真发）|
+
+```bash
+mvn test
+```
 
 ### Ask 集成测试
 

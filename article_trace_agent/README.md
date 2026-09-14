@@ -67,7 +67,7 @@ article_trace_agent/
 │   └── path_tool.py / config_tool.py / log_tool.py / prompts_tool.py  # 支撑
 ├── server/                    # gRPC 服务
 │   ├── server.py              # 服务入口（python -m server.server）
-│   └── service_impl.py        # 6 个 RPC 方法实现
+│   └── service_impl.py        # 9 个 RPC 方法实现
 ├── config/                    # agent / rag / chroma / prompts 配置（YAML，默认本地 Ollama）
 ├── prompts/                   # 系统提示词
 ├── generated/                 # grpc 生成的 *_pb2.py（生成产物，gitignore）

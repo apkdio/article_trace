@@ -55,13 +55,19 @@ article_trace_front/
     ├── utils/                      # 工具函数
     │   ├── request.js              #   Axios 实例 + 拦截器（401 自动登出）
     │   ├── loginCheck.js           #   登录状态校验
-    │   └── timeCheck.js            #   时间格式化
+    │   ├── timeCheck.js            #   时间格式化
+    │   ├── auth.js                 #   登录态判断（配合 UserLayout）
+    │   ├── confirm.js              #   通用确认弹窗
+    │   ├── date.js                 #   日期处理
+    │   ├── upload.js               #   上传辅助
+    │   └── validators.js           #   表单校验器（如两次密码一致）
     └── views/                      # 页面组件
         ├── public/                 # 公共区
         │   ├── login.vue           #   登录 / 注册 / 找回密码（统一入口）
         │   ├── publicHome.vue      #   公共首页（文章列表）
         │   ├── articleInfo.vue     #   文章详情页
-        │   └── readerHome.vue      #   读者个人中心布局
+        │   ├── readerHome.vue      #   读者个人中心布局
+        │   └── AuthorApply.vue     #   申请成为作者（提交 + 查看审核状态）
         ├── user/                   # 用户/后台区
         │   ├── mainPage.vue        #   作者后台主布局（侧边栏）
         │   ├── home.vue            #   后台首页（数据统计）
@@ -84,7 +90,7 @@ article_trace_front/
 | 路由 | 区域 | 说明 |
 |---|---|---|
 | `/publicHome`、`/article/:id`、`/login` | 公共区 | 无需登录访问 |
-| `/reader/home` | 读者中心 | 个人信息、头像、改密 |
+| `/reader/home`、`/reader/apply` | 读者中心 | 个人信息、头像、改密；申请成为作者 |
 | `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理 |
 
 ### 请求封装（utils/request.js）
