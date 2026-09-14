@@ -40,7 +40,7 @@ public class UserDeleteCascadeTest {
         user.setUsername(username);
         user.setNickname("注销测试");
         user.setPassword("x");
-        user.setEmail("");
+        user.setEmail(username + "@example.invalid");  // email 非空且唯一（uk_email）
         user.setType(2);
         user.setCreateTime(LocalDateTime.now());
         userMapper.insert(user);

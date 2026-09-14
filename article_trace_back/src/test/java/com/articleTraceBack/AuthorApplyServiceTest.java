@@ -54,7 +54,7 @@ public class AuthorApplyServiceTest {
         user.setUsername(testUsername);
         user.setNickname("申请测试");
         user.setPassword("x");
-        user.setEmail("");
+        user.setEmail(testUsername + "@example.invalid");  // email 非空且唯一（uk_email）
         user.setType(2); // 读者
         user.setCreateTime(LocalDateTime.now());
         userMapper.insert(user);

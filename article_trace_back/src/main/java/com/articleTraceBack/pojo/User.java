@@ -28,12 +28,14 @@ public class User {
     @NotEmpty(groups = login.class)
     private String password; // 用户密码
 
-    @NotEmpty
-    @Pattern(regexp = "^\\S{1,10}$", message = "为1-10个非空白字符！")
+    // 仅在「修改资料」时必填：注册时后端会自动生成默认昵称
+    @NotEmpty(groups = update.class)
+    @Pattern(regexp = "^\\S{1,10}$", message = "为1-10个非空白字符！", groups = update.class)
     private String nickname; // 别名
 
-    @NotEmpty
-    @Email(message = "不是一个邮箱格式！")
+    // 仅「修改资料」时需要：注册走 RegisterUserPojo 自己的校验
+    @NotEmpty(groups = update.class)
+    @Email(message = "不是一个邮箱格式！", groups = update.class)
     private String email; // 邮箱
 
     @TableField("user_pic")

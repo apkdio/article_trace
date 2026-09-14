@@ -106,9 +106,7 @@ CREATE TABLE `user` (
   `username` varchar(20) NOT NULL COMMENT '用户名',
   `password` varchar(60) DEFAULT NULL COMMENT '密码',
   `nickname` varchar(15) DEFAULT '' COMMENT '昵称',
-  `nickname_uniq` varchar(15) GENERATED ALWAYS AS (if((`nickname` = _utf8mb4''),NULL,`nickname`)) STORED COMMENT '昵称唯一性辅助列：空昵称视为 NULL，不参与唯一约束',
-  `email` varchar(128) DEFAULT '' COMMENT '邮箱',
-  `email_uniq` varchar(128) GENERATED ALWAYS AS (if((`email` = _utf8mb4''),NULL,`email`)) STORED COMMENT '邮箱唯一性辅助列：空邮箱视为 NULL，不参与唯一约束',
+  `email` varchar(128) NOT NULL COMMENT '邮箱',
   `user_pic` varchar(128) DEFAULT '' COMMENT '头像',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
@@ -116,8 +114,7 @@ CREATE TABLE `user` (
   `type` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
-  UNIQUE KEY `uk_nickname` (`nickname_uniq`),
-  UNIQUE KEY `uk_email` (`email_uniq`)
+  UNIQUE KEY `uk_email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
