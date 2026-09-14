@@ -134,4 +134,38 @@ public class AuthorApplyConcurrencyTest {
         Long notifyCount = notificationMapper.selectCount(nw);
         assertEquals(1L, notifyCount.longValue(), "并发审批只应产生一条结果通知，实际=" + notifyCount);
     }
+
+    @Test
+    public void testConcurrentSubmitOnlyOnePendingRow() throws Exception {
+        int threads = 4;
+        CountDownLatch startGate = new CountDownLatch(1);
+        CountDownLatch doneGate = new CountDownLatch(threads);
+        AtomicInteger successCount = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+
+        for (int i = 0; i < threads; i++) {
+            pool.submit(() -> {
+                try {
+                    startGate.await();
+                    if (applyService.submit(testUserId, "并发提交")) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    doneGate.countDown();
+                }
+            });
+        }
+
+        startGate.countDown();
+        assertTrue(doneGate.await(20, TimeUnit.SECONDS), "并发提交应在超时前完成");
+        pool.shutdown();
+
+        assertEquals(1, successCount.get(), "并发提交应恰好只有一个成功");
+
+        QueryWrapper<AuthorApply> aw = new QueryWrapper<>();
+        aw.eq("user_id", testUserId).eq("status", AuthorApply.STATUS_PENDING);
+        assertEquals(1L, applyMapper.selectCount(aw).longValue(), "并发提交后应只有一条待审记录");
+    }
 }

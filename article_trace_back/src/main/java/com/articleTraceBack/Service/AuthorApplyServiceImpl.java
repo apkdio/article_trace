@@ -7,6 +7,7 @@ import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -58,7 +59,14 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
         apply.setReason(reason);
         apply.setStatus(AuthorApply.STATUS_PENDING);
         apply.setCreateTime(LocalDateTime.now());
-        if (applyMapper.insert(apply) != 1) {
+        try {
+            if (applyMapper.insert(apply) != 1) {
+                return false;
+            }
+        } catch (DuplicateKeyException e) {
+            // 并发下两个请求可能同时通过上面的查重；
+            // 由唯一索引 uk_pending(user_id, pending_flag) 兜底，这里只当作「已有待审」处理
+            log.info("author apply rejected by unique index: userId={}", userId);
             return false;
         }
 

@@ -174,7 +174,9 @@ CREATE TABLE `author_apply` (
   `review_user` int DEFAULT NULL COMMENT '审批人 user.id',
   `review_time` datetime DEFAULT NULL COMMENT '审批时间',
   `create_time` datetime NOT NULL COMMENT '提交时间',
+  `pending_flag` tinyint GENERATED ALWAYS AS ((case when (`status` = 0) then 1 else NULL end)) STORED COMMENT '待审标记（0 为 NULL），用于唯一约束保证每人最多一条待审',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pending` (`user_id`,`pending_flag`),
   KEY `idx_status_time` (`status`,`create_time`),
   KEY `idx_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='作者申请';
