@@ -332,7 +332,7 @@ function clearInf() {
               <el-form-item prop="emailCode" :error="errorsList.emailCode">
                 <div class="code-row">
                   <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
-                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode('register')">
+                  <el-button :disabled="codeCountdown > 0 || codeSending" class="email-code-button" @click="sendCode('register')">
                     {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
                   </el-button>
                 </div>
@@ -400,7 +400,7 @@ function clearInf() {
               <el-form-item prop="emailCode" :error="errorsList.emailCode">
                 <div class="code-row">
                   <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
-                  <el-button :disabled="codeCountdown > 0 || codeSending" @click="sendCode('reset')">
+                  <el-button :disabled="codeCountdown > 0 || codeSending" class="email-code-button" @click="sendCode('reset')">
                     {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
                   </el-button>
                 </div>
@@ -431,6 +431,7 @@ function clearInf() {
   display: flex;
   gap: 8px;
   width: 100%;
+  align-items: center;
 
   .captcha-img {
     height: 40px;
@@ -447,17 +448,18 @@ function clearInf() {
 }
 
 .login-container {
-  height: 100vh;
+  /* 用 min-height 而非固定高度：表单变长时容器跟着长高，交给页面滚动而不是裁掉 */
+  min-height: 100vh;
   background: radial-gradient(circle at top right, #fdfcfb 0%, #e2d1c3 100%);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .login-page {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
+  /* 居中但不裁切：内容高于视口时顶部依然能滚动到 */
+  margin: auto;
 
   .bg-section {
     background: url('@/assets/login_bg.jpg') center / cover no-repeat;
@@ -570,7 +572,10 @@ function clearInf() {
   margin-bottom: 12px;
   border-radius: 12px;
 }
-
+.email-code-button{
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.7);
+}
 .submit-btn {
   width: 100%;
   height: 50px;
@@ -635,6 +640,26 @@ function clearInf() {
 
 :deep(.el-input .el-input__count .el-input__count-inner) {
   background: transparent;
+}
+
+/* 矮屏（1366x768 之类的笔记本）：压缩纵向占用，尽量一屏放下 */
+@media (max-height: 820px) {
+  .form-card {
+    padding: 24px 28px;
+
+    .gradient-title {
+      font-size: 1.7rem;
+      margin-bottom: 18px;
+    }
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 12px;
+  }
+
+  .footer-ops {
+    margin-top: 16px;
+  }
 }
 
 @media (max-width: 768px) {
