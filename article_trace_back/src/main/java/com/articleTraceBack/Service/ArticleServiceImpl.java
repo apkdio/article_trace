@@ -186,7 +186,17 @@ public class ArticleServiceImpl implements ArticleService {
 
 
     @Override
-    public boolean removeCover(String key) {
+    public boolean removeCover(String key, int userId) {
+        if (key == null || key.isBlank()) {
+            return false;
+        }
+        // 客户端传来的 key 不可信：必须确认它正是该用户自己某篇文章的封面，才能删对象
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.eq("cover_img", key).eq("create_user", userId).last("limit 1");
+        if (articleMapper.selectCount(wrapper) == 0) {
+            log.warn("refuse to remove cover not owned by user: key={}, userId={}", key, userId);
+            return false;
+        }
         stringRedisTemplateArticle.delete(key);
         return rustFsUtil.delete(key, "image");
     }

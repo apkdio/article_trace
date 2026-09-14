@@ -110,8 +110,12 @@ public class UserServiceImpl implements UserService {
     public boolean checkPass(String oriPass, String username, String checkColumn) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username", username).select(checkColumn);
-        String userOriPass = (String) userMapper.selectObjs(queryWrapper).getFirst();
-        return BcryptUtils.checkPass(oriPass, userOriPass);
+        // 用户不存在（或并发注销）时 selectObjs 为空，不能直接 getFirst 取
+        List<Object> values = userMapper.selectObjs(queryWrapper);
+        if (values == null || values.isEmpty() || values.getFirst() == null) {
+            return false;
+        }
+        return BcryptUtils.checkPass(oriPass, (String) values.getFirst());
     }
 
     @Override

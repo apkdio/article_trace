@@ -28,7 +28,8 @@ public interface ArticleService {
 
     Map<String, String> upload(MultipartFile cover, String username);
 
-    boolean removeCover(String key);
+    /** 删除封面对象；只允许删除自己文章正在引用的封面（key 由客户端传入，不可信） */
+    boolean removeCover(String key, int userId);
 
     int findAllArticlesCountInMaster(Integer categoryId,
                                      Integer state, Integer userId, String search, Integer searchType, String nickName);

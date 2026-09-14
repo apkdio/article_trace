@@ -65,8 +65,14 @@ public class CategoryController {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         Map<String, Object> error = new HashMap<>();
         int uid = (int) userInfo.get("id");
-        if (categoryService.findById(id) == null) {
+        Category existing = categoryService.findById(id);
+        if (existing == null) {
             error.put("error", "类别不存在！");
+            return Result.error(error);
+        }
+        // 与 deleteCategory 保持一致：只能改自己创建的分类
+        if (!Objects.equals(existing.getCreateUser(), uid)) {
+            error.put("error", "非法用户更新请求！");
             return Result.error(error);
         }
         String newCategoryName = category.getCategoryName();

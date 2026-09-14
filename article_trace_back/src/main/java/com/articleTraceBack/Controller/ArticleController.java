@@ -257,7 +257,9 @@ public class ArticleController {
     @DeleteMapping("/removeCover")
     public Result<String> removeCover(@RequestParam("key") String key) {
         Map<String, Object> error = new HashMap<>();
-        if (articleService.removeCover(key)) {
+        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        int uid = (int) userInfo.get("id");
+        if (articleService.removeCover(key, uid)) {
             return Result.success();
         }
         error.put("error", "删除失败！");
