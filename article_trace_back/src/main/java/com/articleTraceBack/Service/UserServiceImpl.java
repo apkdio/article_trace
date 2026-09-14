@@ -4,7 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
 import com.articleTraceBack.Utils.JwtUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
+import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
+import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -34,17 +36,19 @@ public class UserServiceImpl implements UserService {
     private final RustFsUtil rustFsUtil;
     private final ArticleService articleService;
     private final AgentSessionService agentSessionService;
+    private final AuthorApplyMapper authorApplyMapper;
 
     public UserServiceImpl(UserMapper userMapper,
                            JwtUtil jwtUtil, RustFsUtil rustFsUtil,
                            StringRedisTemplate stringRedisTemplate, ArticleService articleService,
-                           AgentSessionService agentSessionService) {
+                           AgentSessionService agentSessionService, AuthorApplyMapper authorApplyMapper) {
         this.userMapper = userMapper;
         this.articleService = articleService;
         this.jwtUtil = jwtUtil;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplate = stringRedisTemplate;
         this.agentSessionService = agentSessionService;
+        this.authorApplyMapper = authorApplyMapper;
     }
 
     @Override
@@ -245,6 +249,14 @@ public class UserServiceImpl implements UserService {
         if (deleted) {
             // 账号注销后，同步清理该用户在 agent 侧的会话数据与归属索引
             agentSessionService.clearAll(String.valueOf(id));
+            // 以及其作者申请：留着会变成没有对应用户的悬挂记录，
+            // 站长列表里查不到申请人、角标也清不掉
+            QueryWrapper<AuthorApply> applyWrapper = new QueryWrapper<>();
+            applyWrapper.eq("user_id", id);
+            int removed = authorApplyMapper.delete(applyWrapper);
+            if (removed > 0) {
+                log.info("removed author applies on user deletion: userId={}, count={}", id, removed);
+            }
         }
         return deleted;
     }
