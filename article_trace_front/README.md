@@ -34,7 +34,6 @@ article_trace_front/
     │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
-    │   └── registerSuccess.js      #   注册成功回调
     ├── assets/                     # 静态资源
     │   ├── main.scss               #   全局样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
@@ -59,7 +58,7 @@ article_trace_front/
     │   └── timeCheck.js            #   时间格式化
     └── views/                      # 页面组件
         ├── public/                 # 公共区
-        │   ├── login.vue           #   登录页
+        │   ├── login.vue           #   登录 / 注册 / 找回密码（统一入口）
         │   ├── publicHome.vue      #   公共首页（文章列表）
         │   ├── articleInfo.vue     #   文章详情页
         │   └── readerHome.vue      #   读者个人中心布局
@@ -126,11 +125,12 @@ article_trace_front/
 |---|---|
 | `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10） |
 | `articleInfo.vue` | 文章详情 + 评论 |
-| `login.vue` | 登录（含记住我） |
+| `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
 | `mainPage.vue` | 后台侧边栏布局 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |
 | `ArticleCategory.vue` | 分类增删改查 |
+| `AuthorApply.vue` | 申请成为作者（提交申请 + 查看审核状态）|
 | `AccountManage.vue` | 账号管理（站长） |
 
 ## 启动与构建

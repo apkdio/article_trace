@@ -87,7 +87,6 @@ article_trace_back/
     │   │   ├── RustFsUtil.java              #   RustFS/S3 对象存储封装
     │   │   ├── ThumbnailUtil.java           #   图片缩略图生成（Thumbnailator）
     │   │   ├── EmailUtil.java               #   邮件发送（SMTP）
-    │   │   ├── GenResetPass.java            #   重置码生成
     │   │   ├── IPUtil.java                  #   客户端 IP 获取
     │   │   └── GlobalExceptionHandler.java  #   全局异常捕获
     │   ├── config/                          # 配置类
@@ -131,9 +130,9 @@ article_trace_back/
 
 ### 2. 用户模块（UserController / UserServiceImpl）
 
-- **注册**：作者需注册码（`Password.registerPass`），读者无需；密码 BCrypt 加密，同时生成重置码（`reset_pass`）。
+- **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。
 - **登录**：校验密码 → 签发 Token → 写 Redis → 记录最后登录时间。
-- **忘记密码**：凭用户名 + 重置码设置新密码。
+- **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 图片桶。
 - **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）。
 
@@ -347,6 +346,44 @@ notification:
     keepDays: 30                     # 保留 30 天（无论是否已读）
 ```
 
+### 12. 验证码与登录防护
+
+**① 邮箱验证码 `EmailCodeService`**
+
+- 场景常量隔离：`SCENE_REGISTER`（注册）/ `SCENE_RESET`（找回密码），Redis key 为 `email:code:{scene}:{email}`。
+- **6 位数字、5 分钟有效**；同一邮箱 **60 秒发送冷却**（`setIfAbsent` 抢占，防止刷验证码）。
+- **一次性消费**：只有比对成功才删除 key，**输错不消费**（5 分钟内可反复重填，对手填场景更友好）。
+
+**② 图形验证码 `CaptchaService`**（easy-captcha + Redis）
+
+- `GET /user/captcha` → `{captchaId, image}`，`image` 带 `data:image/png;base64,` 前缀，前端可直接给 `img src`。
+- **4 位、2 分钟有效**；**校验一次即失效** —— 不论对错都删 key，避免被拿同一张图暴力尝试。
+- 拉图限流：同一客户端指纹 **30 张/分钟**，超限返回「请求过于频繁」（否则这道门槛形同虚设）。
+
+**③ 两套校验的落点差异（容易踩）**
+
+| 场景 | 图形码在哪校验 | 邮箱码在哪校验 |
+|---|---|---|
+| 注册 / 找回密码 | **发码接口**（点「获取验证码」时弹窗输入）| **表单提交**时 |
+| 登录（防爆破）| **登录请求**里，随表单一起提交 | — |
+
+> 推论：注册/找回密码的图形码**不要写进表单校验规则**（表单提交接口根本不校验它，发码后它已被消费、输入框会被清空，写进去必然误报"请输入图形验证码"）；而登录的图形码必须内联在表单中。
+
+**④ 登录防爆破 `LoginAttemptService`**
+
+按客户端指纹 `IPUtil.mixOf(request)`（= `md5(IP + "/" + UA)`）计数，两个 Redis key：
+
+| key | 含义 | 时效 |
+|---|---|---|
+| `login:fail:{key}` | 失败计数 | **固定窗口 15 分钟**（只在首次失败设 TTL，后续失败不续期）|
+| `login:block:{key}` | 黑名单标记 | 5 分钟 |
+
+- 失败 **3 次** → 登录必须附带图形验证码；失败 **10 次** → 进入 5 分钟黑名单，期间直接拒绝。
+- **图形码错误不计入失败次数**（只提示并换图），否则用户图形码手抖几次就会被锁。
+- 登录**成功立即清零**，避免正常用户被历史失败继续累计。
+- 失败响应额外带 `needCaptcha`（下次是否要图形码）与 `remaining`（距离锁定还剩几次），前端据此提示与倒计时。
+- 已知取舍：纯 IP+UA 计数在 NAT 共享出口（公司网络等）下会误伤同 UA 的旁人，见 `docs/TODO.md`。
+
 ## 数据库设计
 
 数据库 `article_trace`，共 7 张表（见根目录 `article_trace.sql`）。
@@ -362,7 +399,6 @@ notification:
 | email | varchar(128) | 邮箱 |
 | user_pic | varchar(128) | 头像文件名 |
 | create_time / update_time / last_login | datetime | 时间戳 |
-| reset_pass | varchar(60) | 重置码 |
 | type | int | 0 站长 / 1 作者 / 2 读者 |
 
 ### `category` 分类表
