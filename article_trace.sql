@@ -33,7 +33,7 @@ CREATE TABLE `article` (
   `title` varchar(30) NOT NULL COMMENT '文章标题',
   `content` varchar(50) NOT NULL COMMENT '文章内容',
   `cover_img` varchar(128) DEFAULT NULL COMMENT '文章封面',
-  `state` int NOT NULL DEFAULT '0' COMMENT '文章状态: 只能是[已发布-1] 或者 [草稿-0]',
+  `state` int NOT NULL DEFAULT '0' COMMENT '文章状态: 0-草稿 1-已发布 2-待审核 3-已驳回',
   `category_id` int COMMENT '文章分类ID',
   `create_user` int NOT NULL COMMENT '创建人ID',
   `create_time` datetime NOT NULL COMMENT '创建时间',
@@ -109,7 +109,6 @@ CREATE TABLE `user` (
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   `last_login` datetime DEFAULT NULL COMMENT '最后登录时间',
-  `reset_pass` varchar(60) NOT NULL,
   `type` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
