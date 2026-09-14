@@ -40,6 +40,7 @@ CREATE TABLE `article` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   `views` bigint DEFAULT '0' COMMENT '阅览数',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_title` (`create_user`,`title`),
   KEY `fk_article_category` (`category_id`),
   KEY `fk_article_user` (`create_user`),
   CONSTRAINT `fk_article_category_id` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL,
@@ -63,6 +64,7 @@ CREATE TABLE `category` (
   `update_time` datetime DEFAULT NULL,
   `category_alias` varchar(30) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_category_name` (`category_name`),
   KEY `fk_category_create_user` (`create_user`),
   KEY `fk_category_user_id` (`last_update_user`),
   CONSTRAINT `fk_category_create_user` FOREIGN KEY (`create_user`) REFERENCES `user` (`id`) ON DELETE CASCADE,
@@ -104,6 +106,7 @@ CREATE TABLE `user` (
   `username` varchar(20) NOT NULL COMMENT '用户名',
   `password` varchar(60) DEFAULT NULL COMMENT '密码',
   `nickname` varchar(15) DEFAULT '' COMMENT '昵称',
+  `nickname_uniq` varchar(15) GENERATED ALWAYS AS (if((`nickname` = _utf8mb4''),NULL,`nickname`)) STORED COMMENT '昵称唯一性辅助列：空昵称视为 NULL，不参与唯一约束',
   `email` varchar(128) DEFAULT '' COMMENT '邮箱',
   `user_pic` varchar(128) DEFAULT '' COMMENT '头像',
   `create_time` datetime NOT NULL COMMENT '创建时间',
@@ -111,7 +114,8 @@ CREATE TABLE `user` (
   `last_login` datetime DEFAULT NULL COMMENT '最后登录时间',
   `type` int NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `username` (`username`)
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `uk_nickname` (`nickname_uniq`)
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
