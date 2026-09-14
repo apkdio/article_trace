@@ -122,13 +122,6 @@ public class ArticleController {
             Map<String, Object> userInfo = ThreadLocalUtil.get();
             int uid = (int) userInfo.get("id");
             int roleType = (int) userInfo.get("type");
-            // 目标状态由服务端决定，再校验当前状态能否流转过去
-            int target = resolveTargetState(article.getState(), roleType);
-            if (!articleService.canTransfer(art.getState(), target, roleType)) {
-                error.put("state", "当前文章状态不允许该操作！");
-                return Result.error(error);
-            }
-            article.setState(target);
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -150,6 +143,14 @@ public class ArticleController {
                 return Result.error(error);
             }
             if (categoryService.findById(categoryId) != null) {
+                // 内容、归属、重名都校验通过后，最后判定状态流转是否合法
+                // （放在末尾是为了不遮蔽原有的内容类报错）
+                int target = resolveTargetState(article.getState(), roleType);
+                if (!articleService.canTransfer(art.getState(), target, roleType)) {
+                    error.put("state", "当前文章状态不允许该操作！");
+                    return Result.error(error);
+                }
+                article.setState(target);
                 if (articleService.articleAddOrUpdate(article, 1)) {
                     return Result.success();
                 }
