@@ -30,7 +30,7 @@ article_trace_front/
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
-    │   ├── notification.js         #   站内通知（列表/未读数/已读）
+    │   ├── notification.js         #   站内通知（列表可按 system/apply 筛选、未读数、已读、删除）
     │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认

@@ -37,7 +37,7 @@ article_trace_back/
     │   │   ├── ReaderController.java        #   读者：文章浏览/评论/作者信息
     │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
     │   │   ├── AgentController.java         #   检索问答/会话管理/探活
-    │   │   ├── NotificationController.java  #   站内信（列表/未读数/已读）
+    │   │   ├── NotificationController.java  #   站内信（列表/未读数/已读/删除）
     │   │   └── AuthorApplyController.java   #   作者申请（提交/列表/审批）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
@@ -137,7 +137,7 @@ article_trace_back/
 - **登录**：校验密码 → 签发 Token → 写 Redis → 记录最后登录时间。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 图片桶。
-- **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）。
+- **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）；删除时会**级联清理该用户的作者申请记录**，避免留下没有对应用户的悬挂数据。
 
 ### 3. 文章模块（ArticleController / ArticleServiceImpl）
 
@@ -285,7 +285,11 @@ flowchart LR
 |---|---|
 | `notify(receiverId, scene, title, content)` | 给单个用户发通知（站内 + 可选邮件）|
 | `notifyRole(roleType, scene, title, content)` | 发给某角色全部用户（逐人一条）|
-| `listByReceiver` / `unreadCount` / `markRead` / `markAllRead` | 站内信查询与已读 |
+| `listByReceiver(receiverId, type, pageNum, pageSize)` | 分页查询，`type` 可选 `system` / `apply`（null 查全部）|
+| `unreadCount(receiverId)` | 未读数 |
+| `markRead(receiverId, id)` / `markAllRead(receiverId)` | 标记已读 |
+| `delete(receiverId, id)` | 删除单条（以「id + receiver_id」双条件限定，删不到别人的）|
+| `cleanupExpired(keepDays)` | 清理超过 N 天的站内信（定时任务调用）|
 
 **调用方不感知成败**：全流程 try-catch，失败只记日志，绝不影响主业务。
 
@@ -630,7 +634,7 @@ mvn clean package && java -jar target/article_trace-*.jar
 
 ### 单元 / 集成测试清单
 
-除下面的 Ask 集成测试外，其余测试都不需要启动 agent：
+除 Ask 集成测试与 `AgentSessionServiceTest` 需要 agent 外（未启动时用 `assumeTrue` 自动跳过，不会导致构建失败），其余测试都不需要：
 
 | 测试类 | 覆盖点 |
 |---|---|
@@ -640,6 +644,8 @@ mvn clean package && java -jar target/article_trace-*.jar
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
 | `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
+| `AuthorApplyRemindTaskTest` | 待审作者申请的定时邮件提醒 |
+| `AgentSessionServiceTest` | agent 会话索引与清理（**需 agent 已启动**）|
 | `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
 | `AgentDisabledTest` | agent 关闭时主业务降级 |
 | `EmailUtilTest` · `MailServiceTest` | 发信链路与邮件投递重试（需 `-Dmail.to=` 才真发）|
