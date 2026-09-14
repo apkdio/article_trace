@@ -337,13 +337,17 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public void addViews(String username, int articleId) {
         Article article = articleMapper.selectById(articleId);
-        if (article.getState() != 1) {
+        if (article == null || article.getState() == null || article.getState() != 1) {
             return;
         }
         String dedupKey = ARTICLE_PENDING_VIEWS_KEY + ":" + username + ":" + articleId;
-        if (stringRedisTemplateArticle.hasKey(dedupKey)) return;
+        // 原子去重：抢占成功才算一次新浏览，避免并发下同一人把计数刷高
+        Boolean firstView = stringRedisTemplateArticle.opsForValue()
+                .setIfAbsent(dedupKey, "", 1, TimeUnit.DAYS);
+        if (!Boolean.TRUE.equals(firstView)) {
+            return;
+        }
 
-        stringRedisTemplateArticle.opsForValue().set(dedupKey, "", 1, TimeUnit.DAYS);
         stringRedisTemplateArticle.opsForHash().increment(ARTICLE_PENDING_VIEWS_KEY,
                 String.valueOf(articleId), 1);
     }

@@ -10,9 +10,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 邮箱验证码测试：发送、冷却限流、一次性校验。
@@ -66,5 +73,40 @@ public class EmailCodeServiceTest {
     public void testCooldownBlocksResend() {
         assertTrue(emailCodeService.send(TEST_EMAIL, SCENE), "首次发送应被受理");
         assertFalse(emailCodeService.send(TEST_EMAIL, SCENE), "冷却期内重复发送应被拒绝");
+    }
+
+    @Test
+    public void testConcurrentVerifyConsumesOnlyOnce() throws Exception {
+        assertTrue(emailCodeService.send(TEST_EMAIL, SCENE), "首次发送应被受理");
+        String codeKey = "email:code:" + SCENE + ":" + TEST_EMAIL;
+        String code = stringRedisTemplate.opsForValue().get(codeKey);
+        assertNotNull(code, "验证码应写入 Redis");
+
+        int threads = 8;
+        CountDownLatch startGate = new CountDownLatch(1);
+        CountDownLatch doneGate = new CountDownLatch(threads);
+        AtomicInteger passed = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+
+        for (int i = 0; i < threads; i++) {
+            pool.submit(() -> {
+                try {
+                    startGate.await();
+                    if (emailCodeService.verify(TEST_EMAIL, SCENE, code)) {
+                        passed.incrementAndGet();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    doneGate.countDown();
+                }
+            });
+        }
+
+        startGate.countDown();
+        assertTrue(doneGate.await(20, TimeUnit.SECONDS), "并发校验应在超时前完成");
+        pool.shutdown();
+
+        assertEquals(1, passed.get(), "并发校验同一个验证码时只应有一个请求通过");
     }
 }

@@ -3,6 +3,7 @@ package com.articleTraceBack.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -30,6 +31,19 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private static final String KEY_COOLDOWN = "email:code:cooldown:%s:%s";
 
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    /**
+     * 原子校验：只有取出的值与传入值相同才删除该 key。
+     *
+     * <p>等价于「GET 比对成功后 DEL」，但整个过程在 Redis 内一次完成，
+     * 避免并发下同一个验证码被两个请求各消费一次；
+     * 同时保留「输错不消费」的语义（错误的尝试不销毁验证码）。</p>
+     */
+    private static final DefaultRedisScript<Long> VERIFY_AND_DELETE_SCRIPT = new DefaultRedisScript<>(
+            "local v = redis.call('GET', KEYS[1]) "
+                    + "if v and v == ARGV[1] then redis.call('DEL', KEYS[1]) return 1 end "
+                    + "return 0",
+            Long.class);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final MailService mailService;
@@ -85,13 +99,10 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         try {
             String key = String.format(KEY_CODE, scene, normalized);
-            String saved = stringRedisTemplate.opsForValue().get(key);
-            if (saved == null || !saved.equals(code.trim())) {
-                return false;
-            }
-            // 一次性：校验通过立即失效
-            stringRedisTemplate.delete(key);
-            return true;
+            // 一次性：匹配成功才失效；输错不消费（可在有效期内重填）
+            Long matched = stringRedisTemplate.execute(
+                    VERIFY_AND_DELETE_SCRIPT, java.util.Collections.singletonList(key), code.trim());
+            return matched != null && matched == 1L;
         } catch (Exception e) {
             log.error("verify email code failed: email={}, scene={}", normalized, scene, e);
             return false;

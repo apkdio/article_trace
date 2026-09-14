@@ -83,9 +83,8 @@ public class CaptchaServiceImpl implements CaptchaService {
         }
         try {
             String key = KEY_PREFIX + captchaId;
-            String saved = stringRedisTemplate.opsForValue().get(key);
-            // 无论对错都删除：一次有效，避免被反复尝试
-            stringRedisTemplate.delete(key);
+            // 无论对错都失效：原子地取出并删除，避免同一张图被并发复用绕过防刷
+            String saved = stringRedisTemplate.opsForValue().getAndDelete(key);
             return saved != null && saved.equalsIgnoreCase(code.trim());
         } catch (Exception e) {
             log.error("captcha verify failed: id={}", captchaId, e);
