@@ -1,0 +1,25 @@
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_1c743ed02c34d1 224
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_9c29984ffb7ca9 38
+article_trace_back/src/main/java/com/articleTraceBack/runner/AdminInitializer.java
+  s_ab74ea15e793d1::t_1c743ed02c34d1 60-61
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_1c743ed02c34d1 105,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.44-trip",
+  "base_commit_sha": "27eaeee86e5182b13605f5a7d2f3a2c7f55ea06f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
