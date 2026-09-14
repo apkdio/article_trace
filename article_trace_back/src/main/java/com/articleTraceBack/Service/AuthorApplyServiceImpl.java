@@ -5,6 +5,7 @@ import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -98,37 +99,45 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
 
     @Override
     public boolean review(int applyId, boolean pass, String rejectReason, int reviewerId) {
+        // 只为拿申请人 id（后续提权/通知要用）；状态判断不依赖这次读取
         AuthorApply apply = applyMapper.selectById(applyId);
-        if (apply == null || apply.getStatus() == null
-                || apply.getStatus() != AuthorApply.STATUS_PENDING) {
+        if (apply == null || apply.getUserId() == null) {
             return false;
         }
+        int applicantId = apply.getUserId();
 
-        apply.setStatus(pass ? AuthorApply.STATUS_APPROVED : AuthorApply.STATUS_REJECTED);
-        apply.setReviewUser(reviewerId);
-        apply.setReviewTime(LocalDateTime.now());
+        // 条件更新：只有仍是「待审」才改得动。
+        // 并发下（两个站长同时审批）只有一个请求的影响行数是 1，
+        // 其余返回 0 → 直接失败，提权与通知都不会执行。
+        UpdateWrapper<AuthorApply> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", applyId)
+                .eq("status", AuthorApply.STATUS_PENDING)
+                .set("status", pass ? AuthorApply.STATUS_APPROVED : AuthorApply.STATUS_REJECTED)
+                .set("review_user", reviewerId)
+                .set("review_time", LocalDateTime.now());
         if (!pass) {
-            apply.setRejectReason(rejectReason);
+            updateWrapper.set("reject_reason", rejectReason);
         }
-        if (applyMapper.updateById(apply) != 1) {
+        if (applyMapper.update(null, updateWrapper) != 1) {
+            log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
             return false;
         }
 
         if (pass) {
             // 提升为作者；并使其现有登录态失效（重新登录后拿到新身份）
-            User applicant = userService.findUserById(apply.getUserId());
+            User applicant = userService.findUserById(applicantId);
             if (applicant != null) {
-                userService.changeType(apply.getUserId(), ROLE_AUTHOR);
+                userService.changeType(applicantId, ROLE_AUTHOR);
                 userService.deleteRedisToken(applicant.getUsername());
             }
-            notificationService.notify(apply.getUserId(), SCENE_APPROVED, "作者申请已通过",
+            notificationService.notify(applicantId, SCENE_APPROVED, "作者申请已通过",
                     "恭喜！你的作者申请已通过，现在可以发布文章了。");
-            log.info("author apply approved: applyId={}, userId={}", applyId, apply.getUserId());
+            log.info("author apply approved: applyId={}, userId={}", applyId, applicantId);
         } else {
             String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
-            notificationService.notify(apply.getUserId(), SCENE_REJECTED, "作者申请未通过",
+            notificationService.notify(applicantId, SCENE_REJECTED, "作者申请未通过",
                     "很遗憾，你的作者申请未通过。原因：" + reason);
-            log.info("author apply rejected: applyId={}, userId={}", applyId, apply.getUserId());
+            log.info("author apply rejected: applyId={}, userId={}", applyId, applicantId);
         }
         return true;
     }
