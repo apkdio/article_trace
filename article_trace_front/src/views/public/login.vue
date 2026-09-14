@@ -89,7 +89,6 @@ const FormDataRules = computed(() => {
         {required: true, message: '请输入邮箱！', trigger: 'blur'},
         {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
       ],
-      captcha: [{required: true, message: '请输入图形验证码！', trigger: 'blur'}],
       emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}],
       password: [{required: true, message: '请输入新密码！'}, {max: 60, message: "密码过长！"}],
       confirmPassword: [{validator: confirmPasswordValidator}]
@@ -112,7 +111,6 @@ const FormDataRules = computed(() => {
         {required: true, message: '请输入邮箱！', trigger: 'blur'},
         {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
       ],
-      captcha: [{required: true, message: '请输入图形验证码！', trigger: 'blur'}],
       emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}]
     }
   }
@@ -655,6 +653,11 @@ function clearInf() {
 
   :deep(.el-form-item) {
     margin-bottom: 12px;
+  }
+
+  /* 错误文案绝对定位、不占布局，出错时要额外留高，否则会压到下一个输入框 */
+  :deep(.el-form-item.is-error) {
+    margin-bottom: 26px;
   }
 
   .footer-ops {
