@@ -54,7 +54,34 @@ async function loadCaptcha() {
 
 function refreshCaptcha() {
   FormData.value.captcha = ''
+  captchaInput.value = ''
   loadCaptcha()
+}
+
+// 「发码前的人机校验」弹窗：注册 / 找回密码共用。
+// 图形码只服务于取码这一步，放进弹窗后与表单校验彻底解耦——
+// 用户填不填、取没取消，都不会影响后面的表单提交。
+const captchaDialogVisible = ref(false)
+const captchaInput = ref('')
+const captchaSubmitting = ref(false)
+let captchaScene = ''
+
+function openCaptchaDialog(scene) {
+  captchaScene = scene
+  captchaDialogVisible.value = true
+  refreshCaptcha()
+}
+
+function startCodeCountdown() {
+  codeCountdown.value = 60
+  if (countdownTimer) clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    codeCountdown.value -= 1
+    if (codeCountdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
 }
 
 // 登录防爆破：失败达阈值后要求图形验证码；连续失败过多会被短暂锁定
@@ -134,8 +161,6 @@ watch([isRegister, resetPass], () => {
   if (resetPass.value) document.title = "重置密码"
   else document.title = isRegister.value ? "登录" : "注册"
 
-  // 注册/重置表单需要图形验证码，切换时换一张（图形码一次性）
-  if (!isRegister.value || resetPass.value) refreshCaptcha()
 }, {immediate: true})
 
 // 登录被要求出示图形码时，立即加载一张
@@ -150,40 +175,44 @@ function sendCode(scene) {
     ElMessage.warning('请先填写邮箱！')
     return
   }
-  if (!FormData.value.captcha) {
-    ElMessage.warning('请先填写图形验证码！')
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    ElMessage.warning('邮箱格式不正确！')
     return
   }
   if (codeCountdown.value > 0 || codeSending.value) return
-  codeSending.value = true
+  openCaptchaDialog(scene)
+}
+
+// 弹窗里确认：带图形码请求发送邮箱验证码
+function confirmSendCode() {
+  if (!captchaInput.value) {
+    ElMessage.warning('请输入图形验证码！')
+    return
+  }
+  if (captchaSubmitting.value) return
+  captchaSubmitting.value = true
   sendEmailCodeService({
-    email,
-    scene,
+    email: FormData.value.email,
+    scene: captchaScene,
     captchaId: captchaId.value,
-    captchaCode: FormData.value.captcha
+    captchaCode: captchaInput.value
   }).then((result) => {
     if (result.code === 0) {
       ElMessage.success('验证码已发送，请查收邮箱')
-      codeCountdown.value = 60
-      countdownTimer = setInterval(() => {
-        codeCountdown.value -= 1
-        if (codeCountdown.value <= 0) {
-          clearInterval(countdownTimer)
-          countdownTimer = null
-        }
-      }, 1000)
+      captchaDialogVisible.value = false
+      startCodeCountdown()
     } else {
       ElMessage.error(result.message || '发送失败！')
+      // 图形码一次性，失败也要换一张
+      refreshCaptcha()
     }
-    // 图形验证码一次性，无论成败都换一张
-    refreshCaptcha()
   })
       .catch(() => {
         ElMessage.warning('服务器响应失败！')
         refreshCaptcha()
       })
       .finally(() => {
-        codeSending.value = false
+        captchaSubmitting.value = false
       })
 }
 
@@ -320,13 +349,6 @@ function clearInf() {
               <el-form-item prop="email" :error="errorsList.email">
                 <el-input :prefix-icon="Message" placeholder="请输入邮箱" v-model="FormData.email"/>
               </el-form-item>
-              <el-form-item prop="captcha" :error="errorsList.captcha">
-                <div class="code-row">
-                  <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="FormData.captcha"/>
-                  <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
-                       @click="refreshCaptcha"/>
-                </div>
-              </el-form-item>
               <el-form-item prop="emailCode" :error="errorsList.emailCode">
                 <div class="code-row">
                   <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
@@ -388,13 +410,6 @@ function clearInf() {
               <el-form-item prop="email" :error="errorsList.email">
                 <el-input :prefix-icon="Message" placeholder="注册时使用的邮箱" v-model="FormData.email"/>
               </el-form-item>
-              <el-form-item prop="captcha" :error="errorsList.captcha">
-                <div class="code-row">
-                  <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="FormData.captcha"/>
-                  <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
-                       @click="refreshCaptcha"/>
-                </div>
-              </el-form-item>
               <el-form-item prop="emailCode" :error="errorsList.emailCode">
                 <div class="code-row">
                   <el-input :prefix-icon="Key" placeholder="邮箱验证码" v-model="FormData.emailCode"/>
@@ -421,6 +436,22 @@ function clearInf() {
         </transition>
       </el-col>
     </el-row>
+
+    <!-- 发码前的人机校验（注册 / 找回密码共用） -->
+    <el-dialog v-model="captchaDialogVisible" title="安全验证" width="360px" append-to-body
+               :close-on-click-modal="false">
+      <p class="captcha-dialog-tip">请输入图片中的字符，验证通过后会向你的邮箱发送验证码。</p>
+      <div class="code-row">
+        <el-input :prefix-icon="Picture" placeholder="图形验证码" v-model="captchaInput"
+                  @keyup.enter="confirmSendCode"/>
+        <img v-if="captchaImage" :src="captchaImage" alt="图形验证码" class="captcha-img"
+             @click="refreshCaptcha"/>
+      </div>
+      <template #footer>
+        <el-button @click="captchaDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="captchaSubmitting" @click="confirmSendCode">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -569,6 +600,13 @@ function clearInf() {
 .block-alert {
   margin-bottom: 12px;
   border-radius: 12px;
+}
+
+.captcha-dialog-tip {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #787878;
+  line-height: 1.6;
 }
 .email-code-button{
   border-radius: 10px;
