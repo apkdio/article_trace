@@ -1,5 +1,5 @@
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, onMounted, onUnmounted} from 'vue'
 import {Bell, CaretBottom, HomeFilled, SwitchButton} from '@element-plus/icons-vue'
 import avatar from '@/assets/defaultLogo.jpg'
 import {checkTime} from '@/utils/timeCheck.js'
@@ -25,10 +25,25 @@ const notifyPageSize = ref(10)
 const unread = ref(0)
 const notifyLoading = ref(false)
 
-const loadUnread = async () => {
+// 站内信实时提醒：定时轮询未读数，出现新增时轻提示（首次加载不提示）
+const POLL_INTERVAL_MS = 60 * 1000
+let pollTimer = null
+let unreadInitialized = false
+
+const loadUnread = async ({notifyOnIncrease = false} = {}) => {
     try {
         const res = await unreadCount()
-        if (res.code === 0) unread.value = res.data || 0
+        if (res.code !== 0) return
+        const next = res.data || 0
+        if (notifyOnIncrease && unreadInitialized && next > unread.value) {
+            ElMessage({
+                message: `你有 ${next - unread.value} 条新的站内通知`,
+                type: 'info',
+                duration: 4000
+            })
+        }
+        unreadInitialized = true
+        unread.value = next
     } catch (e) {
         // 未读数获取失败不影响主流程
     }
@@ -53,6 +68,8 @@ const openNotify = () => {
     notifyDrawer.value = true
     notifyPage.value = 1
     loadNotify()
+    // 打开抽屉时同步一次未读数，避免角标与列表不一致
+    loadUnread()
 }
 
 const readOne = async (item) => {
@@ -84,6 +101,14 @@ const readAll = async () => {
 onMounted(() => {
     timeCheck.value = checkTime()
     loadUnread()
+    pollTimer = setInterval(() => loadUnread({notifyOnIncrease: true}), POLL_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+    if (pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+    }
 })
 
 const logout = (command) => {
