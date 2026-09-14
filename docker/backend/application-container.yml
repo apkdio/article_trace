@@ -27,9 +27,20 @@ spring:
         cluster:
           refresh:
             adaptive: false
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}      # SMTP 服务器
+    port: ${MAIL_PORT:465}              # 465=SMTPS；587 用 STARTTLS
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}          # SMTP 授权码（非邮箱登录密码）
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.timeout: 5000
+      mail.smtp.connectiontimeout: 5000
   tokenCheck:
     # 不同用户组的访问权限
-    excludeUrls: /user/login, /user/register,/user/forgetPass,/error
+    excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
     notAllowUrl:
       writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType
       reader: /category/**,/article/**
@@ -63,7 +74,6 @@ JWT:
 
 Password:
   character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  registerPass: ${REGISTER_PASS}
   masterPass: ${MASTER_PASS}
 
 S3:
@@ -90,6 +100,29 @@ rpc:
       batchSize: 100
       ingestKey: "agent:ingest:pending"
       deleteKey: "agent:delete:pending"
+
+email:
+  from: ${MAIL_FROM:}                   # 发件人，留空则用 spring.mail.username
+  subjectPrefix: "[文迹]"
+
+author-apply:
+  remindCron: "0 0 0/12 * * ?"          # 每 12 小时检查待审作者申请，有则邮件提醒站长
+
+notification:
+  scenes:                               # 场景 → 渠道：inbox(仅站内) / mail(仅邮件) / both / none
+    author-apply-submitted: both
+    author-apply-approved: inbox
+    author-apply-rejected: inbox
+    author-apply-remind: mail
+    email-code: mail
+  defaultChannel: inbox
+  mail:
+    enabled: true
+    maxRetry: 2                         # 邮件最多重发次数
+    retryCron: "0 */10 * * * ?"        # 失败邮件重试扫描
+  cleanup:
+    cron: "0 0 3 * * ?"                # 站内信清理任务
+    keepDays: 30                       # 站内信保留天数
 
 sensitive_word:
   # 外部词库不存在时自动降级到 classpath 内置词库；需要挂载时见 docker-compose.yml 注释

@@ -189,8 +189,13 @@ services:
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
       # 应用侧密钥与默认站长账号
       JWT_SECURE_KEY: ${JWT_SECURE_KEY:?请在 .env 中设置 JWT_SECURE_KEY}
-      REGISTER_PASS: ${REGISTER_PASS:?请在 .env 中设置 REGISTER_PASS}
       MASTER_PASS: ${MASTER_PASS:?请在 .env 中设置 MASTER_PASS}
+      # 邮件（SMTP）：用于验证码与通知投递
+      MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:?请在 .env 中设置 MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?请在 .env 中设置 MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-}
       # 默认站长账号：用户名/邮箱/昵称非敏感，保留默认值
       DEFAULT_USER_ID: ${DEFAULT_USER_ID:-apkdio}
       DEFAULT_USER_PASS: ${DEFAULT_USER_PASS:?请在 .env 中设置 DEFAULT_USER_PASS}
