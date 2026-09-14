@@ -88,7 +88,12 @@ public class ArticleController {
             // 新增不接受客户端 id（防止借 insertOrUpdate 覆盖他人文章）
             article.setId(null);
             // 目标状态由服务端按「草稿 / 提交」意图 + 角色决定，不信任请求体
-            article.setState(resolveTargetState(article.getState(), (int) userInfo.get("type")));
+            Integer target = resolveTargetState(article.getState(), (int) userInfo.get("type"));
+            if (target == null) {
+                error.put("state", "非合理值！");
+                return Result.error(error);
+            }
+            article.setState(target);
             if (articleService.articleAddOrUpdate(article, 0)) {
                 return Result.success();
             }
@@ -145,7 +150,11 @@ public class ArticleController {
             if (categoryService.findById(categoryId) != null) {
                 // 内容、归属、重名都校验通过后，最后判定状态流转是否合法
                 // （放在末尾是为了不遮蔽原有的内容类报错）
-                int target = resolveTargetState(article.getState(), roleType);
+                Integer target = resolveTargetState(article.getState(), roleType);
+                if (target == null) {
+                    error.put("state", "非合理值！");
+                    return Result.error(error);
+                }
                 if (!articleService.canTransfer(art.getState(), target, roleType)) {
                     error.put("state", "当前文章状态不允许该操作！");
                     return Result.error(error);
@@ -165,12 +174,23 @@ public class ArticleController {
     /**
      * 由「草稿 / 提交」意图 + 角色决定目标状态，不信任请求体里的具体数值。
      *
-     * <p>前端仍沿用 state=0 表示「存为草稿」，其余一律按「提交」处理：
+     * <p>前端仍沿用 state=0 表示「存为草稿」，1/2/3 表示「提交」：
      * 站长直接发布（1），其他人送审（2）。</p>
+     *
+     * @return 目标状态；取值不在 {0,1,2,3} 内时返回 {@code null}（由调用方拒绝）
      */
-    private int resolveTargetState(Integer requested, int roleType) {
-        if (requested != null && requested == ArticleService.STATE_DRAFT) {
+    private Integer resolveTargetState(Integer requested, int roleType) {
+        if (requested == null) {
+            return null;
+        }
+        if (requested == ArticleService.STATE_DRAFT) {
             return ArticleService.STATE_DRAFT;
+        }
+        // 只有合法的「非草稿」状态值才算提交意图，其余取值一律视为非法入参
+        if (requested != ArticleService.STATE_PUBLISHED
+                && requested != ArticleService.STATE_PENDING
+                && requested != ArticleService.STATE_REJECTED) {
+            return null;
         }
         return (roleType == ArticleService.ROLE_MASTER)
                 ? ArticleService.STATE_PUBLISHED
