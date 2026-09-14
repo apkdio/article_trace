@@ -6,6 +6,7 @@ import com.articleTraceBack.Service.LoginAttemptService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.IPUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
+import org.springframework.dao.DuplicateKeyException;
 import jakarta.servlet.http.HttpServletRequest;
 import com.articleTraceBack.pojo.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -245,8 +246,14 @@ public class UserController {
                     return Result.error(error);
                 }
             }
-            if (userService.update(user, 0)) {
-                return Result.success();
+            try {
+                if (userService.update(user, 0)) {
+                    return Result.success();
+                }
+            } catch (DuplicateKeyException e) {
+                // 并发下由唯一索引 uk_nickname 兜底（空昵称视为 NULL，不冲突）
+                error.put("nickname", "昵称已存在！");
+                return Result.error(error);
             }
             error.put("error", "更新失败！请重试！");
             return Result.error(error);

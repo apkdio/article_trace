@@ -98,10 +98,10 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public Article findArticleByName(String articleTitle) {
+    public Article findArticleByUserAndTitle(int userId, String articleTitle) {
         QueryWrapper<Article> queryWrapper = new QueryWrapper<>();
-        // title 没有唯一索引，历史数据可能同名；取首条而不是让 selectOne 抛 TooManyResultsException
-        queryWrapper.eq("title", articleTitle).last("limit 1");
+        // 标题在「同一作者」内唯一（uk_user_title），不同作者可以同名
+        queryWrapper.eq("create_user", userId).eq("title", articleTitle).last("limit 1");
         return articleMapper.selectOne(queryWrapper);
     }
 

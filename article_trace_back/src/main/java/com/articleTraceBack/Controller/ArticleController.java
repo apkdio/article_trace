@@ -9,6 +9,7 @@ import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Article;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
+import org.springframework.dao.DuplicateKeyException;
 import com.articleTraceBack.pojo.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
@@ -79,8 +80,8 @@ public class ArticleController {
             return Result.error(error);
         }
         int categoryId = article.getCategoryId();
-        if (articleService.findArticleByName(articleTitle) != null) {
-            error.put("title", "文章已存在！");
+        if (articleService.findArticleByUserAndTitle(uid, articleTitle) != null) {
+            error.put("title", "你已写过同名文章！");
             return Result.error(error);
         }
         if (categoryService.findById(categoryId) != null) {
@@ -94,8 +95,14 @@ public class ArticleController {
                 return Result.error(error);
             }
             article.setState(target);
-            if (articleService.articleAddOrUpdate(article, 0)) {
-                return Result.success();
+            try {
+                if (articleService.articleAddOrUpdate(article, 0)) {
+                    return Result.success();
+                }
+            } catch (DuplicateKeyException e) {
+                // 并发下两个请求可能同时通过查重，由唯一索引 uk_user_title 兜底
+                error.put("title", "你已写过同名文章！");
+                return Result.error(error);
             }
             error.put("error", "新增失败!");
             return Result.error(error);
@@ -142,9 +149,10 @@ public class ArticleController {
                 error.put("error", "非法用户更新请求！");
                 return Result.error(error);
             }
-            Article byName = articleService.findArticleByName(articleTitle);
+            Article byName = articleService.findArticleByUserAndTitle(uid, articleTitle);
+            // 现在限定查找的范围为同作者的所有文章，意味着查重仅在同作者的全部文章范围内
             if (byName != null && (!Objects.equals(byName.getId(), article.getId()))) {
-                error.put("title", "文章已存在！");
+                error.put("title", "你已经写过同名文章了！");
                 return Result.error(error);
             }
             if (categoryService.findById(categoryId) != null) {
@@ -160,8 +168,13 @@ public class ArticleController {
                     return Result.error(error);
                 }
                 article.setState(target);
-                if (articleService.articleAddOrUpdate(article, 1)) {
-                    return Result.success();
+                try {
+                    if (articleService.articleAddOrUpdate(article, 1)) {
+                        return Result.success();
+                    }
+                } catch (DuplicateKeyException e) {
+                    error.put("title", "你已写过同名文章！");
+                    return Result.error(error);
                 }
                 error.put("error", "更新失败!");
                 return Result.error(error);

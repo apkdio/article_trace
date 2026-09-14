@@ -12,7 +12,8 @@ import java.util.Map;
 public interface ArticleService {
     boolean articleAddOrUpdate(Article article, int type);
 
-    Article findArticleByName(String articleTitle);
+    /** 查同一作者是否已有同名文章（标题在作者内唯一，不同作者可同名） */
+    Article findArticleByUserAndTitle(int userId, String articleTitle);
     List<AhoCorasickUtil.Match> containsSensitive(String content);
     PageBean<Article> findAllArticlesWithPage(int uid, int pageNum, int pageSize,
                                               Integer categoryId, Integer state, String search);

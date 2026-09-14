@@ -4,6 +4,7 @@ import com.articleTraceBack.Service.CategoryService;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.Result;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
@@ -27,8 +28,14 @@ public class CategoryController {
         Map<String, Object> error = new HashMap<>();
         if (categoryService.findCategoryByName(category.getCategoryName()) == null) {
             category.setCreateUser(id);
-            if (categoryService.insert(category)) {
-                return Result.success();
+            try {
+                if (categoryService.insert(category)) {
+                    return Result.success();
+                }
+            } catch (DuplicateKeyException e) {
+                // 并发下由唯一索引 uk_category_name 兜底
+                error.put("categoryName", "文章分类已存在！");
+                return Result.error(error);
             }
             error.put("error", "插入失败！请重试！");
             return Result.error(error);
@@ -82,8 +89,13 @@ public class CategoryController {
             return Result.error(error);
         }
         category.setId(id);
-        if (categoryService.update(category, uid)) {
-            return Result.success();
+        try {
+            if (categoryService.update(category, uid)) {
+                return Result.success();
+            }
+        } catch (DuplicateKeyException e) {
+            error.put("categoryName", "分类名已存在！");
+            return Result.error(error);
         }
         error.put("error", "更新失败！");
         return Result.error(error);
