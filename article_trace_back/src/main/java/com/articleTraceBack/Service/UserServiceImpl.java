@@ -17,6 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,12 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class UserServiceImpl implements UserService {
     private final StringRedisTemplate stringRedisTemplate;
+    /** 默认昵称前缀与随机后缀字符集（去掉易混淆的 0/o/1/l） */
+    private static final String NICKNAME_PREFIX = "文迹探索者";
+    private static final String NICKNAME_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
+    private static final int NICKNAME_SUFFIX_LEN = 6;
+    private static final SecureRandom NICKNAME_RANDOM = new SecureRandom();
+
     @Value("${JWT.longTime}")
     private long longTime;
     @Value("${JWT.shortTime}")
@@ -75,7 +82,20 @@ public class UserServiceImpl implements UserService {
         LocalDateTime now = LocalDateTime.now();
         user.setCreateTime(now);
         user.setPassword(encoderPass);
+        // 注册不要求填昵称，这里生成一个默认的（昵称允许重复，无需保证唯一）
+        if (StringUtils.isBlank(user.getNickname())) {
+            user.setNickname(genDefaultNickname());
+        }
         return userMapper.insert(user) == 1;
+    }
+
+    /** 默认昵称：文迹探索者 + 6 位随机串，如「文迹探索者k7m2x9」 */
+    private String genDefaultNickname() {
+        StringBuilder sb = new StringBuilder(NICKNAME_PREFIX);
+        for (int i = 0; i < NICKNAME_SUFFIX_LEN; i++) {
+            sb.append(NICKNAME_CHARS.charAt(NICKNAME_RANDOM.nextInt(NICKNAME_CHARS.length())));
+        }
+        return sb.toString();
     }
 
     @Override

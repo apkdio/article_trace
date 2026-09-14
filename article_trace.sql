@@ -105,7 +105,7 @@ CREATE TABLE `user` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `username` varchar(20) NOT NULL COMMENT '用户名',
   `password` varchar(60) DEFAULT NULL COMMENT '密码',
-  `nickname` varchar(15) DEFAULT '' COMMENT '昵称',
+  `nickname` varchar(15) NOT NULL COMMENT '昵称',
   `email` varchar(128) NOT NULL COMMENT '邮箱',
   `user_pic` varchar(128) DEFAULT '' COMMENT '头像',
   `create_time` datetime NOT NULL COMMENT '创建时间',
