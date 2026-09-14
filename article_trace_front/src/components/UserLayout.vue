@@ -7,7 +7,7 @@ import {userInfoStore} from '@/stores/userInfo.js'
 import router from '@/router/index.js'
 import {logout as doLogout} from '@/utils/auth.js'
 import UserTypeTag from '@/components/UserTypeTag.vue'
-import {listNotifications, markAllRead, markRead as markReadApi, unreadCount} from "@/api/notification.js";
+import {deleteNotification, listNotifications, markAllRead, markRead as markReadApi, unreadCount} from "@/api/notification.js";
 
 defineProps({
     defaultActive: {type: String, default: ''},
@@ -24,6 +24,8 @@ const notifyPage = ref(1)
 const notifyPageSize = ref(10)
 const unread = ref(0)
 const notifyLoading = ref(false)
+// 类型筛选：all / system / apply
+const notifyType = ref('all')
 
 // 站内信实时提醒：定时轮询未读数，出现新增时轻提示（首次加载不提示）
 const POLL_INTERVAL_MS = 60 * 1000
@@ -52,7 +54,7 @@ const loadUnread = async ({notifyOnIncrease = false} = {}) => {
 const loadNotify = async () => {
     notifyLoading.value = true
     try {
-        const res = await listNotifications(notifyPage.value, notifyPageSize.value)
+        const res = await listNotifications(notifyType.value, notifyPage.value, notifyPageSize.value)
         if (res.code === 0) {
             notifyList.value = res.data?.items || []
             notifyTotal.value = res.data?.total || 0
@@ -70,6 +72,29 @@ const openNotify = () => {
     loadNotify()
     // 打开抽屉时同步一次未读数，避免角标与列表不一致
     loadUnread()
+}
+
+const switchType = () => {
+    notifyPage.value = 1
+    loadNotify()
+}
+
+const removeNotify = async (item) => {
+    try {
+        const res = await deleteNotification(item.id)
+        if (res.code !== 0) {
+            ElMessage.error(res.message || '删除失败！')
+            return
+        }
+        if (item.isRead === 0) unread.value = Math.max(0, unread.value - 1)
+        // 删掉当前页最后一条时回退一页，避免停在空页
+        if (notifyList.value.length === 1 && notifyPage.value > 1) {
+            notifyPage.value -= 1
+        }
+        await loadNotify()
+    } catch (e) {
+        ElMessage.error('删除失败！')
+    }
 }
 
 const readOne = async (item) => {
@@ -182,6 +207,11 @@ const logout = (command) => {
         <!-- 站内通知抽屉 -->
         <el-drawer v-model="notifyDrawer" title="站内通知" size="380px" class="notify-drawer">
             <div class="notify-toolbar">
+                <el-radio-group v-model="notifyType" size="small" @change="switchType">
+                    <el-radio-button value="all">全部</el-radio-button>
+                    <el-radio-button value="system">系统</el-radio-button>
+                    <el-radio-button value="apply">作者申请</el-radio-button>
+                </el-radio-group>
                 <el-button size="small" text type="primary" :disabled="unread === 0" @click="readAll">
                     全部已读
                 </el-button>
@@ -195,7 +225,12 @@ const logout = (command) => {
                         <span v-if="item.isRead === 0" class="notify-dot"></span>{{ item.title }}
                     </div>
                     <div class="notify-content">{{ item.content }}</div>
-                    <div class="notify-time">{{ item.createTime }}</div>
+                    <div class="notify-time">
+                        <span>{{ item.createTime }}</span>
+                        <el-button size="small" text type="danger" @click.stop="removeNotify(item)">
+                            删除
+                        </el-button>
+                    </div>
                 </div>
             </div>
             <div v-if="notifyTotal > notifyPageSize" class="notify-pager">
@@ -498,7 +533,8 @@ const logout = (command) => {
 .notify-drawer {
     .notify-toolbar {
         display: flex;
-        justify-content: flex-end;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 8px;
     }
 
@@ -553,6 +589,9 @@ const logout = (command) => {
         }
 
         .notify-time {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-top: 4px;
             font-size: 12px;
             color: #a8abb2;

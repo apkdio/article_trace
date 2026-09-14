@@ -130,6 +130,7 @@ CREATE TABLE `notification` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `title` varchar(120) NOT NULL COMMENT '标题',
   `sender_id` int DEFAULT NULL COMMENT '发送方: -1=系统消息; 正整数=用户ID; NULL=发送方已注销',
+  `type` varchar(20) NOT NULL DEFAULT 'system' COMMENT '类型: system-系统 apply-作者申请',
   `receiver_id` int DEFAULT NULL COMMENT '接收方: 用户ID; NULL=接收方已注销',
   `content` text COMMENT '正文',
   `create_time` datetime NOT NULL COMMENT '发送时间',

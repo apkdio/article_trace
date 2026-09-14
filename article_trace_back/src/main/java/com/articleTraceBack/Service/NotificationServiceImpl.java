@@ -57,6 +57,7 @@ public class NotificationServiceImpl implements NotificationService {
             if (supportsInbox(channel)) {
                 Notification notification = new Notification();
                 notification.setTitle(title);
+                notification.setType(resolveType(scene));
                 notification.setSenderId(SYSTEM_SENDER_ID);
                 notification.setReceiverId(receiverId);
                 notification.setContent(content);
@@ -92,12 +93,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public PageBean<Notification> listByReceiver(int receiverId, int pageNum, int pageSize) {
+    public PageBean<Notification> listByReceiver(int receiverId, String type, int pageNum, int pageSize) {
         int safePageNum = Math.max(pageNum, 1);
         int safePageSize = Math.max(pageSize, 1);
-        int total = notificationMapper.countByReceiver(receiverId);
+        String safeType = normalizeType(type);
+        int total = notificationMapper.countByReceiver(receiverId, safeType);
         int offset = (safePageNum - 1) * safePageSize;
-        List<Notification> items = notificationMapper.selectPageByReceiver(receiverId, offset, safePageSize);
+        List<Notification> items = notificationMapper.selectPageByReceiver(
+                receiverId, safeType, offset, safePageSize);
         return new PageBean<>(total, items);
     }
 
@@ -124,6 +127,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public boolean delete(int receiverId, int id) {
+        QueryWrapper<Notification> wrapper = new QueryWrapper<>();
+        // 限定 receiver_id：只能删自己的消息
+        wrapper.eq("id", id).eq("receiver_id", receiverId);
+        return notificationMapper.delete(wrapper) > 0;
+    }
+
+    @Override
     public int cleanupExpired(int keepDays) {
         if (keepDays <= 0) {
             return 0;
@@ -138,6 +149,26 @@ public class NotificationServiceImpl implements NotificationService {
             log.error("notification cleanup failed", e);
             return 0;
         }
+    }
+
+    /** 场景 → 站内信类型：作者申请相关单独归类，其余归系统 */
+    private String resolveType(String scene) {
+        if (scene != null && scene.startsWith("author-apply")) {
+            return Notification.TYPE_APPLY;
+        }
+        return Notification.TYPE_SYSTEM;
+    }
+
+    /** 把前端的类型筛选参数归一化：非法/空/全部 一律返回 null（查全部） */
+    private String normalizeType(String type) {
+        if (type == null || type.isBlank() || "all".equalsIgnoreCase(type)) {
+            return null;
+        }
+        String normalized = type.trim().toLowerCase(Locale.ROOT);
+        if (Notification.TYPE_SYSTEM.equals(normalized) || Notification.TYPE_APPLY.equals(normalized)) {
+            return normalized;
+        }
+        return null;
     }
 
     /** 取接收方邮箱；用户不存在或未填邮箱时返回 null */

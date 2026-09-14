@@ -25,8 +25,12 @@ public interface NotificationService {
      */
     void notifyRole(int roleType, String scene, String title, String content);
 
-    /** 我的站内信分页（按发送时间倒序） */
-    PageBean<Notification> listByReceiver(int receiverId, int pageNum, int pageSize);
+    /**
+     * 我的站内信分页（按发送时间倒序）。
+     *
+     * @param type 类型筛选，见 {@link Notification#TYPE_SYSTEM} / {@link Notification#TYPE_APPLY}；null 查全部
+     */
+    PageBean<Notification> listByReceiver(int receiverId, String type, int pageNum, int pageSize);
 
     /** 我的未读数 */
     int unreadCount(int receiverId);
@@ -36,6 +40,9 @@ public interface NotificationService {
 
     /** 全部标记已读，返回受影响行数 */
     int markAllRead(int receiverId);
+
+    /** 删除单条站内信（仅限本人的消息）；返回是否删掉了 1 条 */
+    boolean delete(int receiverId, int id);
 
     /** 清理超过 keepDays 天的站内信（无论是否已读），返回删除行数 */
     int cleanupExpired(int keepDays);

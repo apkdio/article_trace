@@ -5,6 +5,7 @@ import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,15 +30,16 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
-    /** 我的站内信分页（倒序） */
+    /** 我的站内信分页（倒序）；type 可选：system / apply，不传或 all 查全部 */
     @GetMapping("/list")
-    public Result<PageBean<Notification>> list(@RequestParam(defaultValue = "1") int pageNum,
+    public Result<PageBean<Notification>> list(@RequestParam(required = false) String type,
+                                               @RequestParam(defaultValue = "1") int pageNum,
                                                @RequestParam(defaultValue = "10") int pageSize) {
         Integer userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");
         }
-        return Result.success(notificationService.listByReceiver(userId, pageNum, pageSize));
+        return Result.success(notificationService.listByReceiver(userId, type, pageNum, pageSize));
     }
 
     /** 未读数（前端角标） */
@@ -71,6 +73,19 @@ public class NotificationController {
             return Result.error("未登录！");
         }
         return Result.success(notificationService.markAllRead(userId));
+    }
+
+    /** 删除单条站内信（仅限本人） */
+    @DeleteMapping("/{id}")
+    public Result<String> delete(@PathVariable int id) {
+        Integer userId = currentUserId();
+        if (userId == null) {
+            return Result.error("未登录！");
+        }
+        if (!notificationService.delete(userId, id)) {
+            return Result.error("消息不存在！");
+        }
+        return Result.success();
     }
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */

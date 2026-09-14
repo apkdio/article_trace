@@ -50,7 +50,7 @@ public class NotificationServiceTest {
         assertEquals(before + 1, notificationService.unreadCount(TEST_USER_ID), "未读数应为 +1");
 
         // 3. 列表可见，且系统消息发送方为 -1
-        PageBean<Notification> page = notificationService.listByReceiver(TEST_USER_ID, 1, 10);
+        PageBean<Notification> page = notificationService.listByReceiver(TEST_USER_ID, null, 1, 10);
         assertEquals(1, page.getTotal(), "应只有 1 条站内信");
         Notification n = page.getItems().get(0);
         assertEquals("标题B", n.getTitle());
@@ -63,6 +63,32 @@ public class NotificationServiceTest {
 
         // 5. 幂等：重复标记返回 false
         assertFalse(notificationService.markRead(TEST_USER_ID, n.getId()), "重复标记应返回 false");
+    }
+
+    @Test
+    public void testFilterByTypeAndDelete() {
+        // author-apply-* → apply 类型；未配置场景走 defaultChannel(inbox) → system 类型
+        notificationService.notify(TEST_USER_ID, "author-apply-approved", "申请通过", "内容X");
+        notificationService.notify(TEST_USER_ID, "unknown-scene", "系统消息", "内容Y");
+
+        PageBean<Notification> all = notificationService.listByReceiver(TEST_USER_ID, null, 1, 10);
+        assertEquals(2, all.getTotal(), "不传 type 应查全部");
+
+        PageBean<Notification> applies = notificationService.listByReceiver(
+                TEST_USER_ID, Notification.TYPE_APPLY, 1, 10);
+        assertEquals(1, applies.getTotal(), "type=apply 应只返回申请相关");
+        assertEquals(Notification.TYPE_APPLY, applies.getItems().get(0).getType(), "类型应落为 apply");
+
+        // 非法 type 退化为查全部，而不是报错或查空
+        assertEquals(2, notificationService.listByReceiver(TEST_USER_ID, "not-a-type", 1, 10).getTotal(),
+                "非法 type 应退化为查全部");
+
+        // 删除：不能删别人的，能删自己的
+        int targetId = all.getItems().get(0).getId();
+        assertFalse(notificationService.delete(TEST_USER_ID + 1, targetId), "不应能删除他人的消息");
+        assertTrue(notificationService.delete(TEST_USER_ID, targetId), "删除自己的消息应成功");
+        assertEquals(1, notificationService.listByReceiver(TEST_USER_ID, null, 1, 10).getTotal(),
+                "删除后总数应减一");
     }
 
     @Test

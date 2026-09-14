@@ -22,7 +22,16 @@ public class Notification {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
+    /** 类型：系统消息 */
+    public static final String TYPE_SYSTEM = "system";
+    /** 类型：作者申请相关 */
+    public static final String TYPE_APPLY = "apply";
+
     private String title;
+
+    /** system-系统 / apply-作者申请 */
+    @TableField("`type`")
+    private String type;
 
     /** -1 = 系统消息；NULL = 发送方已注销 */
     private Integer senderId;

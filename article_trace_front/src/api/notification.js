@@ -2,9 +2,18 @@ import request from "@/utils/request.js";
 
 /**
  * 我的站内信分页（按发送时间倒序）。
+ *
+ * @param type system / apply；不传或 all 查全部
  */
-export function listNotifications(pageNum = 1, pageSize = 10) {
-    return request.get("/notification/list", {params: {pageNum, pageSize}})
+export function listNotifications(type, pageNum = 1, pageSize = 10) {
+    return request.get("/notification/list", {params: {type, pageNum, pageSize}})
+}
+
+/**
+ * 删除单条站内信（仅限本人）。
+ */
+export function deleteNotification(id) {
+    return request.delete("/notification/" + id)
 }
 
 /**

@@ -66,7 +66,7 @@ public class NotificationControllerTest {
         assertEquals(2, unread.getData());
 
         // 列表
-        Result<PageBean<Notification>> list = notificationController.list(1, 10);
+        Result<PageBean<Notification>> list = notificationController.list(null, 1, 10);
         assertEquals(0, list.getCode());
         assertEquals(2, list.getData().getTotal());
 
@@ -85,7 +85,7 @@ public class NotificationControllerTest {
     @Test
     public void testUnauthenticatedIsRejected() {
         ThreadLocalUtil.remove();
-        Result<PageBean<Notification>> list = notificationController.list(1, 10);
+        Result<PageBean<Notification>> list = notificationController.list(null, 1, 10);
         assertEquals(1, list.getCode(), "未登录应返回失败码");
         assertEquals("未登录！", list.getMessage());
     }
