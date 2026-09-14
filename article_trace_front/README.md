@@ -132,6 +132,7 @@ article_trace_front/
 | `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10） |
 | `articleInfo.vue` | 文章详情 + 评论 |
 | `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
+| `components/UserLayout.vue` | 后台布局；站内信抽屉支持按类型筛选（全部/系统/作者申请）与单条删除，未读数每 60 秒轮询 |
 | `mainPage.vue` | 后台侧边栏布局 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |

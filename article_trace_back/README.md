@@ -413,8 +413,9 @@ notification:
 | create_time / update_time / last_login | datetime | 时间戳 |
 | type | int | 0 站长 / 1 作者 / 2 读者 |
 | nickname_uniq | varchar(15) | **生成列**：`IF(nickname = '', NULL, nickname)`，仅为承载唯一约束 |
+| email_uniq | varchar(128) | **生成列**：`IF(email = '', NULL, email)`，同上 |
 
-> 索引：`username` 唯一；`nickname_uniq` 唯一（`uk_nickname`）。用生成列是因为 `nickname` 默认值为 `''`，直接加唯一索引会导致**第二个用户注册就失败**；空昵称映射为 `NULL` 后不参与唯一性。
+> 索引：`username` 唯一；`nickname_uniq` 唯一（`uk_nickname`）；`email_uniq` 唯一（`uk_email`）。用生成列是因为 `nickname` / `email` 默认值都是 `''`，直接加唯一索引会导致**第二个用户注册就失败**；空值映射为 `NULL` 后不参与唯一性。
 
 ### `category` 分类表
 
@@ -461,6 +462,7 @@ notification:
 |---|---|---|
 | id | int | 主键 |
 | title | varchar(120) | 标题 |
+| type | varchar(20) | 类型：`system` 系统 / `apply` 作者申请相关（由 `notify` 的 scene 推导）|
 | sender_id | int | 发送方：`-1` 系统消息 / 用户 ID / `NULL` 发送方已注销 |
 | receiver_id | int | 接收方：用户 ID / `NULL` 接收方已注销 |
 | content | text | 正文 |
@@ -577,12 +579,13 @@ notification:
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/notification/list` | 我的站内信分页（倒序） |
+| GET | `/notification/list` | 我的站内信分页（倒序）；可选 `type` 筛选（`system` / `apply`，不传或 `all` 查全部）|
 | GET | `/notification/unreadCount` | 未读数（前端角标） |
 | PATCH | `/notification/read/{id}` | 标记单条已读 |
 | PATCH | `/notification/readAll` | 全部标记已读 |
+| DELETE | `/notification/{id}` | 删除单条（仅限本人）|
 
-> 接收方一律取登录态，不接受前端传 `userId`，避免越权读取他人消息。
+> 接收方一律取登录态，不接受前端传 `userId`，避免越权读取他人消息；删除同样以「id + receiver_id」双条件限定，删不到别人的。
 
 ### 检索问答 `/agent`
 
@@ -635,6 +638,7 @@ mvn clean package && java -jar target/article_trace-*.jar
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
 | `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
+| `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
 | `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
 | `AgentDisabledTest` | agent 关闭时主业务降级 |
