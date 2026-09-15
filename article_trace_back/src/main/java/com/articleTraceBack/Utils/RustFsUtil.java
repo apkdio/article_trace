@@ -53,7 +53,10 @@ public class RustFsUtil {
     private String secretKey;
     @Value("${S3.picBucket}")
     private String picBucket;
-    @Value("${S3.contentBucket}")    private String contentBucket;
+    @Value("${S3.contentBucket}")
+    private String contentBucket;
+    @Value("${S3.avatarBucket}")
+    private String avatarBucket;
     public static final String THUMB_PREFIX = "thumb_";
     private static final int THUMB_WIDTH = 400;
 
@@ -67,13 +70,30 @@ public class RustFsUtil {
         this.s3Presigner = createS3Presigner(endpoint, accessKey, secretKey);
     }
 
-    public boolean upload(Object file, String type, String key) {
+    /**
+     * 按业务类型解析目标桶。
+     *
+     * @param type json=正文内容 image=封面等既有图片 avatar=用户头像待审
+     * @return 桶名；类型未知时为 null
+     */
+    private String bucketOf(String type) {
         return switch (type) {
-            case "json" -> uploadJson(objectMapper.convertValue(file, new TypeReference<>() {
-            }), contentBucket, key);
-            case "image" -> uploadImage((MultipartFile) file, picBucket, key);
-            default -> false;
+            case "json" -> contentBucket;
+            case "image" -> picBucket;
+            case "avatar" -> avatarBucket;
+            default -> null;
         };
+    }
+
+    public boolean upload(Object file, String type, String key) {
+        String bucket = bucketOf(type);
+        if (bucket == null) {
+            return false;
+        }
+        return "json".equals(type)
+                ? uploadJson(objectMapper.convertValue(file, new TypeReference<>() {
+        }), bucket, key)
+                : uploadImage((MultipartFile) file, bucket, key);
     }
 
     private boolean uploadImage(MultipartFile file, String bucket, String key) {
@@ -158,16 +178,16 @@ public class RustFsUtil {
         if (key == null || key.isEmpty()) {
             return true;
         }
-        return switch (fileType) {
-            case "json" -> deleteFile(contentBucket, key);
-            case "image" -> {
-                boolean deleted = deleteFile(picBucket, key);
-                // 连带删除缩略图（不存在则静默跳过）
-                deleteThumb(picBucket, key);
-                yield deleted;
-            }
-            default -> false;
-        };
+        String bucket = bucketOf(fileType);
+        if (bucket == null) {
+            return false;
+        }
+        boolean deleted = deleteFile(bucket, key);
+        if (!"json".equals(fileType)) {
+            // 连带删除缩略图（不存在则静默跳过）
+            deleteThumb(bucket, key);
+        }
+        return deleted;
     }
 
     private boolean deleteFile(String bucket, String key) {
@@ -212,12 +232,27 @@ public class RustFsUtil {
 
     // 生成图片临时访问链接
     public String getPciUrl(String fileKey) {
-        String url = stringRedisTemplate.opsForValue().get(fileKey);
+        return getPciUrl(fileKey, "image");
+    }
+
+    /**
+     * 生成图片临时访问链接。
+     *
+     * @param fileType 对象所在业务类型；用户头像传 avatar，其余图片传 image
+     */
+    public String getPciUrl(String fileKey, String fileType) {
+        String bucket = bucketOf(fileType);
+        if (bucket == null) {
+            return null;
+        }
+        // 缓存键必须带桶：两个桶可能出现同名对象，只用 key 会串味
+        String cacheKey = bucket + ":" + fileKey;
+        String url = stringRedisTemplate.opsForValue().get(cacheKey);
         if (url != null) {
             return url;
         }
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(picBucket)
+                .bucket(bucket)
                 .key(fileKey)
                 .build();
 
@@ -227,7 +262,7 @@ public class RustFsUtil {
                 .build();
 
         PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
-        stringRedisTemplate.opsForValue().set(fileKey, presignedRequest.url().toString(), 3, TimeUnit.DAYS);
+        stringRedisTemplate.opsForValue().set(cacheKey, presignedRequest.url().toString(), 3, TimeUnit.DAYS);
         return presignedRequest.url().toString();
     }
 
@@ -242,18 +277,23 @@ public class RustFsUtil {
      * 生成缩略图访问链接
      */
     public String getThumbUrl(String fileKey) {
-        return getPciUrl(THUMB_PREFIX + fileKey);
+        return getThumbUrl(fileKey, "image");
+    }
+
+    /**
+     * 生成缩略图访问链接
+     *
+     * @param fileType 同 {@link #getPciUrl(String, String)}
+     */
+    public String getThumbUrl(String fileKey, String fileType) {
+        return getPciUrl(THUMB_PREFIX + fileKey, fileType);
     }
 
     /**
      * 判断对象是否存在
      */
     public boolean exists(String key, String fileType) {
-        String bucket = switch (fileType) {
-            case "json" -> contentBucket;
-            case "image" -> picBucket;
-            default -> null;
-        };
+        String bucket = bucketOf(fileType);
         if (bucket == null || key == null || key.isEmpty()) {
             return false;
         }
@@ -270,14 +310,27 @@ public class RustFsUtil {
      * 为已存在的原图生成缩略图（读取原图 → 缩放 → 上传缩略图）
      */
     public boolean generateThumbFor(String fileKey) {
+        return generateThumbFor(fileKey, "image");
+    }
+
+    /**
+     * 为已存在的原图生成缩略图（读取原图 → 缩放 → 上传缩略图）
+     *
+     * @param fileType 同 {@link #getPciUrl(String, String)}
+     */
+    public boolean generateThumbFor(String fileKey, String fileType) {
+        String bucket = bucketOf(fileType);
+        if (bucket == null) {
+            return false;
+        }
         try {
-            GetObjectRequest request = GetObjectRequest.builder().bucket(picBucket).key(fileKey).build();
+            GetObjectRequest request = GetObjectRequest.builder().bucket(bucket).key(fileKey).build();
             byte[] original = s3Client.getObject(request, ResponseTransformer.toBytes()).asByteArray();
             byte[] thumb = ThumbnailUtil.thumbnail(new ByteArrayInputStream(original), THUMB_WIDTH);
             if (thumb == null) {
                 return false;
             }
-            return putObjectBytes(thumb, picBucket, THUMB_PREFIX + fileKey, "image/jpeg");
+            return putObjectBytes(thumb, bucket, THUMB_PREFIX + fileKey, "image/jpeg");
         } catch (Exception e) {
             log.error("generate thumbnail failed: key={}", fileKey, e);
             return false;
