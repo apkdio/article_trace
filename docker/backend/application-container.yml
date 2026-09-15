@@ -42,7 +42,7 @@ spring:
     # 不同用户组的访问权限
     excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
     notAllowUrl:
-      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType,/applyAuthor/manage
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage
       reader: /category/**,/article/**,/applyAuthor/manage
   application:
     name: articleTraceBack
@@ -125,7 +125,7 @@ notification:
     keepDays: 30                       # 站内信保留天数
 
 sensitive_word:
-  # 外部词库不存在时自动降级到 classpath 内置词库；需要挂载时见 docker-compose.yml 注释
+  # 外部词库不存在时自动降级到 classpath 内置词库；如需挂载，在 backend 服务的 volumes 加 ./res:/app/res
   filePath: ./res/sensitive_words.txt
   cron: "0 */30 * * * ?"
 
