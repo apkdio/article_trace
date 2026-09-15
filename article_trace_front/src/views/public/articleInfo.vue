@@ -2,7 +2,7 @@
 import {ref, onMounted, computed} from 'vue'
 import {
   Search, SwitchButton, CaretBottom, User, Timer, Calendar,
-  ChatLineRound, Delete
+  ChatLineRound, Delete, Bell
 } from '@element-plus/icons-vue'
 import {userInfoStore} from "@/stores/userInfo.js";
 import avatar from "@/assets/defaultLogo.jpg";
@@ -17,6 +17,7 @@ import {
 import router from "@/router/index.js";
 import {formatDate} from "@/utils/date.js";
 import TopArticlesList from "@/components/TopArticlesList.vue";
+import NotificationBell from "@/components/NotificationBell.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
 import {logout as doLogout} from "@/utils/auth.js";
 import {searchConditions} from "@/stores/searchConditions.js";
@@ -187,6 +188,18 @@ const pushSearch = (type) => {
         <el-input v-model="searchCondition.search" placeholder="搜索感兴趣的内容..." :prefix-icon="Search"
                   class="custom-search"/>
         <el-button :icon="Search" circle @click="pushSearch(0)"/>
+        <!-- 站内通知：与门户页一致，放在按钮组里、复用圆形按钮样式（未登录不显示）-->
+        <el-tooltip
+            v-if="isLogin"
+            class="box-item"
+            effect="light"
+            content="通知"
+            placement="bottom"
+        >
+          <NotificationBell v-slot="{ open }">
+            <el-button :icon="Bell" circle @click="open"/>
+          </NotificationBell>
+        </el-tooltip>
       </div>
       <div class="spacer-div"></div>
       <div class="user-area-wrapper">
