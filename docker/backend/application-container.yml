@@ -104,7 +104,7 @@ rpc:
 email:
   from: ${MAIL_FROM:}                   # 发件人，留空则用 spring.mail.username
   subjectPrefix: "[文迹]"
-  logoUrl: ${MAIL_LOGO_URL:}            # 邮件模板 logo 地址（须公网可达的绝对 URL）
+  logoUrl: ${MAIL_LOGO_URL:}            # 邮件模板 logo 地址；推荐 https://域名/logo2.png（由 Nginx 托管）
 
 author-apply:
   remindCron: "0 0 0/12 * * ?"          # 每 12 小时检查待审作者申请，有则邮件提醒站长

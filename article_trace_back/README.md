@@ -282,6 +282,9 @@ flowchart LR
 同名模板有 `.html`（富文本）与 `.txt`（纯文本兜底）两份，占位符写作双花括号。渲染由
 `EmailTemplateUtil` 完成；未提供值的占位符原样保留，便于上线前发现漏配。
 模板里的 logo 地址来自 `email.logoUrl`，**必须是公网可访问的绝对 URL**。
+推荐把 logo 放在前端 `public/` 下（仓库已内置 `article_trace_front/public/logo2.png`），
+构建后由 Nginx 直接托管，配置 `MAIL_LOGO_URL=https://你的域名/logo2.png` 即可；
+换图只需替换 `public/` 下那个文件并重新构建，后端无需改动。
 
 **② 通知门面 `NotificationService`**
 
