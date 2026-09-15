@@ -1,6 +1,35 @@
+/**
+ * 让垂直滚动条常驻，消除抽屉开关引起的整页横向跳动。
+ *
+ * el-drawer / el-dialog 打开时会锁住 body 的滚动（body 的 overflow 变成 hidden），
+ * 页面滚动条随之消失，于是**幅面宽度突然多出约 15px**，页面上所有横向排布都会挪一下，
+ * 关闭时再挪回来。
+ *
+ * 难点在于页面上存在**两套参照系**，必须同时稳住：
+ *   1. 普通内容（右侧栏、正文等）以 body 为参照 → 看 body 的 clientWidth
+ *   2. position: fixed 的顶部栏以**视口**为参照 → 看视口的可用宽度
+ * 只处理其中一边，另一边照样跳（这两种现象都实际出现过）。
+ *
+ * 做法：html 的 overflow-y 设为 scroll，滚动条常驻不再随锁滚动而消失，
+ * 两个参照系的宽度就都固定了。这比 scrollbar-gutter 更省心——gutter 只对
+ * 「被锁的那个元素」生效，而 fixed 元素根本不在那个元素的参照系里，管不到。
+ */
+html {
+  overflow-y: scroll;
+}
+
 body {
   margin: 0;
   background-color: #f5f5f5;
+  /**
+   * 压过 Element Plus 的滚动条补偿。
+   *
+   * el-drawer / el-dialog 锁滚动时会给 body 内联一个
+   * `width: calc(100% - 15px)`，用来抵消"滚动条消失后内容变宽"。
+   * 但上面已让滚动条常驻，它并没有消失，这个补偿反而把 body 多减了 15px，
+   * 导致右侧栏与正文整体左移。内联样式优先级高于普通 CSS，故必须用 !important。
+   */
+  width: 100% !important;
 }
 
 /* fade-slide */
