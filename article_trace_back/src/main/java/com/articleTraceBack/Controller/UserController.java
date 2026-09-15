@@ -244,21 +244,13 @@ public class UserController {
         int tokenUid = (int) userInfo.get("id");
         if (Objects.equals(name, username)
                 && Objects.equals(id, tokenUid)) {
-            String nickName = user.getNickname();
-            User userByNickName = userService.findUserByNickName(nickName);
-            if (userByNickName != null) {
-                if (userByNickName.getId() != id) {
-                    error.put("nickname", "昵称已存在！");
-                    return Result.error(error);
-                }
-            }
             try {
                 if (userService.update(user, 0)) {
                     return Result.success();
                 }
             } catch (DuplicateKeyException e) {
-                // 并发下由唯一索引兜底：昵称（uk_nickname）或邮箱（uk_email）
-                error.put("nickname", "昵称或邮箱已存在！");
+                // 并发下由唯一索引兜底：昵称可重复，只有邮箱有唯一约束
+                error.put("email", "邮箱已被使用！");
                 return Result.error(error);
             }
             error.put("error", "更新失败！请重试！");
