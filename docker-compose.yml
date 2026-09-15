@@ -41,7 +41,7 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      # 首次启动自动执行建库脚本（含 CREATE DATABASE / 4 张表）
+      # 首次启动自动执行建库脚本（含 CREATE DATABASE / 7 张表）
       - ./article_trace.sql:/docker-entrypoint-initdb.d/01-article_trace.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]

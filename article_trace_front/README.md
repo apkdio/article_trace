@@ -19,6 +19,9 @@
 
 ```
 article_trace_front/
+├── public/                  # 原样拷贝到 dist 根（含邮件 logo：/logo2.png）
+├── Dockerfile               # 构建产物 → Nginx 托管
+├── nginx.conf               # Nginx 配置
 ├── index.html
 ├── package.json                    # 依赖与脚本
 ├── vite.config.js                  # Vite 配置（代理/别名/自动导入）

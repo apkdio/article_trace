@@ -88,15 +88,20 @@ article_trace_back/
     │   │   ├── TextExtractor.java           #   纯文本提取/摘要
     │   │   ├── RustFsUtil.java              #   RustFS/S3 对象存储封装
     │   │   ├── ThumbnailUtil.java           #   图片缩略图生成（Thumbnailator）
-    │   │   ├── EmailUtil.java               #   邮件发送（SMTP）
+    │   │   ├── EmailUtil.java               #   邮件发送（SMTP，含 multipart 双载体）
+    │   │   ├── EmailTemplateUtil.java       #   邮件模板加载与占位符渲染
+    │   │   ├── FileCheckUtil.java           #   上传图片校验（MIME 与扩展名都须通过）
+    │   │   ├── PageUtil.java                #   分页参数归一化（页码下限 / 每页条数上限）
     │   │   ├── IPUtil.java                  #   客户端 IP 获取
     │   │   └── GlobalExceptionHandler.java  #   全局异常捕获
     │   ├── config/                          # 配置类
     │   │   ├── WebConfig.java               #   拦截器注册
     │   │   ├── RedisConfig.java             #   Redis 双库模板配置
-    │   │   ├── SensitiveWordConfig.java     #   敏感词 Bean 装配
+    │   │   ├── SensitiveWordHolder.java     #   敏感词匹配器持有者（业务与定时任务共用可替换引用）
     │   │   ├── NotificationProperties.java  #   通知/邮件配置绑定
     │   │   └── AsyncConfig.java             #   邮件异步线程池
+    │   ├── constant/                        # 常量
+    │   │   └── RedisKeys.java               #   跨类共用的 Redis key（article:hot:top10 等）
     │   ├── runner/
     │   │   ├── AdminInitializer.java        #   启动时自动创建站长账号
     │   │   └── ThumbnailBackfillRunner.java #   存量缩略图补齐（可选）
@@ -110,7 +115,8 @@ article_trace_back/
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
-        └── sensitive_words.txt              # 内置敏感词库
+        ├── sensitive_words.txt              # 内置敏感词库
+        └── templates/email/                 # 邮件模板（email-code.html 富文本 + .txt 纯文本兜底）
 ```
 
 ## 项目细节实现
@@ -145,7 +151,12 @@ article_trace_back/
   - **新增不接受客户端传入的 `id`**（强制 `setId(null)`），避免借 `insertOrUpdate` 覆盖他人文章。
   - **标题在同一作者内唯一**（`uk_user_title`）：应用层按 `(create_user, title)` 查重，并发冲突由唯一索引兜底并转成友好提示；不同作者可以同名。
   - **目标状态由服务端决定**：请求体里的 `state` 只当作「草稿 / 提交」的意图（`resolveTargetState`），作者只能落到草稿(0) 或送审(2)，只有站长才能直接发布(1)。取值不在 `{0,1,2,3}` 内报「非合理值！」。
-- **封面**：独立上传至图片桶，预签名 URL 缓存于 Redis（3 天有效期）；**删除封面需该 key 属于当前用户的文章**，否则拒绝。
+- **封面**：**随文章一次性 multipart 提交**（`POST /article/add`、`PATCH /article/update/{id}` 接收 `article` JSON + 可选 `cover` 文件），不再有独立的封面上传端点。
+  - 带文件 → 上传新图，**对象名由服务端生成**；写库成功后旧封面才被删除。
+  - 不带文件且 `coverImg` 为空串 → 删除封面（写库成功后删对象）。
+  - 不带文件且 `coverImg` 为 null 或其它值 → **回退为库中原值**，客户端无法指定任意 key。
+  - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。
+  - 这样用户中途放弃发布**不会在服务端留下无引用对象**（此前"选图即上传"会产生这类垃圾）。
 - **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先按状态机校验当前状态能否流转（`2→1`、`2→3`、`1→3`），再带「当前状态」条件更新 —— 两个站长并发审批时只有先到者成功。
 - **删除**：级联删除 RustFS 图片/内容文件 + 清理 Redis 浏览量 + 删除数据库记录。
 
@@ -190,6 +201,27 @@ flowchart LR
 ### 10. 全局异常处理（GlobalExceptionHandler）
 
 自定义异常捕获器，统一封装异常为 `Result` 格式返回，前端 `request.js` 响应拦截器据此提示，401 时自动清除 Token 并跳转首页。
+
+| 异常 | 返回 |
+|---|---|
+| `MethodArgumentNotValidException` / `HandlerMethodValidationException` | 按字段汇总校验错误 |
+| `MissingServletRequestParameterException` | 「参数缺失！」 |
+| `HttpMediaTypeNotSupportedException` | 不支持的媒体类型 + 支持的列表 |
+| `HttpMessageNotReadableException` | **保留原始解析失败原因**（见下） |
+| `MethodArgumentTypeMismatchException` | 类型不匹配提示 |
+| `DuplicateKeyException` | 唯一约束冲突的统一提示 |
+| `DataIntegrityViolationException` | 外键/长度/非空等约束的统一提示 |
+| `Exception` | 兜底，统一结构，不把堆栈甩给调用方 |
+
+**两处刻意的设计**：
+
+1. **`HttpMessageNotReadableException` 保留真因**。Spring 的原始 message 形如
+   ``JSON parse error: Cannot deserialize value of type `int` from String "abc"``，
+   真正有用的信息在冒号**之后**。此前只截取冒号前那段，于是所有格式错误都回同一句
+   「JSON parse error」——既没告诉调用方哪里错了，又在 message 不含冒号时因
+   `substring(0, -1)` 直接越界，在异常处理器里再抛一次。
+2. **`DuplicateKeyException` 不谎称是某个字段冲突**。异常里只有约束名，指不出调用方该改哪个字段，
+   所以给统一提示；需要更精确话术的写入点（文章标题、分类名、邮箱等）自行 `catch` 后转换。
 
 ### 11. 管理员自动初始化（AdminInitializer）
 
@@ -306,6 +338,7 @@ flowchart LR
 
 ```
 notify(...) → mailService.send(to, subject, content)      # 先落库 notification_mail(pending)
+                                                          # 四参重载可带 contentHtml（双载体）
             → MailDeliverer.deliver(id) @Async(mailExecutor)  # 独立线程池异步投递
             → EmailUtil 发信 → 回写 status=sent / failed(失败次数+1)
 MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ maxRetry 的记录
@@ -669,6 +702,8 @@ python scripts/init_test_db.py
 | `ArticleEditAndCacheSafetyTest` | 编辑撞名不丢正文（旧文件删除在写库之后）；热门文章缓存损坏不导致 500 |
 | `SensitiveWordReloadTest` | 敏感词热更新对业务立即生效；空词表与缺失文件不影响匹配能力 |
 | `CoverAndLogoConsistencyTest` | 封面随文章提交：服务端生成 key、空串删除、失败回收；图片须 MIME 与扩展名同时通过 |
+| `BoundaryAndExceptionTest` | 异常兜底不泄露内部细节、格式异常保留真因、分页参数归一化、缺分类不 NPE |
+| `ArticleTitleConflictGuardTest` | 串行重名在 Controller 层被拦截，不触碰正文文件 |
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
 | `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
