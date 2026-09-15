@@ -5,20 +5,32 @@ export function getArticleWithConditions(condition) {
     return request.get("/article/list", {params: condition})
 }
 
-export function removeCover(key) {
-    return request.delete("/article/removeCover", {params: {"key": key}})
+/**
+ * 组装「文章 + 封面」的 multipart 请求体。
+ *
+ * 后端用 @RequestPart("article") 接收 JSON 部分，所以这里必须显式声明
+ * type 为 application/json —— 否则会被当成普通表单字段解析而报错。
+ * cover 为空时只提交文章部分，后端据此判断「不换封面」。
+ */
+function buildArticleForm(articleData, coverFile) {
+    const form = new FormData()
+    form.append('article', new Blob([JSON.stringify(articleData)], {type: 'application/json'}))
+    if (coverFile) {
+        form.append('cover', coverFile)
+    }
+    return form
 }
 
-export function addArticleService(articleData) {
-    return request.post("/article/add", articleData)
+export function addArticleService(articleData, coverFile) {
+    return request.post("/article/add", buildArticleForm(articleData, coverFile))
 }
 
 export function getArticleDetail(id) {
     return request.get("/reader/article/" + id)
 }
 
-export function updateArticleService(articleData) {
-    return request.patch("/article/update/" + articleData.id, articleData)
+export function updateArticleService(articleData, coverFile) {
+    return request.patch("/article/update/" + articleData.id, buildArticleForm(articleData, coverFile))
 }
 
 export function deleteArticleService(id, pass) {

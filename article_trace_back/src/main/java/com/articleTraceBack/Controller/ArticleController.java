@@ -66,11 +66,19 @@ public class ArticleController {
         return Result.success(allArticles);
     }
 
+    /**
+     * 新增文章。封面随本次请求一起提交，不再单独上传。
+     *
+     * <p>用 multipart 而非 JSON：这样「正文 + 封面」是一次请求，不会出现封面传上去了、
+     * 文章却没提交成功所留下的孤儿对象。</p>
+     */
     @PostMapping("/add")
-    public Result<String> addArticle(@RequestBody @Validated Article article) {
+    public Result<String> addArticle(@RequestPart("article") @Validated Article article,
+                                     @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         int uid = (int) userInfo.get("id");
+        String username = userInfo.get("name").toString();
         String articleTitle = article.getTitle();
         String content = article.getTitle() + article.getContent();
         String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -96,7 +104,7 @@ public class ArticleController {
             }
             article.setState(target);
             try {
-                if (articleService.articleAddOrUpdate(article, 0)) {
+                if (articleService.articleAddOrUpdate(article, 0, cover, username)) {
                     return Result.success();
                 }
             } catch (DuplicateKeyException e) {
@@ -122,8 +130,11 @@ public class ArticleController {
         return Result.error(error);
     }
 
+    /** 更新文章。封面随本次请求一起提交；不传 cover 时按 {@code article.coverImg} 决定保留还是清空。 */
     @PatchMapping("/update/{id}")
-    public Result<String> update(@PathVariable("id") int id, @RequestBody @Validated Article article) {
+    public Result<String> update(@PathVariable("id") int id,
+                                 @RequestPart("article") @Validated Article article,
+                                 @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
         Article art = articleService.findArticleByIdWithEntity(id);
         if (art == null) {
@@ -134,6 +145,7 @@ public class ArticleController {
             Map<String, Object> userInfo = ThreadLocalUtil.get();
             int uid = (int) userInfo.get("id");
             int roleType = (int) userInfo.get("type");
+            String username = userInfo.get("name").toString();
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -169,7 +181,7 @@ public class ArticleController {
                 }
                 article.setState(target);
                 try {
-                    if (articleService.articleAddOrUpdate(article, 1)) {
+                    if (articleService.articleAddOrUpdate(article, 1, cover, username)) {
                         return Result.success();
                     }
                 } catch (DuplicateKeyException e) {
@@ -238,46 +250,6 @@ public class ArticleController {
         return Result.error(error);
     }
 
-    @PatchMapping("/uploadCover")
-    public Result<Map<String, String>> uploadCover(@RequestParam("cover") MultipartFile cover) {
-        Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
-        if (cover == null || cover.isEmpty()) {
-            error.put("file", "文件为空！");
-            return Result.error(error);
-        }
-        if (cover.getContentType() == null || !cover.getContentType().contains("image")) {
-            error.put("file", "文件不是图片文件！");
-            return Result.error(error);
-        }
-        if (cover.getSize() >= 5 * 1024 * 1024) {
-            error.put("file", "文件过大！（>=5MB）");
-            return Result.error(error);
-        }
-        Map<String, String> result = articleService.upload(cover, username);
-        if (result.isEmpty()) {
-            error.put("error", "上传失败！");
-            return Result.error(error);
-        }
-        if (result.get("src") == null) {
-            error.put("error", "图片已上传！但获取访问链接失败！");
-            return Result.error(error);
-        }
-        return Result.success(result);
-    }
-
-    @DeleteMapping("/removeCover")
-    public Result<String> removeCover(@RequestParam("key") String key) {
-        Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int uid = (int) userInfo.get("id");
-        if (articleService.removeCover(key, uid)) {
-            return Result.success();
-        }
-        error.put("error", "删除失败！");
-        return Result.error(error);
-    }
 
     @GetMapping("/count")
     public Result<Map<String, Object>> count() {

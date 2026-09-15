@@ -8,7 +8,6 @@ import {tokenStorage} from "@/stores/tokenStorage.js";
 import {
   addArticleService, assessArticleService, deleteArticleService,
   getArticleWithConditions, getArticleWithConditionsMaster,
-  removeCover,
   updateArticleService
 } from "@/api/article.js";
 import {QuillEditor} from '@vueup/vue-quill'
@@ -47,6 +46,10 @@ const articleModel = ref({
   state: ''
 })
 const previewData = ref({})
+
+// 封面延后到提交时才上传：选好文件先本地预览，避免「还没决定发布就落存储」产生孤儿对象
+const pendingCover = ref(null)
+const coverPreviewUrl = ref('')
 
 const validateContent = (rule, value, callback) => {
   if (!value || value.trim() === '' || value === '<p><br></p>' || value === '<p></p>') {
@@ -138,36 +141,39 @@ const reset = () => {
   getArticles()
 }
 
-const uploadSuccess = (result) => {
-  removeCover(articleModel.value.coverImg)
-  if (result.code === 0) {
-    ElMessage.success("上传成功！")
-    articleModel.value.coverImgSrc = result.data.src
-    articleModel.value.coverImg = result.data.key
-  } else {
-    ElMessage.error("上传失败！")
-    if (coverRef.value) coverRef.value.clearFiles()
+const revokeCoverPreview = () => {
+  if (coverPreviewUrl.value) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+    coverPreviewUrl.value = ''
   }
 }
 
+/**
+ * 选中封面文件：只做本地预览，不发任何请求。
+ * 真正的上传发生在提交文章时，这样用户中途放弃就不会在服务端留下垃圾对象。
+ */
+const onCoverChange = (file) => {
+  if (!file || !file.raw) return
+  revokeCoverPreview()
+  pendingCover.value = file.raw
+  coverPreviewUrl.value = URL.createObjectURL(file.raw)
+  articleModel.value.coverImgSrc = coverPreviewUrl.value
+}
 
-
+ /** 删除封面：只清本地状态，提交时由后端删除对象 */
 const cleanCover = () => {
-  ElMessageBox.confirm("确认删除该封面? 此操作不可恢复！", "警告", {
+  ElMessageBox.confirm("确认删除该封面? 保存后生效。", "警告", {
     confirmButtonText: "确认",
     cancelButtonText: "取消",
     type: "warning",
     buttonSize: "default"
-  }).then(async () => {
-    const result = await removeCover(articleModel.value.coverImg)
-    if (result.code === 0) {
-      ElMessage.success("删除成功！")
-      articleModel.value.coverImgSrc = ''
-      articleModel.value.coverImg = ''
-      coverRef.value.clearFiles()
-    } else {
-      ElMessage.error("删除失败！")
-    }
+  }).then(() => {
+    revokeCoverPreview()
+    pendingCover.value = null
+    articleModel.value.coverImgSrc = ''
+    // 空串表示「删除封面」；后端在写库成功后才删对象
+    articleModel.value.coverImg = ''
+    if (coverRef.value) coverRef.value.clearFiles()
   })
 }
 
@@ -175,6 +181,8 @@ const clearModel = () => {
   errorList.value = {}
   reset()
   articleModel.value = {title: '', categoryId: '', coverImgSrc: '', coverImg: '', content: '', state: ''}
+  revokeCoverPreview()
+  pendingCover.value = null
   visibleDrawer.value = false
   if (articleModelRef.value) articleModelRef.value.resetFields()
   if (coverRef.value) coverRef.value.clearFiles()
@@ -199,7 +207,7 @@ const addOrUpdateArticle = async (state) => {
   if (articleModelRef.value.validate()) {
     if (drawerTitle.value === '添加文章') {
       try {
-        const resultData = await addArticleService(articleModel.value)
+        const resultData = await addArticleService(articleModel.value, pendingCover.value)
         if (resultData.code === 0) {
           ElMessage.success("添加成功！")
           clearModel()
@@ -217,7 +225,7 @@ const addOrUpdateArticle = async (state) => {
       }
     } else if (drawerTitle.value === '修改文章') {
       try {
-        const resultData = await updateArticleService(articleModel.value)
+        const resultData = await updateArticleService(articleModel.value, pendingCover.value)
         if (resultData.code === 0) {
           ElMessage.success("修改成功！")
           clearModel()
@@ -258,16 +266,9 @@ const beforeCloseDrawer = () => {
     type: "warning",
     buttonSize: "default"
   }).then(async () => {
-    try {
-      if (drawerTitle.value === '添加文章') {
-        const result = await removeCover(articleModel.value.coverImg)
-        if (result.code !== 0) ElMessage.info("服务端图片数据未删除，但您可继续使用！")
-      }
-      clearModel()
-      ElMessage.primary("数据已清空！")
-    } catch (error) {
-      ElMessage.error("服务端未响应！")
-    }
+    // 封面此时还在浏览器里，没有产生任何服务端对象，直接清本地即可
+    clearModel()
+    ElMessage.primary("数据已清空！")
   }).catch(() => {
     ElMessage.info("取消关闭！")
   })
@@ -507,19 +508,16 @@ const assessArticle = async (id, state) => {
           </el-col>
         </el-row>
 
-        <el-form-item label="封面管理（上传成功即修改）">
+        <el-form-item label="封面管理（保存文章时一并上传）">
           <div class="cover-upload-wrapper">
             <el-upload
                 ref="coverRef"
                 class="avatar-uploader"
-                :auto-upload="true"
+                :auto-upload="false"
                 :show-file-list="false"
-                action="/api/article/uploadCover"
-                name="cover"
-                :headers="{'Authorization':tokenStorage().token}"
+                accept="image/*"
                 :before-upload="checkImageFile"
-                :on-success="uploadSuccess"
-                method="PATCH"
+                :on-change="onCoverChange"
             >
               <div v-if="articleModel.coverImgSrc" class="cover-preview">
                 <img :src="articleModel.coverImgSrc" class="avatar" alt="封面预览"/>

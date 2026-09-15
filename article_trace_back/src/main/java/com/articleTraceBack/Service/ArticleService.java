@@ -10,7 +10,13 @@ import java.util.Map;
 
 
 public interface ArticleService {
-    boolean articleAddOrUpdate(Article article, int type);
+    /**
+     * 新增或更新一篇文章；封面随本次请求一起提交。
+     *
+     * @param cover 新封面文件；为 null 表示不换封面，此时 {@code article.coverImg}
+     *              只接受「空串 = 删除封面」或「与库中原值一致」，其余一律回退为原值
+     */
+    boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username);
 
     /** 查同一作者是否已有同名文章（标题在作者内唯一，不同作者可同名） */
     Article findArticleByUserAndTitle(int userId, String articleTitle);
@@ -27,11 +33,7 @@ public interface ArticleService {
 
     boolean deleteById(int id);
 
-    Map<String, String> upload(MultipartFile cover, String username);
-
     /** 删除封面对象；只允许删除自己文章正在引用的封面（key 由客户端传入，不可信） */
-    boolean removeCover(String key, int userId);
-
     int findAllArticlesCountInMaster(Integer categoryId,
                                      Integer state, Integer userId, String search, Integer searchType, String nickName);
 

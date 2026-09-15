@@ -62,27 +62,49 @@ public class ArticleServiceImpl implements ArticleService {
         return sensitiveWordHolder.get().search(content);
     }
     @Override
-    public boolean articleAddOrUpdate(Article article, int type) {
+    public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username) {
         // 0为新增，1为更新
         Map<String, Object> content = new HashMap<>();
         content.put("content", article.getContent());
         long timeStamp = System.currentTimeMillis();
         String fileName = timeStamp + "-" + article.getCreateUser() + ".json";
-        // 旧对象名：更新分支要等写库成功后才删它们
-        String oldContentName = null;
-        String oldImgName = null;
+
+        Article rawArticle = (type == 0) ? null : articleMapper.selectById(article.getId());
+        // 旧对象名：要等写库成功后才删它们
+        String oldContentName = rawArticle == null ? null : rawArticle.getContent();
+        String oldImgName = rawArticle == null ? null : rawArticle.getCoverImg();
+
+        // ---- 封面：有文件就上传新图，没有文件则只接受「清空」或「保持原值」----
+        String newCoverKey = null;
+        if (cover != null && !cover.isEmpty()) {
+            newCoverKey = uploadCoverObject(cover, username);
+            if (newCoverKey == null) {
+                return false;
+            }
+            article.setCoverImg(newCoverKey);
+        } else {
+            // 客户端传来的 coverImg 不可信：只有明确传空串才表示「删除封面」，
+            // null 或任何其它取值一律回退为库中原值，避免文章引用了别人的对象。
+            String requested = article.getCoverImg();
+            String current = oldImgName == null ? "" : oldImgName;
+            article.setCoverImg(requested != null && requested.isBlank() ? "" : current);
+        }
 
         if (type == 0) {
             if (!rustFsUtil.upload(content, "json", fileName)) {
+                // 正文没传上去，回收刚上传的封面
+                if (newCoverKey != null) {
+                    rustFsUtil.delete(newCoverKey, "image");
+                }
                 return false;
             }
             article.setContent(fileName);
             article.setCreateTime(LocalDateTime.now());
         } else {
-            Article rawArticle = articleMapper.selectById(article.getId());
-            oldContentName = rawArticle.getContent();
-            oldImgName = rawArticle.getCoverImg();
             if (!rustFsUtil.upload(content, "json", fileName)) {
+                if (newCoverKey != null) {
+                    rustFsUtil.delete(newCoverKey, "image");
+                }
                 return false;
             }
             article.setUpdateTime(LocalDateTime.now());
@@ -95,23 +117,31 @@ public class ArticleServiceImpl implements ArticleService {
         try {
             saved = articleMapper.insertOrUpdate(article);
         } catch (Exception e) {
-            // 写库失败（如 DuplicateKeyException）：回收刚上传的新文件，旧文件始终没动过，
+            // 写库失败（如 DuplicateKeyException）：回收本次上传的新文件，旧文件始终没动过，
             // 原样抛出交给上层转成友好提示。
             rustFsUtil.delete(fileName, "json");
+            if (newCoverKey != null) {
+                rustFsUtil.delete(newCoverKey, "image");
+            }
             throw e;
         }
         if (!saved) {
             // 没抛异常但也没写成功：同样回收新文件，DB 保持指向旧文件
             rustFsUtil.delete(fileName, "json");
+            if (newCoverKey != null) {
+                rustFsUtil.delete(newCoverKey, "image");
+            }
             return false;
         }
 
-        // 走到这里说明 DB 已指向新文件；旧对象删除失败只会留下孤儿，不影响可用性
+        // 走到这里说明 DB 已指向新对象；旧对象删除失败只会留下孤儿，不影响可用性。
+        // 只在「更新」分支才需要清理旧对象——新增时本来就没有旧对象。
         if (type != 0) {
             if (!Objects.equals(oldContentName, fileName)
                     && !rustFsUtil.delete(oldContentName, "json")) {
                 log.warn("delete old content failed: articleId={}, key={}", article.getId(), oldContentName);
             }
+            // 换图或删图（新旧不一致）时，旧封面已无人引用
             if (!Objects.equals(oldImgName, "") && !oldImgName.equals(article.getCoverImg())
                     && !rustFsUtil.delete(oldImgName, "image")) {
                 log.warn("delete old cover failed: articleId={}, key={}", article.getId(), oldImgName);
@@ -200,47 +230,19 @@ public class ArticleServiceImpl implements ArticleService {
         return false;
     }
 
-    @Override
-    public Map<String, String> upload(MultipartFile cover, String username) {
-        Map<String, String> info = new HashMap<>();
-        // 扩展名决定了最终的对象名，必须走白名单；MIME 客户端可伪造，不能只看它
+    /**
+     * 上传封面对象，返回生成的对象名；校验不通过或上传失败返回 null。
+     *
+     * <p>对象名由服务端生成，客户端给的文件名只用于取扩展名（且要走白名单）。</p>
+     */
+    private String uploadCoverObject(MultipartFile cover, String username) {
         if (!FileCheckUtil.isAcceptableImage(cover)) {
             log.warn("reject cover upload: unacceptable image, user={}, name={}, contentType={}",
                     username, cover.getOriginalFilename(), cover.getContentType());
-            return info;
+            return null;
         }
-        String extension = FileCheckUtil.extensionOf(cover);
-        String fileName = System.currentTimeMillis() + username + extension;
-        if (rustFsUtil.upload(cover, "image", fileName)) {
-            info.put("key", fileName);
-            String src = rustFsUtil.getPciUrl(fileName);
-            if (src != null) {
-                info.put("src", src);
-            }
-            return info;
-        }
-        return info;
-    }
-
-
-    @Override
-    public boolean removeCover(String key, int userId) {
-        if (key == null || key.isBlank()) {
-            return false;
-        }
-        // 客户端传来的 key 不可信：必须确认它正是该用户自己某篇文章的封面，才能删对象。
-        // 用条件更新同时完成「校验归属」和「清空指向」：改到 0 行说明 key 不属于该用户。
-        UpdateWrapper<Article> wrapper = new UpdateWrapper<>();
-        wrapper.eq("cover_img", key).eq("create_user", userId).set("cover_img", "");
-        if (articleMapper.update(null, wrapper) == 0) {
-            log.warn("refuse to remove cover not owned by user: key={}, userId={}", key, userId);
-            return false;
-        }
-        // DB 已不再引用该对象，此时删除才安全。删失败只会留下孤儿，不会让封面裂图。
-        if (!rustFsUtil.delete(key, "image")) {
-            log.warn("cover object delete failed, may be orphan: key={}", key);
-        }
-        return true;
+        String fileName = System.currentTimeMillis() + username + FileCheckUtil.extensionOf(cover);
+        return rustFsUtil.upload(cover, "image", fileName) ? fileName : null;
     }
 
     @Override
