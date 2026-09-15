@@ -539,12 +539,10 @@ notification:
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/article/list` | 我的文章分页 |
-| POST | `/article/add` | 新增文章 |
+| POST | `/article/add` | 新增文章（`multipart/form-data`：`article` JSON 部分 + 可选 `cover` 文件）|
 | GET | `/article/detail/{id}` | 文章详情 |
-| PATCH | `/article/update/{id}` | 更新文章 |
+| PATCH | `/article/update/{id}` | 更新文章（同上；不传 `cover` 且 `coverImg` 为空串表示删除封面）|
 | DELETE | `/article/delete` | 删除文章 |
-| PATCH | `/article/uploadCover` | 上传封面 |
-| DELETE | `/article/removeCover` | 删除封面 |
 | GET | `/article/count` | 文章统计 |
 | GET | `/article/manageArticles` | 全站文章分页（站长） |
 | PATCH | `/article/assess` | 审核文章（站长） |
@@ -670,7 +668,7 @@ python scripts/init_test_db.py
 | `ArticleStateMachineTest` | 文章状态转移表（11 条合法 / 7 条非法）+ `updateState` 集成行为 |
 | `ArticleEditAndCacheSafetyTest` | 编辑撞名不丢正文（旧文件删除在写库之后）；热门文章缓存损坏不导致 500 |
 | `SensitiveWordReloadTest` | 敏感词热更新对业务立即生效；空词表与缺失文件不影响匹配能力 |
-| `CoverAndLogoConsistencyTest` | 删封面清 DB 指向、越权拒绝；图片须 MIME 与扩展名同时通过 |
+| `CoverAndLogoConsistencyTest` | 封面随文章提交：服务端生成 key、空串删除、失败回收；图片须 MIME 与扩展名同时通过 |
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
 | `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
