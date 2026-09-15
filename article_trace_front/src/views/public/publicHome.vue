@@ -1,6 +1,6 @@
 <script setup>
 import {ref, onMounted} from 'vue'
-import {Search, View, SwitchButton, CaretBottom, User, Refresh, Timer} from '@element-plus/icons-vue'
+import {Search, View, SwitchButton, CaretBottom, User, Refresh, Timer, Bell} from '@element-plus/icons-vue'
 import {userInfoStore} from "@/stores/userInfo.js";
 import avatar from "@/assets/defaultLogo.jpg";
 import cover from "@/assets/defaultCover.jpg"
@@ -15,6 +15,7 @@ import {tokenStorage} from "@/stores/tokenStorage.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
 import AgentChat from "@/components/AgentChat.vue";
+import NotificationBell from "@/components/NotificationBell.vue";
 import {formatDate} from "@/utils/date.js";
 import TopArticlesList from "@/components/TopArticlesList.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
@@ -227,6 +228,21 @@ const searchArticleInWriter = (nickName) => {
             placement="bottom"
         >
           <el-button :icon="Refresh" circle @click="clearInf"/>
+        </el-tooltip>
+        <!--
+          站内通知：放在按钮组里、复用圆形按钮样式。
+          不放在用户名旁边，是为了避免昵称过长时把铃铛挤错位。
+        -->
+        <el-tooltip
+            v-if="isLogin"
+            class="box-item"
+            effect="light"
+            content="通知"
+            placement="bottom"
+        >
+          <NotificationBell v-slot="{ open }">
+            <el-button :icon="Bell" circle @click="open"/>
+          </NotificationBell>
         </el-tooltip>
       </div>
 
