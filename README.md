@@ -80,6 +80,7 @@ article_trace/
 ├── article_trace_back/          # Spring Boot 后端           → 详见 article_trace_back/README.md
 ├── article_trace_front/         # Vue 3 前端                → 详见 article_trace_front/README.md
 ├── article_trace_agent/         # RAG 检索问答微服务（Python）→ 详见 article_trace_agent/README.md
+├── scripts/                     # 辅助脚本（init_test_db.py 初始化测试库）
 ├── docker/                      # 各服务的容器化配置
 ├── docker-compose.yml           # 一键编排
 ├── article_trace.sql            # MySQL 建库脚本（7 张表，纯 schema）

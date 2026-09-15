@@ -638,6 +638,24 @@ mvn clean package && java -jar target/article_trace-*.jar
 
 ## 测试
 
+### 环境准备（首次跑测试前必须做一次）
+
+测试**不会**碰开发库：它连的是独立的 `article_trace_test` 和 Redis 的 DB 14/15，
+配置在 `src/test/resources/application.yml`。这份配置会覆盖主配置（Spring Boot 按文件名整体替换），
+其中已关闭邮件投递与各类后台任务，所以跑测试不会真发邮件、也不会被定时任务打扰。
+
+初始化测试库（**可重复执行**，每次先清空再重建）：
+
+```bash
+python scripts/init_test_db.py
+```
+
+表结构以仓库根目录的 `article_trace.sql` 为唯一来源，不存在第二份需要同步的建库脚本。
+数据库连接可用环境变量覆盖，便于 CI：`TEST_DB_HOST` / `TEST_DB_PORT` / `TEST_DB_USER` / `TEST_DB_PASSWORD` / `TEST_DB_NAME`。
+
+> **注意**：`src/test/resources/application.yml` 是一份独立副本，主配置改了它不会自动跟随。
+> 新增配置项时记得两边都加，否则测试会用默认值静默跑过。
+
 ### 单元 / 集成测试清单
 
 除 Ask 集成测试与 `AgentSessionServiceTest` 需要 agent 外（未启动时用 `assumeTrue` 自动跳过，不会导致构建失败），其余测试都不需要：
@@ -654,7 +672,11 @@ mvn clean package && java -jar target/article_trace-*.jar
 | `AgentSessionServiceTest` | agent 会话索引与清理（**需 agent 已启动**）|
 | `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
 | `AgentDisabledTest` | agent 关闭时主业务降级 |
+| `EmailTemplateUtilTest` | 邮件模板渲染：双载体、占位符替换与缺值保留 |
 | `EmailUtilTest` · `MailServiceTest` | 发信链路与邮件投递重试（需 `-Dmail.to=` 才真发）|
+
+测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
+用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。
 
 ```bash
 mvn test
