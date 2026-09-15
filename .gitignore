@@ -22,6 +22,9 @@
 
 # 敏感配置文件（不提交）
 **/application.yml
+# 例外：测试配置必须入库。它不含真实凭据（邮件已关、密钥为占位值），
+# 而且一旦缺失，他人 clone 后跑测试会退回主配置、直接打到开发库。
+!article_trace_back/src/test/resources/application.yml
 
 # 内部设计/待办文档（含安全实现细节，不入库）
 article_trace_back/docs/

@@ -1,0 +1,131 @@
+# =============================================================================
+# 测试环境配置
+# -----------------------------------------------------------------------------
+# Spring Boot 会优先加载 test classpath 下的同名 application.yml，且是**整个文件**替换，
+# 所以这里是完整的一份，不是增量补丁 —— 主配置里改了什么，这里要跟着同步。
+#
+# 存在的意义：把测试的读写引到**独立的库与 Redis DB**，避免用例之间互相踩踏、
+# 也避免污染开发库（此前测试直连 article_trace，AuthorApplyRemindTaskTest 会清空全库待审申请）。
+#
+# 覆盖项集中在三处：datasource.url / redis.database+articleDB / 各类任务开关。
+# =============================================================================
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  data:
+    redis:
+      database: 14          # token / 验证码 / 限流计数（主配置用 0，测试用 14 隔离）
+      articleDB: 15         # 文章浏览量、热点缓存（主配置用 1，测试用 15 隔离）
+      port: 6379
+      host: localhost
+      timeout: 1500
+      lettuce:
+        shutdown-timeout: 100ms
+        pool:
+          max-wait: 2s
+        cluster:
+          refresh:
+            adaptive: false
+      viewKey: "article:view"
+      password: ${REDIS_PASSWORD:aaabbb123}
+  mail:
+    # 测试不发真邮件（notification.mail.enabled=false），这里全部是占位值，
+    # 避免把真实 SMTP 授权码带进版本库。
+    host: localhost
+    port: 25
+    username: test@example.invalid
+    password: placeholder
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.timeout: 1000
+      mail.smtp.connectiontimeout: 1000
+  tokenCheck:
+    excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
+    notAllowUrl:
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/boostType
+      reader: /category/**,/article/**
+  application:
+    name: articleTraceBack
+    admin:
+      enableAutoConfig: true          # 测试库需要默认站长账号，多个用例依赖它
+      defaultUser: apkdio
+      defaultPass: test.placeholder   # 测试库专用，与开发库口令无关
+      defaultEmail: article_trace@test.invalid
+      defaultNickName: 测试昵称
+  datasource:
+    url: jdbc:mysql://localhost:3306/article_trace_test
+    username: ${TEST_DB_USER:root}
+    password: ${TEST_DB_PASSWORD:aaabbb123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      auto-commit: true
+      pool-name: hikariPool
+
+logging:
+  level:
+    root: WARN                # 测试时安静一些；排查失败再调成 INFO/DEBUG
+    com.articleTraceBack: INFO
+    com.articleTraceBack.mapper: WARN
+
+JWT:
+  Secure_KEY: test-only-key-not-for-production
+  longTime: 259200000
+  shortTime: 86400000
+Password:
+  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  masterPass: test-master-pass
+S3:
+  # 测试不跑真实对象存储；需要验证上传的用例自行 skip
+  endpoint: "http://127.0.0.1:9000"
+  accessKey: test
+  secretKey: test
+  picBucket: "pic"
+  contentBucket: "content"
+thumbnail:
+  backfill:
+    enabled: false           # ★ 关掉启动补齐任务，否则每次跑测试都会扫全库
+sensitive_word:
+  filePath: ./res/sensitive_words.txt
+  cron: "0 */30 * * * ?"
+scheduler:
+  sync:
+    enabled: false           # ★ 关掉 Redis→MySQL 同步，避免定时任务在用例之间改数据
+    cron: "0 */10 * * * ?"
+email:
+  from: test@example.invalid
+  subjectPrefix: "[文迹]"
+  logoUrl: "https://example.invalid/logo2.png"
+author-apply:
+  remindCron: "0 0 0/12 * * ?"
+notification:
+  scenes:
+    author-apply-submitted: both
+    author-apply-approved: inbox
+    author-apply-rejected: inbox
+    author-apply-remind: mail
+    email-code: mail
+  defaultChannel: inbox
+  mail:
+    enabled: false           # ★ 关键：测试绝不真发邮件
+    maxRetry: 2
+    retryCron: "0 */10 * * * ?"
+  cleanup:
+    cron: "0 0 3 * * ?"
+    keepDays: 30
+rpc:
+  agent:
+    enabled: false           # ★ 默认不依赖 agent；需要联调的用例自行 assumeTrue 跳过
+    host: localhost
+    port: 50051
+    sessionKeyPrefix: "agent:session:user:"
+    sync:
+      enabled: false
+      cron: "0 */5 * * * ?"
+      fullSyncCron: "0 0 1 * * ?"
+      batchSize: 100
+      ingestKey: "agent:ingest:pending"
+      deleteKey: "agent:delete:pending"
