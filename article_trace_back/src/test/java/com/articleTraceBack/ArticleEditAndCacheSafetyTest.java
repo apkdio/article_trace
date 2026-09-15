@@ -32,9 +32,14 @@ import static org.mockito.Mockito.verify;
 /**
  * 两处缺陷的回归测试。
  *
- * <p><b>① 文章编辑不得丢正文</b>：原实现在写库之前就删掉了旧正文文件，
- * 一旦写库因标题唯一索引冲突失败，DB 会指向一个已删除的对象，正文永久变空。
+ * <p><b>① 文章编辑不得丢正文</b>：原实现在写库之前就删掉了旧正文文件。
+ * 一旦写库那一步失败（DB 抖动、超时，或并发下撞唯一索引），DB 会指向一个已被删除的对象，
+ * 该文章的正文就静默变空——不报错，只有用户自己再编辑一次才会恢复。
  * 现在改为先写库、成功后才删旧文件，写库失败则回收刚上传的新文件。</p>
+ *
+ * <p>注意此处直接调用 Service：Controller 在串行的重名场景下会提前 return，
+ * 根本走不到这里，所以只有并发（或绕过 Controller）才可能触发索引冲突。
+ * 本用例正是要覆盖那条路径。</p>
  *
  * <p><b>② 热门文章缓存损坏不得让接口 500</b>：原实现把缓存当逗号拼接字符串解析，
  * 空串与含逗号的标题都会导致异常；现在用 JSON 存储并对损坏内容回退查库。</p>
@@ -76,6 +81,12 @@ public class ArticleEditAndCacheSafetyTest {
         return a.getId();
     }
 
+    /**
+     * 写库因唯一索引冲突失败时，旧正文必须完好。
+     *
+     * <p>Controller 在串行重名时会提前拦截，所以这条路径只在并发下出现——
+     * 这里直接调 Service 来复现它。</p>
+     */
     @Test
     public void editKeepsOldContentWhenTitleConflicts() {
         int userId = fixtures.ensureUser(AUTHOR);
