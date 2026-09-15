@@ -137,6 +137,14 @@ article_trace_back/
 
 拦截器对 `/reader/**` 默认放行（浏览文章无需登录），仅 `addComment` / `deleteComment` 要求登录。
 
+> **站长专属接口按 URL 前缀统一拦截**：形如 `/xxx/manage/**` 的路径加进 `notAllowUrl` 即可，
+> 不必逐个方法写权限判断。新增站长接口时优先按这个约定命名。
+> 注意两组规则并不对称——作者查的是「writer ∪ reader」并集，读者只查 `reader`，
+> 所以**加进 `reader` 两组都会命中**。
+>
+> 匹配方式是 `getRequestURI().contains(url)` **子串包含**（不是 Ant 通配），
+> 路径不要写得太短，否则会误伤其他接口。
+
 ### 2. 用户模块（UserController / UserServiceImpl）
 
 - **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。注册时无需填昵称，后端会自动生成一个默认昵称（`文迹探索者` + 6 位随机串）。
@@ -604,17 +612,25 @@ notification:
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
 
-### 作者申请 `/apply`
+### 作者申请 `/applyAuthor`
+
+**按使用者分两段路径**：用户侧挂在 `/applyAuthor` 下，站长侧统一走 `/applyAuthor/manage/**`。
+分开的目的是让「站长专属」在 URL 层面就能识别——拦截器可以把 `/applyAuthor/manage`
+加进 `notAllowUrl` 统一挡掉。此前两种接口共用 `/apply/author/*` 前缀，URL 分不出差别，
+只能靠每个方法各自写权限判断，加接口时容易漏。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/apply/author` | 提交作者申请（body 可选 `reason`）|
-| GET | `/apply/author/mine` | 我的最新申请状态 |
-| GET | `/apply/author/list` | 申请列表（站长）|
-| GET | `/apply/author/pendingCount` | 待审数量（站长）|
-| PATCH | `/apply/author/review/{id}` | 审批（站长）：`pass=true/false` |
+| POST | `/applyAuthor` | 提交作者申请（body 可选 `reason`）|
+| GET | `/applyAuthor/mine` | 我的最新申请状态 |
+| GET | `/applyAuthor/manage/list` | 申请列表（站长）|
+| GET | `/applyAuthor/manage/pendingCount` | 待审数量（站长）|
+| PATCH | `/applyAuthor/manage/review/{id}` | 审批（站长）：`pass=true/false` |
 
 > 审批通过会把申请人提升为作者（type=1）并失效其登录态；提交与结果均通过站内信/邮件通知。
+>
+> `/manage/**` 下的接口同时受两道保护：拦截器的 URL 规则，以及 Controller 内的 `isMaster()`。
+> 后者是纵深防御——URL 规则万一没配好，权限判断仍在。
 
 ### 站内通知 `/notification`
 
