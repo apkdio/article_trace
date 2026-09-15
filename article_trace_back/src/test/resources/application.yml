@@ -84,6 +84,7 @@ S3:
   secretKey: test
   picBucket: "pic"
   contentBucket: "content"
+  avatarBucket: "avatar"
 thumbnail:
   backfill:
     enabled: false           # ★ 关掉启动补齐任务，否则每次跑测试都会扫全库

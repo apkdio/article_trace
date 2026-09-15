@@ -88,7 +88,7 @@ services:
     volumes:
       - rustfs-data:/data
 
-  # 一次性任务：等待 RustFS 就绪后创建两个私有桶（后端不会自动建桶）
+  # 一次性任务：等待 RustFS 就绪后创建三个私有桶（后端不会自动建桶）
   rustfs-init:
     image: minio/mc:latest
     container_name: article-trace-rustfs-init
@@ -100,6 +100,7 @@ services:
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
       PIC_BUCKET: ${RUSTFS_PIC_BUCKET:-pic}
       CONTENT_BUCKET: ${RUSTFS_CONTENT_BUCKET:-content}
+      AVATAR_BUCKET: ${RUSTFS_AVATAR_BUCKET:-avatar}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -108,11 +109,12 @@ services:
           echo "waiting for rustfs ..."
           sleep 2
         done
-        mc mb --ignore-existing "rustfs/$$PIC_BUCKET" "rustfs/$$CONTENT_BUCKET"
-        # 两个桶保持私有，访问统一走后端签发的预签名 URL
+        mc mb --ignore-existing "rustfs/$$PIC_BUCKET" "rustfs/$$CONTENT_BUCKET" "rustfs/$$AVATAR_BUCKET"
+        # 三个桶保持私有，访问统一走后端签发的预签名 URL
         mc anonymous set none "rustfs/$$PIC_BUCKET" || true
         mc anonymous set none "rustfs/$$CONTENT_BUCKET" || true
-        echo "rustfs buckets ready: $$PIC_BUCKET $$CONTENT_BUCKET"
+        mc anonymous set none "rustfs/$$AVATAR_BUCKET" || true
+        echo "rustfs buckets ready: $$PIC_BUCKET $$CONTENT_BUCKET $$AVATAR_BUCKET"
     restart: "no"
 
   # ---------------------------------------------------------------------------

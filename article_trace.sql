@@ -187,6 +187,26 @@ CREATE TABLE `author_apply` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='作者申请';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `avatar_apply` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `user_id` int NOT NULL COMMENT '申请人 user.id',
+  `pending_pic` varchar(128) NOT NULL COMMENT '待审头像对象名（存 avatar 桶）',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待审 1-通过 2-拒绝',
+  `reject_reason` varchar(200) DEFAULT NULL COMMENT '拒绝理由',
+  `review_user` int DEFAULT NULL COMMENT '审核人 user.id',
+  `review_time` datetime DEFAULT NULL COMMENT '审核时间',
+  `create_time` datetime NOT NULL COMMENT '提交时间（审核列表展示用）',
+  `pending_flag` tinyint GENERATED ALWAYS AS (if((`status` = 0),1,NULL)) STORED COMMENT '待审标记（非待审为 NULL），用于唯一约束保证每人最多一条待审',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pending` (`user_id`,`pending_flag`),
+  KEY `idx_status_time` (`status`,`create_time`),
+  KEY `fk_avatar_user` (`user_id`),
+  CONSTRAINT `fk_avatar_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='头像审核记录';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

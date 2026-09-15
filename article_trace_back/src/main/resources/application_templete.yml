@@ -69,8 +69,9 @@ S3:
   endpoint: ${RUSTFS_ENDPOINT} # rustfs存储服务端地址
   accessKey: ${RUSTFS_ACCESS_KEY} # rustfs存储服务端密钥（登录用户名）
   secretKey: ${RUSTFS_SECRET_KEY} # rustfs存储服务端密钥（登录密码）
-  picBucket: "pic" # 图片存储桶
+  picBucket: "pic" # 图片存储桶（封面等既有图片）
   contentBucket: "content" # 文章内容存储桶
+  avatarBucket: "avatar" # 头像待审存储桶
 thumbnail:
   backfill:
     enabled: false          # 存量缩略图补齐（一次性，需要时置 true）

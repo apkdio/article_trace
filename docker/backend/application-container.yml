@@ -81,6 +81,7 @@ S3:
   secretKey: ${RUSTFS_SECRET_KEY}
   picBucket: "pic"
   contentBucket: "content"
+  avatarBucket: "avatar"
 
 thumbnail:
   backfill:
