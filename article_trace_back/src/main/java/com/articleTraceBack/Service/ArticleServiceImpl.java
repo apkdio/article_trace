@@ -1,6 +1,7 @@
 package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.config.SensitiveWordHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -202,7 +203,13 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public Map<String, String> upload(MultipartFile cover, String username) {
         Map<String, String> info = new HashMap<>();
-        String extension = Objects.requireNonNull(cover.getOriginalFilename()).substring(cover.getOriginalFilename().lastIndexOf("."));
+        // 扩展名决定了最终的对象名，必须走白名单；MIME 客户端可伪造，不能只看它
+        if (!FileCheckUtil.isAcceptableImage(cover)) {
+            log.warn("reject cover upload: unacceptable image, user={}, name={}, contentType={}",
+                    username, cover.getOriginalFilename(), cover.getContentType());
+            return info;
+        }
+        String extension = FileCheckUtil.extensionOf(cover);
         String fileName = System.currentTimeMillis() + username + extension;
         if (rustFsUtil.upload(cover, "image", fileName)) {
             info.put("key", fileName);
@@ -221,15 +228,19 @@ public class ArticleServiceImpl implements ArticleService {
         if (key == null || key.isBlank()) {
             return false;
         }
-        // 客户端传来的 key 不可信：必须确认它正是该用户自己某篇文章的封面，才能删对象
-        QueryWrapper<Article> wrapper = new QueryWrapper<>();
-        wrapper.eq("cover_img", key).eq("create_user", userId).last("limit 1");
-        if (articleMapper.selectCount(wrapper) == 0) {
+        // 客户端传来的 key 不可信：必须确认它正是该用户自己某篇文章的封面，才能删对象。
+        // 用条件更新同时完成「校验归属」和「清空指向」：改到 0 行说明 key 不属于该用户。
+        UpdateWrapper<Article> wrapper = new UpdateWrapper<>();
+        wrapper.eq("cover_img", key).eq("create_user", userId).set("cover_img", "");
+        if (articleMapper.update(null, wrapper) == 0) {
             log.warn("refuse to remove cover not owned by user: key={}, userId={}", key, userId);
             return false;
         }
-        stringRedisTemplateArticle.delete(key);
-        return rustFsUtil.delete(key, "image");
+        // DB 已不再引用该对象，此时删除才安全。删失败只会留下孤儿，不会让封面裂图。
+        if (!rustFsUtil.delete(key, "image")) {
+            log.warn("cover object delete failed, may be orphan: key={}", key);
+        }
+        return true;
     }
 
     @Override

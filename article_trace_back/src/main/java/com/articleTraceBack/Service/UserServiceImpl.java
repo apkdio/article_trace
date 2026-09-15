@@ -2,6 +2,7 @@ package com.articleTraceBack.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
+import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
@@ -144,23 +145,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean isValidFile(MultipartFile file) {
-        String contentType = file.getContentType();
-        String[] allowedTypes = {"image/jpeg", "image/png", "image/gif", "image/webp"};
-
-        if (contentType == null) {
-            return false;
-        }
-
-        for (String type : allowedTypes) {
-            if (contentType.startsWith(type)) {
-                return true;
-            }
-        }
-
-        String filename = Objects.requireNonNull(file.getOriginalFilename()).toLowerCase();
-        return filename.endsWith(".jpg") || filename.endsWith(".jpeg")
-                || filename.endsWith(".png") || filename.endsWith(".gif")
-                || filename.endsWith(".webp") || filename.endsWith(".bmp");
+        // 统一走 FileCheckUtil：此前只要 MIME 匹配就直接放行、不再看扩展名，
+        // 而扩展名才决定最终的对象名，MIME 是客户端可伪造的。
+        return FileCheckUtil.isAcceptableImage(file);
     }
 
     @Override
@@ -188,8 +175,14 @@ public class UserServiceImpl implements UserService {
                     .set("user_pic", fileName)
                     .set("update_time", LocalDateTime.now());
             if (userMapper.update(updateWrapper) == 1) {
-                return rustFsUtil.delete(rawName, "image");
+                // 写库成功，旧头像已无人引用，可以删了
+                if (!rustFsUtil.delete(rawName, "image")) {
+                    log.warn("old user logo delete failed, may be orphan: username={}, key={}", username, rawName);
+                }
+                return true;
             }
+            // 写库失败：回收刚上传的新文件，DB 仍指向旧头像，两边保持一致
+            rustFsUtil.delete(fileName, "image");
             return false;
         }
         return false;
@@ -231,17 +224,20 @@ public class UserServiceImpl implements UserService {
             return false;
         }
         String userPic = user.getUserPic();
-        if (!StringUtils.isBlank(userPic)) {
-            stringRedisTemplate.delete(userPic);
-            if (rustFsUtil.delete(userPic, "image")) {
-                UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
-                updateWrapper.eq("username", username)
-                        .set("user_pic", "");
-                return userMapper.update(updateWrapper) == 1;
-            }
+        if (StringUtils.isBlank(userPic)) {
             return false;
         }
-        return false;
+        // 先清 DB 指向，成功后再删对象：反过来的话，写库失败会让 DB 指向一个已删除的对象，
+        // 用户头像会变成裂图且自己恢复不了（与文章正文的处理保持一致）。
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("username", username).set("user_pic", "");
+        if (userMapper.update(updateWrapper) != 1) {
+            return false;
+        }
+        if (!rustFsUtil.delete(userPic, "image")) {
+            log.warn("user logo object delete failed, may be orphan: username={}, key={}", username, userPic);
+        }
+        return true;
     }
 
     @Override
