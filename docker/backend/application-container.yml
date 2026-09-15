@@ -73,7 +73,6 @@ JWT:
   shortTime: 86400000     # 24 小时
 
 Password:
-  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
   masterPass: ${MASTER_PASS}
 
 S3:

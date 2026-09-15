@@ -64,7 +64,6 @@ JWT:
   longTime: 259200000 # 72小时
   shortTime: 86400000 # 毫秒（24小时）
 Password:
-  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
   masterPass: ${MASTER_PASS} # 站长密码
 S3:
   endpoint: ${RUSTFS_ENDPOINT} # rustfs存储服务端地址

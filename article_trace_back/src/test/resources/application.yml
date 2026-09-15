@@ -76,7 +76,6 @@ JWT:
   longTime: 259200000
   shortTime: 86400000
 Password:
-  character: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
   masterPass: test-master-pass
 S3:
   # 测试不跑真实对象存储；需要验证上传的用例自行 skip
