@@ -24,8 +24,12 @@ import java.util.Map;
  * 若期间没有新的浏览（原键不存在），那份残留更是永远无人处理。</p>
  *
  * <p>现在改为用 Lua 把最新增量**累加**进 {@code :processing}：既不清掉残留，也不漏掉新数据，
- * 且整个合并是原子的。只有批量写库成功后才删除 {@code :processing}——失败则原样保留，
- * 下一轮继续消费（{@code views = views + Δ} 天然幂等，重复消费也只会计一次，见下）。</p>
+ * 且整个合并是原子的。只有批量写库成功后才删除 {@code :processing}——失败则原样保留，下一轮继续消费。</p>
+ *
+ * <p><b>投递语义是「至少一次」，不是「恰好一次」</b>：若批量写库成功、但在删除 {@code :processing}
+ * 之前进程退出，下一轮会重放同一份增量，导致该批浏览量<b>多算一次</b>。
+ * 这是 Redis 与 MySQL 之间无事务的固有限制，无法根除——只能接受极端情况下少量偏大。
+ * 方向是刻意选的：宁可多算不可少算（少算意味着用户真实浏览被抹掉）。</p>
  */
 @Component
 @EnableScheduling
@@ -94,8 +98,8 @@ public class SyncRedisToDbTask {
             }
 
             articleMapper.batchAddViews(deltas);
-            // 写库成功才删：失败时保留，下一轮重新消费。
-            // 重复消费是安全的——浏览量按增量累加（views = views + Δ），不是覆盖赋值。
+            // 写库成功才删。若这里之前进程退出，下一轮会重放这批增量、导致多算一次——
+            // 属于「至少一次」语义的固有代价（Redis 与 MySQL 无事务），比少算可接受。
             redisTemplate.delete(processingKey);
 
             redisTemplate.delete(RedisKeys.ARTICLE_HOT_TOP10);
