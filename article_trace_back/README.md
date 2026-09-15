@@ -636,6 +636,11 @@ mvn clean package && java -jar target/article_trace-*.jar
 
 在服务启动的工作目录下创建 `res/sensitive_words.txt`，一行一词。默认每 30 分钟检查一次文件变化并热更新，无需重启服务。
 
+热更新的实现方式：`SensitiveWordHolder` 持有一个可替换的匹配器引用，业务每次匹配时现取；
+定时任务检测到文件变更后构建新实例并整体替换引用，因此变更**立即对业务生效**。
+外部文件读不到或读取失败时降级到 classpath 内置词表；本次重载失败会保留原有词表并在下一轮重试，
+不会让违规词校验凭空失效。
+
 ## 测试
 
 ### 环境准备（首次跑测试前必须做一次）
@@ -664,6 +669,7 @@ python scripts/init_test_db.py
 |---|---|
 | `ArticleStateMachineTest` | 文章状态转移表（11 条合法 / 7 条非法）+ `updateState` 集成行为 |
 | `ArticleEditAndCacheSafetyTest` | 编辑撞名不丢正文（旧文件删除在写库之后）；热门文章缓存损坏不导致 500 |
+| `SensitiveWordReloadTest` | 敏感词热更新对业务立即生效；空词表与缺失文件不影响匹配能力 |
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
 | `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
