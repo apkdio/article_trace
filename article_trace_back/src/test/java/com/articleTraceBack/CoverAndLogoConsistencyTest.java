@@ -15,25 +15,30 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * 封面与头像的对象存储一致性。
+ * 封面与图片校验。
  *
- * <p>核心约定：**DB 的指向永远不落在已删除的对象上**。因此所有"删除对象"都必须排在
- * "DB 不再引用它"之后。反过来写（先删对象再改 DB）一旦中间失败，DB 就会指向不存在的对象，
- * 表现为封面/头像裂图，且用户自己恢复不了。</p>
- *
- * <p>另一条约定：扩展名决定最终对象名，必须走白名单——MIME 是客户端可伪造的。</p>
+ * <p>封面改为「随文章一起提交」后，两条核心约定：</p>
+ * <ul>
+ *   <li><b>对象名由服务端生成</b>——客户端传来的 coverImg 不可信，只允许它表达「删除封面」，
+ *       其余取值一律回退为库中原值，避免文章引用到别人的对象。</li>
+ *   <li><b>DB 的指向永不落在已删除的对象上</b>——写库成功后才删旧封面；写库失败则回收新上传的封面。</li>
+ * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 public class CoverAndLogoConsistencyTest {
 
     private static final int AUTHOR = 1;
+    private static final String USERNAME = "zz-test-cover-user";
 
     @Autowired
     private ArticleService articleService;
@@ -59,34 +64,107 @@ public class CoverAndLogoConsistencyTest {
         return a.getId();
     }
 
-    @Test
-    public void removeCoverClearsDbPointerAndDeletesObject() {
-        int userId = fixtures.ensureUser(AUTHOR);
-        String coverKey = "zz-test-cover-" + System.nanoTime() + ".png";
-        int id = insertArticle(userId, "zz-test-封面文章-" + System.nanoTime(), coverKey);
-
-        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
-
-        assertTrue(articleService.removeCover(coverKey, userId), "自己的封面应当允许删除");
-
-        assertEquals("", articleMapper.selectById(id).getCoverImg(),
-                "DB 的封面指向必须被清空，否则会指向已删除的对象");
-        verify(rustFsUtil).delete(coverKey, "image");
+    private MockMultipartFile coverImage(String name) {
+        return new MockMultipartFile("cover", name, "image/png", "fake-image".getBytes());
     }
 
     @Test
-    public void removeCoverRejectsOthersKey() {
-        int owner = fixtures.ensureUser(AUTHOR);
-        int other = fixtures.ensureUser(AUTHOR);
-        String coverKey = "zz-test-cover2-" + System.nanoTime() + ".png";
-        int id = insertArticle(owner, "zz-test-他人封面-" + System.nanoTime(), coverKey);
+    public void uploadingNewCoverGeneratesServerSideKeyAndDeletesOld() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        String oldKey = "zz-test-old-cover-" + System.nanoTime() + ".png";
+        int id = insertArticle(userId, "zz-test-换封面-" + System.nanoTime(), oldKey);
 
-        assertFalse(articleService.removeCover(coverKey, other),
-                "不能删除别人的封面对象");
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
 
-        // 别人的东西一个字节都没动
-        assertEquals(coverKey, articleMapper.selectById(id).getCoverImg());
-        verify(rustFsUtil, never()).delete(anyString(), anyString());
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-换封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+        // 即便客户端塞了一个可疑的 key，有文件时也一律以服务端生成的对象名为准
+        edit.setCoverImg("attacker-supplied-key.png");
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("new.png"), USERNAME));
+
+        Article after = articleMapper.selectById(id);
+        assertNotNull(after.getCoverImg());
+        assertTrue(after.getCoverImg().endsWith(".png"), "应当是以服务端生成的对象名");
+        assertFalse(after.getCoverImg().contains("attacker"), "不能采用客户端提供的 key");
+        // 写库成功后旧封面才被删除
+        verify(rustFsUtil).delete(oldKey, "image");
+    }
+
+    @Test
+    public void emptyCoverImgMeansDeleteCover() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        String oldKey = "zz-test-del-cover-" + System.nanoTime() + ".png";
+        int id = insertArticle(userId, "zz-test-删封面-" + System.nanoTime(), oldKey);
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-删封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+        edit.setCoverImg("");            // 空串 = 删除封面
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME));
+
+        assertEquals("", articleMapper.selectById(id).getCoverImg(), "封面指向应当被清空");
+        verify(rustFsUtil).delete(oldKey, "image");
+    }
+
+    @Test
+    public void blankCoverImgKeepsExistingCover() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        String oldKey = "zz-test-keep-cover-" + System.nanoTime() + ".png";
+        int id = insertArticle(userId, "zz-test-不换封面-" + System.nanoTime(), oldKey);
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-不换封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+        edit.setCoverImg(null);          // 没选新封面
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME));
+
+        assertEquals(oldKey, articleMapper.selectById(id).getCoverImg(),
+                "未提交新封面时应当保持原封面，且旧对象不能被删");
+        verify(rustFsUtil, never()).delete(oldKey, "image");
+    }
+
+    @Test
+    public void failedSaveReclaimsNewlyUploadedCover() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-回收封面-" + System.nanoTime(), "");
+
+        // 只让「正文(json)」上传失败、封面(image)成功。
+        // 注意不能用两个 willReturn 分别 stub：后定义的会覆盖前一个，导致正文也返回成功。
+        given(rustFsUtil.upload(any(), anyString(), anyString()))
+                .willAnswer(inv -> !inv.getArgument(2, String.class).endsWith(".json"));
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-回收封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+
+        assertFalse(articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME),
+                "正文上传失败时整次提交应当失败");
+
+        // 刚上传的封面必须被回收，不留下无引用对象
+        verify(rustFsUtil).delete(contains("zz-test-cover-user"), anyString());
     }
 
     @Test
@@ -96,32 +174,41 @@ public class CoverAndLogoConsistencyTest {
                 "cover", "payload.jsp", "image/png", "x".getBytes());
         assertFalse(FileCheckUtil.isAcceptableImage(disguised),
                 "MIME 是图片但扩展名不在白名单，必须拒绝");
-        assertTrue(FileCheckUtil.hasImageContentType(disguised),
-                "MIME 本身确实是图片类型");
+        assertTrue(FileCheckUtil.hasImageContentType(disguised), "MIME 本身确实是图片类型");
 
-        // 正常图片通过
         MockMultipartFile normal = new MockMultipartFile(
                 "cover", "photo.PNG", "image/png", "x".getBytes());
         assertTrue(FileCheckUtil.isAcceptableImage(normal), "大小写不同的扩展名应当接受");
 
-        // 扩展名对但 MIME 不是图片
         MockMultipartFile wrongMime = new MockMultipartFile(
                 "cover", "photo.png", "application/octet-stream", "x".getBytes());
         assertFalse(FileCheckUtil.isAcceptableImage(wrongMime), "MIME 不符也应当拒绝");
 
-        // 无扩展名
         MockMultipartFile noExt = new MockMultipartFile(
                 "cover", "photo", "image/png", "x".getBytes());
         assertFalse(FileCheckUtil.isAcceptableImage(noExt), "没有扩展名无法确定对象名，应当拒绝");
     }
 
     @Test
-    public void normalImagePassesExtensionWhitelist() {
-        for (String ext : new String[]{".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}) {
-            MockMultipartFile f = new MockMultipartFile(
-                    "cover", "a" + ext, "image/jpeg", "x".getBytes());
-            assertTrue(FileCheckUtil.isAcceptableImage(f), ext + " 应当被接受");
-            assertEquals(ext, FileCheckUtil.extensionOf(f));
-        }
+    public void coverWithDisallowedExtensionIsRejectedBeforeUpload() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-非法封面-" + System.nanoTime(), "");
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-非法封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+
+        MockMultipartFile bad = new MockMultipartFile(
+                "cover", "evil.jsp", "image/png", "x".getBytes());
+
+        assertFalse(articleService.articleAddOrUpdate(edit, 1, bad, USERNAME),
+                "扩展名不在白名单时应当直接失败");
+        verify(rustFsUtil, never()).upload(any(), anyString(), anyString());
+        String cover = articleMapper.selectById(id).getCoverImg();
+        assertTrue(cover == null || cover.isEmpty(),
+                "封面被拒后不应写入任何指向，实际：" + cover);
     }
 }

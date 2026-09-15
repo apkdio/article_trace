@@ -109,7 +109,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("被编辑后的正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertThrows(Exception.class, () -> articleService.articleAddOrUpdate(edit, 1),
+        assertThrows(Exception.class, () -> articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit"),
                 "标题撞唯一索引应当抛异常（由上层转友好提示）");
 
         // 核心断言：旧正文对象从未被删除
@@ -135,7 +135,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("新正文");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1), "正常编辑应当成功");
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit"), "正常编辑应当成功");
 
         // 写库成功后旧对象才被清理
         verify(rustFsUtil).delete(eq(oldKey), eq("json"));
