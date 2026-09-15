@@ -2,6 +2,7 @@ package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
+import com.articleTraceBack.config.SensitiveWordHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.articleTraceBack.constant.RedisKeys;
@@ -31,7 +32,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     private final ArticleMapper articleMapper;
     private final RustFsUtil rustFsUtil;
-    private final AhoCorasickUtil ahoCorasickUtil;
+    private final SensitiveWordHolder sensitiveWordHolder;
     @Qualifier("stringRedisTemplateArticle")
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
@@ -48,15 +49,16 @@ public class ArticleServiceImpl implements ArticleService {
 
     public ArticleServiceImpl(ArticleMapper articleMapper, RustFsUtil rustFsUtil,
                               @Qualifier("stringRedisTemplateArticle") StringRedisTemplate stringRedisTemplateArticle,
-                              AhoCorasickUtil ahoCorasickUtil) {
-        this.ahoCorasickUtil = ahoCorasickUtil;
+                              SensitiveWordHolder sensitiveWordHolder) {
+        this.sensitiveWordHolder = sensitiveWordHolder;
         this.articleMapper = articleMapper;
         this.rustFsUtil = rustFsUtil;
         this.stringRedisTemplateArticle = stringRedisTemplateArticle;
     }
     @Override
     public List<AhoCorasickUtil.Match> containsSensitive(String content) {
-        return ahoCorasickUtil.search(content);
+        // 每次现取：词表热更新后替换的是 holder 里的引用，业务必须拿当前实例
+        return sensitiveWordHolder.get().search(content);
     }
     @Override
     public boolean articleAddOrUpdate(Article article, int type) {

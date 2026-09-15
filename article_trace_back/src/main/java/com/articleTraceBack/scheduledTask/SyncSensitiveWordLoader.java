@@ -1,12 +1,8 @@
 package com.articleTraceBack.scheduledTask;
 
-import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.config.SensitiveWordHolder;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import lombok.Getter;
-import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,40 +12,44 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
 
+/**
+ * 敏感词表热更新。
+ *
+ * <p>只负责「发现文件变了 → 让 holder 重载」，自己不保存任何匹配器实例——
+ * 早先这里构建的新实例写进了本类字段，而业务读的是另一个 bean，导致热更新一直没生效。</p>
+ */
+@Slf4j
 @Component
 @EnableScheduling
 public class SyncSensitiveWordLoader {
 
-    private static final Logger log = LoggerFactory.getLogger(SyncSensitiveWordLoader.class);
-
     @Value("${sensitive_word.filePath}")
     private String wordFilePath;
 
-    @Getter
-    private volatile AhoCorasickUtil latestAhoCorasick;
+    private final SensitiveWordHolder holder;
+
     private volatile long lastModified = 0L;
-    @Setter
-    private ScheduledExecutorService scheduler;
+
+    public SyncSensitiveWordLoader(SensitiveWordHolder holder) {
+        this.holder = holder;
+    }
 
     @PostConstruct
     public void init() {
-        loadAndBuild();
-        log.info("Sensitive word hot sync service enabled. External file path: {}", wordFilePath);
-    }
-
-    @PreDestroy
-    public void destroy() {
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown();
-            log.info("Disable words hot sync service.");
+        Path path = Paths.get(wordFilePath);
+        if (Files.exists(path)) {
+            try {
+                lastModified = Files.getLastModifiedTime(path).toMillis();
+            } catch (IOException e) {
+                log.warn("read words file timestamp failed: {}", e.getMessage());
+            }
         }
+        log.info("sensitive word hot reload enabled. external file: {}", wordFilePath);
     }
 
     @Scheduled(cron = "${sensitive_word.cron}")
-    private void checkAndReload() {
+    public void checkAndReload() {
         Path path = Paths.get(wordFilePath);
         if (!Files.exists(path)) {
             return;
@@ -57,36 +57,17 @@ public class SyncSensitiveWordLoader {
         try {
             long currentModified = Files.getLastModifiedTime(path).toMillis();
             if (currentModified > lastModified) {
-                log.info("Detected file changed! Reload words list...");
-                loadAndBuild();
-                log.info("Reload words list complete!");
+                log.info("detected sensitive words changed, reloading...");
+                if (holder.reload()) {
+                    lastModified = currentModified;
+                    log.info("sensitive words reloaded, effective immediately");
+                } else {
+                    // 本次不动 lastModified：下一轮会再试，避免一次失败就再也感知不到这次变更
+                    log.warn("sensitive words reload failed, will retry on next tick");
+                }
             }
         } catch (IOException e) {
-            log.error("Check file time failure! detail:", e);
+            log.error("check sensitive words file failed", e);
         }
     }
-
-    private synchronized void loadAndBuild() {
-        Path path = Paths.get(wordFilePath);
-        if (!Files.exists(path)) {
-            log.error("Not found file: {}", wordFilePath);
-            return;
-        }
-        try (var lines = Files.lines(path)) {
-            List<String> words = lines.map(String::trim)
-                    .filter(line -> !line.isEmpty())
-                    .toList();
-
-            AhoCorasickUtil newAc = new AhoCorasickUtil();
-            for (String word : words) {
-                newAc.addKeyword(word);
-            }
-            newAc.build();
-            this.latestAhoCorasick = newAc;
-            this.lastModified = Files.getLastModifiedTime(path).toMillis();
-        } catch (Exception e) {
-            log.error("Failure to load file! Words list not changed!", e);
-        }
-    }
-
 }
