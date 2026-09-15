@@ -2,6 +2,8 @@ package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.mapper.ArticleMapper;
@@ -23,6 +25,10 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class ArticleServiceImpl implements ArticleService {
+
+    /** 热门文章缓存的 JSON 编解码器（线程安全，可复用） */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final ArticleMapper articleMapper;
     private final RustFsUtil rustFsUtil;
     private final AhoCorasickUtil ahoCorasickUtil;
@@ -59,34 +65,56 @@ public class ArticleServiceImpl implements ArticleService {
         content.put("content", article.getContent());
         long timeStamp = System.currentTimeMillis();
         String fileName = timeStamp + "-" + article.getCreateUser() + ".json";
+        // 旧对象名：更新分支要等写库成功后才删它们
+        String oldContentName = null;
+        String oldImgName = null;
+
         if (type == 0) {
-            if (rustFsUtil.upload(content, "json", fileName)) {
-                article.setContent(fileName);
-                LocalDateTime now = LocalDateTime.now();
-                article.setCreateTime(now);
-            } else {
+            if (!rustFsUtil.upload(content, "json", fileName)) {
                 return false;
             }
+            article.setContent(fileName);
+            article.setCreateTime(LocalDateTime.now());
         } else {
             Article rawArticle = articleMapper.selectById(article.getId());
-            String contentName = rawArticle.getContent();
-            String imgName = rawArticle.getCoverImg();
-            // 先增后删
-            if (rustFsUtil.upload(content, "json", fileName)) {
-                if (rustFsUtil.delete(contentName, "json")) {
-                    if (!Objects.equals(imgName, "") && !imgName.equals(article.getCoverImg())) {
-                        if (!rustFsUtil.delete(imgName, "image")) return false;
-                    }
-                    article.setUpdateTime(LocalDateTime.now());
-                    article.setContent(fileName);
-                } else {
-                    return false;
-                }
-            } else {
+            oldContentName = rawArticle.getContent();
+            oldImgName = rawArticle.getCoverImg();
+            if (!rustFsUtil.upload(content, "json", fileName)) {
                 return false;
             }
+            article.setUpdateTime(LocalDateTime.now());
+            article.setContent(fileName);
         }
-        boolean saved = articleMapper.insertOrUpdate(article);
+
+        // 写库必须在「删旧文件」之前：写库可能因标题唯一索引冲突等原因失败，
+        // 若先删了旧文件，DB 会指向一个已不存在的对象，正文永久变空且不可逆。
+        boolean saved;
+        try {
+            saved = articleMapper.insertOrUpdate(article);
+        } catch (Exception e) {
+            // 写库失败（如 DuplicateKeyException）：回收刚上传的新文件，旧文件始终没动过，
+            // 原样抛出交给上层转成友好提示。
+            rustFsUtil.delete(fileName, "json");
+            throw e;
+        }
+        if (!saved) {
+            // 没抛异常但也没写成功：同样回收新文件，DB 保持指向旧文件
+            rustFsUtil.delete(fileName, "json");
+            return false;
+        }
+
+        // 走到这里说明 DB 已指向新文件；旧对象删除失败只会留下孤儿，不影响可用性
+        if (type != 0) {
+            if (!Objects.equals(oldContentName, fileName)
+                    && !rustFsUtil.delete(oldContentName, "json")) {
+                log.warn("delete old content failed: articleId={}, key={}", article.getId(), oldContentName);
+            }
+            if (!Objects.equals(oldImgName, "") && !oldImgName.equals(article.getCoverImg())
+                    && !rustFsUtil.delete(oldImgName, "image")) {
+                log.warn("delete old cover failed: articleId={}, key={}", article.getId(), oldImgName);
+            }
+        }
+
         // 保存成功后标记待同步：已发布 → 待入库，非发布 → 待删除（避免草稿被检索）
         if (saved) {
             if (article.getState() != null && article.getState() == 1) {
@@ -371,27 +399,45 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public List<Article> getViewsTop10() {
         String cacheKey = RedisKeys.ARTICLE_HOT_TOP10;
-        String cached = stringRedisTemplateArticle.opsForValue().get(cacheKey);
+        List<Article> cached = readHotArticlesCache(cacheKey);
         if (cached != null) {
-            String[] parts = cached.split(",");
-            List<Article> articles = new ArrayList<>();
-            for (int i = 0; i < parts.length; i += 3) {
-                Article art = new Article();
-                art.setId(Integer.parseInt(parts[i]));
-                art.setTitle(parts[i + 1]);
-                art.setViews(Long.parseLong(parts[i + 2]));
-                articles.add(art);
-            }
-            return articles;
+            return cached;
         }
         List<Article> articles = articleMapper.getHotArticlesTop10();
-        StringBuilder sb = new StringBuilder();
-        for (Article a : articles) {
-            if (!sb.isEmpty()) sb.append(",");
-            sb.append(a.getId()).append(",").append(a.getTitle()).append(",").append(a.getViews());
-        }
-        stringRedisTemplateArticle.opsForValue().set(cacheKey, sb.toString(),
-                HOT_ARTICLES_TTL_MINUTES, TimeUnit.MINUTES);
+        writeHotArticlesCache(cacheKey, articles);
         return articles;
+    }
+
+    /**
+     * 读热门文章缓存。
+     *
+     * <p>用 JSON 而非逗号拼接：文章标题允许含逗号，拼接格式会产生歧义、甚至越界。
+     * 缓存内容损坏（格式不符、旧格式残留）时返回 {@code null} 并清掉该键，交给调用方回源查库——
+     * 缓存问题不该让接口 500。</p>
+     */
+    private List<Article> readHotArticlesCache(String cacheKey) {
+        String cached = stringRedisTemplateArticle.opsForValue().get(cacheKey);
+        if (cached == null) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readValue(cached, new TypeReference<List<Article>>() {
+            });
+        } catch (Exception e) {
+            log.warn("hot articles cache unreadable, fallback to db: key={}", cacheKey, e);
+            stringRedisTemplateArticle.delete(cacheKey);
+            return null;
+        }
+    }
+
+    /** 写热门文章缓存。写失败只记日志——缓存是加速手段，不该影响主流程。 */
+    private void writeHotArticlesCache(String cacheKey, List<Article> articles) {
+        try {
+            stringRedisTemplateArticle.opsForValue().set(cacheKey,
+                    OBJECT_MAPPER.writeValueAsString(articles),
+                    HOT_ARTICLES_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("write hot articles cache failed: key={}", cacheKey, e);
+        }
     }
 }
