@@ -10,7 +10,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * 邮件投递线程池。
  *
  * <p>邮件发送走独立线程池，避免 SMTP 阻塞业务线程。队列满时由调用线程执行（不丢任务）；
- * 即使任务被丢弃，{@code notification_mail} 里的 pending/failed 记录也会被重试任务补发。</p>
+ * 即使任务被丢弃，{@code notification_mail} 里的 failed 记录也会由重试任务补发。</p>
  *
  * <p>注意：这里**不需要** {@code @EnableAsync} —— 投递是通过 {@code executor.execute(...)}
  * 显式提交的（见 {@code MailServiceImpl}），因此不受 {@code @Async} 同类自调用的限制。</p>

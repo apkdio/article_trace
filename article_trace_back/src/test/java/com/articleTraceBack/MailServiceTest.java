@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 邮件投递（P2）集成测试：走真实 SMTP，验证落库、异步投递与失败重试。
+ * 邮件投递集成测试：走真实 SMTP，验证落库、异步投递与失败重试。
  *
  * <p>需显式指定收件人才执行（避免常规构建误发邮件）：</p>
  * <pre>mvn test -Dtest=MailServiceTest -Dmail.to=your@mail.com</pre>
@@ -36,7 +36,7 @@ public class MailServiceTest {
     public void testSendRecordsAndDelivers() throws Exception {
         String to = requireReceiver();
 
-        mailService.send(to, "P2 投递测试", "这是一封来自 P2 异步投递链路的测试邮件。");
+        mailService.send(to, "邮件投递测试", "这是一封来自异步投递链路的测试邮件。");
 
         NotificationMail latest = latestMail();
         assertNotNull(latest, "邮件应已落库");

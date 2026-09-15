@@ -257,7 +257,7 @@ public class UserServiceImpl implements UserService {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("email", email.trim());
         List<User> users = userMapper.selectList(queryWrapper);
-        // 历史数据可能同邮箱多账号，取首条，避免 selectOne 抛异常
+        // 邮箱已有唯一约束，limit 1 仅作防御
         return users.isEmpty() ? null : users.getFirst();
     }
 

@@ -20,7 +20,7 @@ public class JwtUtil {
 
     //接收业务数据,生成token并返回
     public String genToken(Map<String, Object> claims, int type) {
-        // 0为12小时，1为48小时
+        // type=1（记住我）用 longTime（72 小时），否则用 shortTime（24 小时）
         long expireTime;
         if (type == 1) {
             expireTime = longTime;

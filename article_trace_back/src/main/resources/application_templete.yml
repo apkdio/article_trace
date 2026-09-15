@@ -56,7 +56,7 @@ spring:
 logging:
   level:
     root: INFO
-    com.boot_pro.demo_work: DEBUG
+    com.articleTraceBack: DEBUG
     org.springframework.web: DEBUG
     com.articleTraceBack.mapper: DEBUG
 JWT:
@@ -98,7 +98,6 @@ scheduler:
     cron: "0 */10 * * * ?"   # 每 10 分钟执行一次
 email:
   from: ${MAIL_FROM:}            # 发件人，留空则用 spring.mail.username
-  testTo: ${MAIL_TEST_TO:}       # 发信链路测试的默认收件人
   subjectPrefix: "[文迹]"        # 邮件主题前缀
 author-apply:
   remindCron: "0 0 0/12 * * ?"   # 每 12 小时检查是否有待审作者申请，有则邮件提醒站长

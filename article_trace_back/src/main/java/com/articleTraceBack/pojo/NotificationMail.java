@@ -9,7 +9,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 邮件投递记录（P2 使用：失败可重试、可追溯）。
+ * 邮件投递记录（邮件投递使用：失败可重试、可追溯）。
  */
 @Data
 @TableName("notification_mail")

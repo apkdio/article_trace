@@ -20,7 +20,7 @@ public class User {
 
     @NotEmpty(groups = {login.class,update.class})
     @Pattern(regexp = "^\\S{1,15}$", message = "为1-15个非空白字符！")
-    private String username; // 用户昵称
+    private String username; // 用户名（登录名，唯一）
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     // 仅在Java 对象 -> Json 返回前端时不写入 反过来写入该字段
@@ -31,7 +31,7 @@ public class User {
     // 仅在「修改资料」时必填：注册时后端会自动生成默认昵称
     @NotEmpty(groups = update.class)
     @Pattern(regexp = "^\\S{1,10}$", message = "为1-10个非空白字符！", groups = update.class)
-    private String nickname; // 别名
+    private String nickname; // 昵称（允许重复）
 
     // 仅「修改资料」时需要：注册走 RegisterUserPojo 自己的校验
     @NotEmpty(groups = update.class)

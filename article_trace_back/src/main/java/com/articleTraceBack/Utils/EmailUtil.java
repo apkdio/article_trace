@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * 邮件发送工具（基于 Spring JavaMailSender / SMTP）。
  *
- * <p>目前只提供发信能力，尚未接入注册、找回密码等主链路，作为后续邮箱验证码的基础设施。</p>
+ * <p>注册、找回密码的邮箱验证码，以及站内信的邮件投递，都经由本类发送。</p>
  *
  * <p>发送失败只记录日志并返回 {@code false}，不向上抛异常，避免影响调用方主流程。</p>
  */

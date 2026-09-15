@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 站内通知基础设施（P1）集成测试。
+ * 站内通知基础设施集成测试。
  *
  * <pre>mvn test -Dtest=NotificationServiceTest</pre>
  */

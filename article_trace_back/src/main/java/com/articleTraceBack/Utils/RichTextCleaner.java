@@ -25,9 +25,7 @@ public class RichTextCleaner {
         // 预先移除 base64 图片标签，减轻 Jsoup 解析负担
         String cleanedHtml = BASE64_IMG_PATTERN.matcher(html).replaceAll("");
 
-        // 使用 Jsoup 解析并清理
-        //    使用 Relaxed 白名单：保留基本文本格式，但我们会转为纯文本，所以其实任何标签都会被移除
-        //    但我们需要移除 <script>、<style> 等，所以用 Cleaner + 白名单
+        // 用 Jsoup 解析后手动移除 script/style/link/meta/noscript 与 img，最后取纯文本
         Document.OutputSettings outputSettings = new Document.OutputSettings()
                 .prettyPrint(false)   // 不格式化输出，减少空白
                 .escapeMode(Entities.EscapeMode.xhtml); // 可选

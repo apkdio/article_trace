@@ -20,7 +20,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public Category findCategoryByName(String categoryName) {
         QueryWrapper<Category> queryWrapper = new QueryWrapper<>();
-        // category_name 无唯一索引，重复数据时取首条，避免 selectOne 抛异常
+        // 分类名由 uk_category_name 保证唯一，limit 1 仅作防御
         queryWrapper.eq("category_name", categoryName).last("limit 1");
         return categoryMapper.selectOne(queryWrapper);
     }

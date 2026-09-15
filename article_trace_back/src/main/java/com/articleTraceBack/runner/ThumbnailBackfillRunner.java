@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 存量缩略图补齐：启动时为「已上传但缺少缩略图」的封面/头像生成缩略图。
  *
- * <p>默认关闭（thumbnail.backfill.enabled=false），仅在需要一次性补齐旧数据时开启。
+ * <p>由 thumbnail.backfill.enabled 控制（模板默认 false），仅在需要一次性补齐旧数据时开启。
  * 无封面（cover_img 为空）或无头像（user_pic 为空）的记录会被跳过。</p>
  */
 @Slf4j

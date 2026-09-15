@@ -16,10 +16,10 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 通知基础设施实现（P1：站内信）。
+ * 通知基础设施实现（站内信 + 邮件）。
  *
  * <p><b>调用方不感知成败</b>：全部 try-catch，失败只记日志，绝不影响主业务。</p>
- * <p>邮件渠道在 P2 实现（写 notification_mail + 异步发送 + 失败重试）。</p>
+ * <p>邮件渠道由 {@code MailService} 投递：落 {@code notification_mail} + 独立线程池异步发送 + 失败重试。</p>
  */
 @Slf4j
 @Service
