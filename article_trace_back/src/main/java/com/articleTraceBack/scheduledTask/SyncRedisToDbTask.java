@@ -6,25 +6,57 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * 把 Redis 中累积的浏览量增量汇总进 MySQL。
+ *
+ * <p><b>为什么不用 {@code RENAME} 搬数据</b>：{@code RENAME} 会覆盖已存在的目标键。
+ * 一旦上一轮在批量写库前失败，{@code :processing} 里就留着未消费的增量，
+ * 下一轮 {@code rename} 会直接把它冲掉——这批浏览量永久丢失，且日志只留下一条 "Sync failed"。
+ * 若期间没有新的浏览（原键不存在），那份残留更是永远无人处理。</p>
+ *
+ * <p>现在改为用 Lua 把最新增量**累加**进 {@code :processing}：既不清掉残留，也不漏掉新数据，
+ * 且整个合并是原子的。只有批量写库成功后才删除 {@code :processing}——失败则原样保留，
+ * 下一轮继续消费（{@code views = views + Δ} 天然幂等，重复消费也只会计一次，见下）。</p>
+ */
 @Component
 @EnableScheduling
 @Slf4j
 public class SyncRedisToDbTask {
+
+    /**
+     * 把 {@code KEYS[1]} 哈希的每个字段值累加到 {@code KEYS[2]}，然后删除 {@code KEYS[1]}。
+     *
+     * <p>用 {@code HINCRBY} 而不是覆盖：目标键里可能还有上一轮未消费完的残留。</p>
+     */
+    private static final DefaultRedisScript<Long> MERGE_VIEWS_SCRIPT = new DefaultRedisScript<>(
+            "local entries = redis.call('HGETALL', KEYS[1]) "
+                    + "for i = 1, #entries, 2 do "
+                    + "  redis.call('HINCRBY', KEYS[2], entries[i], entries[i + 1]) "
+                    + "end "
+                    + "redis.call('DEL', KEYS[1]) "
+                    + "return #entries / 2",
+            Long.class);
+
     @Value("${spring.data.redis.viewKey}")
     private String viewKey;
+
     private final StringRedisTemplate redisTemplate;
     private final ArticleMapper articleMapper;
+
     @Value("${scheduler.sync.enabled}")
     private Boolean enabled;
 
-    public SyncRedisToDbTask(@Qualifier("stringRedisTemplateArticle") StringRedisTemplate redisTemplate, ArticleMapper articleMapper) {
+    public SyncRedisToDbTask(@Qualifier("stringRedisTemplateArticle") StringRedisTemplate redisTemplate,
+                            ArticleMapper articleMapper) {
         this.redisTemplate = redisTemplate;
         this.articleMapper = articleMapper;
     }
@@ -35,16 +67,18 @@ public class SyncRedisToDbTask {
             log.info("data sync scheduler is disabled. Redis data will not synchronize to Mysql !");
             return;
         }
-        log.info("starting synchronizing pending view increments from Redis to Mysql...");
+
+        String processingKey = viewKey + ":processing";
         try {
-            String processingKey = viewKey + ":processing";
-            if (!redisTemplate.hasKey(viewKey)) {
+            // 1. 把本轮累积的增量并入 processing。累加而非覆盖，所以上一轮的残留不会被冲掉。
+            Long merged = redisTemplate.execute(MERGE_VIEWS_SCRIPT, List.of(viewKey, processingKey));
+            boolean hasPending = redisTemplate.hasKey(processingKey);
+            if ((merged == null || merged == 0) && !hasPending) {
                 log.info("No pending views to sync.");
                 return;
             }
 
-            redisTemplate.rename(viewKey, processingKey);
-
+            // 2. 消费 processing —— 这里既有本轮并入的，也可能有上一轮失败留下的
             Map<Object, Object> entries = redisTemplate.opsForHash().entries(processingKey);
             if (entries.isEmpty()) {
                 redisTemplate.delete(processingKey);
@@ -60,12 +94,15 @@ public class SyncRedisToDbTask {
             }
 
             articleMapper.batchAddViews(deltas);
+            // 写库成功才删：失败时保留，下一轮重新消费。
+            // 重复消费是安全的——浏览量按增量累加（views = views + Δ），不是覆盖赋值。
             redisTemplate.delete(processingKey);
 
             redisTemplate.delete(RedisKeys.ARTICLE_HOT_TOP10);
             log.info("Sync complete: {} articles updated.", deltas.size());
         } catch (Exception e) {
-            log.error("Sync failed", e);
+            // 此时 processingKey 原样保留，下一轮会连同新数据一起消费
+            log.error("Sync failed, pending increments kept in {} for the next round", processingKey, e);
         }
     }
 }
