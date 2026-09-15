@@ -1,13 +1,18 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.EmailTemplateUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Year;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,6 +31,11 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private static final long COOLDOWN_SECONDS = 60;
     /** 验证码位数 */
     private static final int CODE_LENGTH = 6;
+
+    /** 邮件模板名（对应 templates/email/ 下的 email-code.html 与 email-code.txt） */
+    private static final String TEMPLATE_NAME = "email-code";
+    /** 邮件主题（最终主题还会被 email.subjectPrefix 加上 [文迹] 前缀） */
+    private static final String MAIL_SUBJECT = "邮箱验证码";
 
     private static final String KEY_CODE = "email:code:%s:%s";
     private static final String KEY_COOLDOWN = "email:code:cooldown:%s:%s";
@@ -47,11 +57,18 @@ public class EmailCodeServiceImpl implements EmailCodeService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final MailService mailService;
+    private final EmailTemplateUtil emailTemplateUtil;
+
+    /** 模板里的 logo 地址；必须是公网可访问的绝对 URL，留空则渲染出空 src */
+    @Value("${email.logoUrl:}")
+    private String logoUrl;
 
     public EmailCodeServiceImpl(@Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate,
-                                MailService mailService) {
+                                MailService mailService,
+                                EmailTemplateUtil emailTemplateUtil) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.mailService = mailService;
+        this.emailTemplateUtil = emailTemplateUtil;
     }
 
     @Override
@@ -73,9 +90,8 @@ public class EmailCodeServiceImpl implements EmailCodeService {
             // 2. 生成验证码
             String code = randomCode();
 
-            // 3. 提交投递（异步，失败由重试任务补发）
-            mailService.send(normalized, "邮箱验证码",
-                    "你的验证码是：" + code + "\n\n5 分钟内有效，请勿泄露给他人。\n若非本人操作，请忽略本邮件。");
+            // 3. 渲染模板并提交投递（异步，失败由重试任务补发）
+            renderAndSend(normalized, code);
 
             // 4. 暂存 Redis
             stringRedisTemplate.opsForValue()
@@ -88,6 +104,29 @@ public class EmailCodeServiceImpl implements EmailCodeService {
             log.error("send email code failed: email={}, scene={}", normalized, scene, e);
             return false;
         }
+    }
+
+    /**
+     * 渲染邮件模板并提交投递。
+     *
+     * <p>两个载体同时投递：支持 HTML 的客户端渲染富文本，纯文本客户端回落到 {@code .txt}。
+     * 任一模板缺失都视为部署问题，只记日志不发信——宁可不发，也不发半成品。</p>
+     */
+    private void renderAndSend(String email, String code) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("code", code);
+        vars.put("minutes", String.valueOf(CODE_TTL_MINUTES));
+        vars.put("year", String.valueOf(Year.now().getValue()));
+        vars.put("logoUrl", logoUrl == null ? "" : logoUrl.trim());
+
+        String text = emailTemplateUtil.render(TEMPLATE_NAME, "txt", vars);
+        String html = emailTemplateUtil.render(TEMPLATE_NAME, "html", vars);
+        if (text == null || html == null) {
+            log.error("email code not sent: template missing, email={}, text={}, html={}",
+                    email, text != null, html != null);
+            return;
+        }
+        mailService.send(email, MAIL_SUBJECT, text, html);
     }
 
     @Override

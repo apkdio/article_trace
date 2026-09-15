@@ -47,7 +47,7 @@ public class MailServiceImpl implements MailService {
     }
 
     @Override
-    public void send(String toEmail, String subject, String content) {
+    public void send(String toEmail, String subject, String content, String contentHtml) {
         if (toEmail == null || toEmail.isBlank()) {
             log.warn("skip mail: empty receiver, subject={}", subject);
             return;
@@ -57,6 +57,7 @@ public class MailServiceImpl implements MailService {
             mail.setToEmail(toEmail);
             mail.setSubject(subject);
             mail.setContent(content);
+            mail.setContentHtml(contentHtml == null || contentHtml.isBlank() ? null : contentHtml);
             mail.setStatus(STATUS_PENDING);
             mail.setRetryCount(0);
             mail.setCreateTime(LocalDateTime.now());
@@ -98,7 +99,10 @@ public class MailServiceImpl implements MailService {
                 log.warn("mail record not found: id={}", mailId);
                 return;
             }
-            boolean ok = emailUtil.sendText(mail.getToEmail(), mail.getSubject(), mail.getContent());
+            String html = mail.getContentHtml();
+            boolean ok = (html == null || html.isBlank())
+                    ? emailUtil.sendText(mail.getToEmail(), mail.getSubject(), mail.getContent())
+                    : emailUtil.sendMultipart(mail.getToEmail(), mail.getSubject(), mail.getContent(), html);
             if (ok) {
                 mail.setStatus(STATUS_SENT);
                 mail.setSentTime(LocalDateTime.now());

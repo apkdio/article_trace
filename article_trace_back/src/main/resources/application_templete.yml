@@ -99,6 +99,9 @@ scheduler:
 email:
   from: ${MAIL_FROM:}            # 发件人，留空则用 spring.mail.username
   subjectPrefix: "[文迹]"        # 邮件主题前缀
+  # 邮件模板里的 logo 地址。必须是**公网可访问的绝对 URL** ——
+  # 邮件客户端读不到项目内的相对路径，本地路径在收件人那里会显示成裂图。
+  logoUrl: ${MAIL_LOGO_URL:}
 author-apply:
   remindCron: "0 0 0/12 * * ?"   # 每 12 小时检查是否有待审作者申请，有则邮件提醒站长
 notification:

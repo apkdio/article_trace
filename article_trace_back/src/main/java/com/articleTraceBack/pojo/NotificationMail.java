@@ -22,7 +22,11 @@ public class NotificationMail {
 
     private String subject;
 
+    /** 纯文本载体（兜底，任何客户端都能读） */
     private String content;
+
+    /** HTML 载体；为 null 时只发纯文本 */
+    private String contentHtml;
 
     /** pending / sent / failed */
     private String status;

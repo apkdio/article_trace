@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!--
+  文迹 · 邮箱验证码邮件模板（HTML 载体）
+
+  占位符由 EmailTemplateUtil 渲染（写法为双花括号包住变量名）：
+    code     验证码数字
+    minutes  有效期分钟数
+    logoUrl  品牌 logo 的公网绝对 URL
+    year     版权年份
+
+  注意：占位符是纯文本替换，HTML 注释里的占位符同样会被替换——
+  所以本注释内不写占位符字面量，避免留下未被赋值的残留。
+
+  约束：邮件客户端会剥离 <style>、不支持 flex/grid，因此全部用 table 布局 + 内联样式。
+  宽度固定 600px（邮件标准），移动端靠 viewport + max-width 自适应。
+
+  版权行用「© + MIT License」，不写 All Rights Reserved —— 本项目是 MIT 协议，
+  已授予他人 use/copy/modify/distribute/sell 等权利，声明「保留所有权利」与之冲突。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>文迹 · 邮箱验证码</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;-webkit-text-size-adjust:100%;">
+
+  <!-- 预header：收件箱列表里的摘要，正文中不可见 -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f5f5;font-size:1px;">
+    你的验证码是 {{code}}，{{minutes}} 分钟内有效。
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:#f5f5f5;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <!-- 卡片 -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:600px;max-width:600px;background-color:#ffffff;">
+
+          <!-- logo：alt 保证图片被拦截时仍显示「文迹」 -->
+          <tr>
+            <td style="padding:36px 40px 0 40px;">
+              <img src="{{logoUrl}}" width="150" height="60" alt="文迹"
+                   style="display:block;border:0;outline:none;width:150px;height:60px;">
+            </td>
+          </tr>
+
+          <!-- 验证码 -->
+          <tr>
+            <td style="padding:32px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              你的验证码是：
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 40px 0 40px;
+                       font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;
+                       font-size:32px;font-weight:600;letter-spacing:4px;color:#1a1a1a;">
+              {{code}}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              {{minutes}} 分钟内有效，如非本人操作请忽略。
+            </td>
+          </tr>
+
+          <!-- 署名 -->
+          <tr>
+            <td style="padding:36px 40px 40px 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              感谢你的使用，<br>ArticleTrace Team
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- 卡片外底部小字 -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:600px;max-width:600px;">
+          <tr>
+            <td align="center" style="padding:20px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:12px;line-height:1.8;color:#999999;">
+              此邮件由系统自动生成，请勿直接回复！<br>
+              &copy; {{year}} ArticleTrace &middot; MIT License
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

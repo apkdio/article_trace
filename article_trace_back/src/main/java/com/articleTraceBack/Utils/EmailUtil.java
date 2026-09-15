@@ -90,6 +90,38 @@ public class EmailUtil {
         }
     }
 
+    /**
+     * 发送同时含纯文本与 HTML 两种载体的邮件（{@code multipart/alternative}）。
+     *
+     * <p>两个部分都放进同一封邮件，由客户端按自身能力择一显示：支持 HTML 的渲染富文本，
+     * 纯文本客户端回落到 {@code text}。这也是「HTML 效果 + 纯文本兜底」的落点。</p>
+     *
+     * @param text 纯文本载体（兜底）
+     * @param html HTML 载体
+     * @return 是否发送成功
+     */
+    public boolean sendMultipart(String to, String subject, String text, String html) {
+        if (isBlank(to)) {
+            log.warn("sendMultipart skipped: empty receiver");
+            return false;
+        }
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(resolveFrom());
+            helper.setTo(to);
+            helper.setSubject(withPrefix(subject));
+            // 两参版本由 Spring 自动组装 multipart/alternative，纯文本部分在前
+            helper.setText(text, html);
+            mailSender.send(message);
+            log.info("multipart mail sent: to={}, subject={}", to, subject);
+            return true;
+        } catch (Exception e) {
+            log.error("send multipart mail failed: to={}, subject={}", to, subject, e);
+            return false;
+        }
+    }
+
     private String resolveFrom() {
         return isBlank(from) ? mailUsername : from;
     }
