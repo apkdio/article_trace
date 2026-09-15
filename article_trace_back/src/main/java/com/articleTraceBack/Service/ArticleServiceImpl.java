@@ -2,6 +2,7 @@ package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
+import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
@@ -369,7 +370,7 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public List<Article> getViewsTop10() {
-        String cacheKey = "article:hot:top10";
+        String cacheKey = RedisKeys.ARTICLE_HOT_TOP10;
         String cached = stringRedisTemplateArticle.opsForValue().get(cacheKey);
         if (cached != null) {
             String[] parts = cached.split(",");

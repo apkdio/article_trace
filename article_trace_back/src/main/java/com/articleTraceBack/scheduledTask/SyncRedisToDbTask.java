@@ -1,5 +1,6 @@
 package com.articleTraceBack.scheduledTask;
 
+import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ArticleMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -61,7 +62,7 @@ public class SyncRedisToDbTask {
             articleMapper.batchAddViews(deltas);
             redisTemplate.delete(processingKey);
 
-            redisTemplate.delete("article:hot:top10");
+            redisTemplate.delete(RedisKeys.ARTICLE_HOT_TOP10);
             log.info("Sync complete: {} articles updated.", deltas.size());
         } catch (Exception e) {
             log.error("Sync failed", e);
