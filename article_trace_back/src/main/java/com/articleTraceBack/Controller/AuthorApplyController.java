@@ -17,12 +17,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * 作者申请接口。
+ * 作者申请接口（统一前缀 {@code /applyAuthor}）。
  *
- * <p>用户侧：提交申请、查看自己的申请状态；站长侧：申请列表、待审数量、审批。</p>
+ * <p>按使用者分两段路径：用户侧直接挂在 {@code /applyAuthor} 下，站长侧统一走
+ * {@code /applyAuthor/manage/**}。这样分开是为了让「站长专属」在 URL 层面就能识别——
+ * 拦截器可以把 {@code /applyAuthor/manage} 加进 {@code notAllowUrl} 统一挡掉，
+ * 而不必依赖每个方法各自记得写权限判断。</p>
+ *
+ * <p>{@link #isMaster()} 仍然保留：URL 规则只覆盖到前缀，纵深防御下多一道总是好的。</p>
  */
 @RestController
-@RequestMapping("/apply")
+@RequestMapping("/applyAuthor")
 public class AuthorApplyController {
 
     /** 站长角色 type */
@@ -35,7 +40,7 @@ public class AuthorApplyController {
     }
 
     /** 提交作者申请（body 可选：{@code {"reason": "..."}}） */
-    @PostMapping("/author")
+    @PostMapping()
     public Result<String> submit(@RequestBody(required = false) Map<String, String> body) {
         Integer userId = currentUserId();
         if (userId == null) {
@@ -49,7 +54,7 @@ public class AuthorApplyController {
     }
 
     /** 我的最新申请状态（无申请时 data 为 null） */
-    @GetMapping("/author/mine")
+    @GetMapping("/mine")
     public Result<AuthorApply> mine() {
         Integer userId = currentUserId();
         if (userId == null) {
@@ -59,7 +64,7 @@ public class AuthorApplyController {
     }
 
     /** 申请列表（站长）；status 不传查全部 */
-    @GetMapping("/author/list")
+    @GetMapping("/manage/list")
     public Result<PageBean<AuthorApply>> list(@RequestParam(required = false) Integer status,
                                               @RequestParam(defaultValue = "1") int pageNum,
                                               @RequestParam(defaultValue = "10") int pageSize) {
@@ -70,7 +75,7 @@ public class AuthorApplyController {
     }
 
     /** 待审数量（站长，用于前端角标） */
-    @GetMapping("/author/pendingCount")
+    @GetMapping("/manage/pendingCount")
     public Result<Integer> pendingCount() {
         if (!isMaster()) {
             return Result.error("权限不足！");
@@ -79,7 +84,7 @@ public class AuthorApplyController {
     }
 
     /** 审批（站长）：pass=true 通过并提升为作者，false 拒绝 */
-    @PatchMapping("/author/review/{id}")
+    @PatchMapping("/manage/review/{id}")
     public Result<String> review(@PathVariable int id,
                                  @RequestParam boolean pass,
                                  @RequestParam(required = false) String rejectReason) {
