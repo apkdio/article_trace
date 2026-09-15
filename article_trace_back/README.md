@@ -189,7 +189,9 @@ article_trace_back/
 
 ### 8. 对象存储（RustFsUtil）
 
-基于 AWS S3 SDK 封装，`图片桶（pic）` 与 `内容桶（content）` 分桶存储。图片访问通过 `S3Presigner` 生成 3 天有效期的预签名 URL，并缓存至 Redis 减少签名开销。
+基于 AWS S3 SDK 封装，按业务分三个桶：`图片桶（pic）`、`内容桶（content）`、`头像桶（avatar）`。图片访问通过 `S3Presigner` 生成 3 天有效期的预签名 URL，并缓存至 Redis 减少签名开销。
+
+对象归属由**类型字符串**决定，而不是散落的桶名常量：`json` → content、`image` → pic、`avatar` → avatar，`upload` / `delete` / `exists` / `getPciUrl` / `getThumbUrl` / `generateThumbFor` 都按它解析目标桶。预签名的 Redis 缓存键是 `桶名:对象名`——两个桶可能出现同名对象，只用对象名会串味。
 
 **缩略图机制**：上传图片时自动生成缩略图（Thumbnailator 等比缩放至 400px 宽，JPEG 质量 0.8），以 `thumb_` 前缀与原图同桶存储；删除图片时连带删除缩略图。封面、头像、评论头像、作者卡头像均返回缩略图 URL（`*ThumbSrc`），列表/小尺寸展示用缩略图、详情/预览用原图。存量图片可通过 `thumbnail.backfill.enabled=true` 启动时一次性补齐（无封面/头像的记录自动跳过）。
 
@@ -448,7 +450,7 @@ notification:
 
 ## 数据库设计
 
-数据库 `article_trace`，共 7 张表（见根目录 `article_trace.sql`）。
+数据库 `article_trace`，共 8 张表（见根目录 `article_trace.sql`）。
 
 ### `user` 用户表
 
@@ -536,6 +538,23 @@ notification:
 | pending_flag | tinyint | **生成列**：`IF(status = 0, 1, NULL)`，仅为承载唯一约束 |
 
 > 索引：`(user_id, pending_flag)` 唯一（`uk_pending`）—— 保证「每个用户最多一条待审」；`NULL` 不参与唯一性，所以已通过/已拒绝的历史记录不受影响。另有 `(status, create_time)` 与 `user_id` 两个普通索引。
+
+### `avatar_apply` 头像审核记录表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int | 主键 |
+| user_id | int | 申请人 |
+| pending_pic | varchar(128) | 待审头像对象名（存 avatar 桶）|
+| status | tinyint | 0 待审 / 1 通过 / 2 拒绝 |
+| reject_reason | varchar(200) | 拒绝理由 |
+| review_user | int | 审核人 |
+| review_time | datetime | 审核时间 |
+| create_time | datetime | 提交时间（审核列表展示用）|
+| pending_flag | tinyint | **生成列**：`IF(status = 0, 1, NULL)`，仅为承载唯一约束 |
+
+> 索引：`(user_id, pending_flag)` 唯一（`uk_pending`），与 `author_apply` 同款，保证「每个用户最多一条待审」。
+> 外键 `fk_avatar_user` 指向 `user.id`，`ON DELETE CASCADE`——用户注销时自动清理，不留悬挂记录。
 
 ### `notification_mail` 邮件投递记录表
 

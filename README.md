@@ -83,7 +83,7 @@ article_trace/
 ├── scripts/                     # 辅助脚本（init_test_db.py 初始化测试库）
 ├── docker/                      # 各服务的容器化配置
 ├── docker-compose.yml           # 一键编排
-├── article_trace.sql            # MySQL 建库脚本（7 张表，纯 schema）
+├── article_trace.sql            # MySQL 建库脚本（8 张表，纯 schema）
 ├── .env.example                 # 部署环境变量模板
 ├── README.md                    # 本文件（项目总览）
 └── LICENSE
