@@ -10,6 +10,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
 public class RedisConfig {
+    /** token / 验证码等所在的库 */
+    @Value("${spring.data.redis.database}")
+    private int database;
+    /** 文章浏览量与内容缓存所在的库 */
     @Value("${spring.data.redis.articleDB}")
     private int articleDB;
     @Value("${spring.data.redis.port}")
@@ -24,7 +28,7 @@ public class RedisConfig {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
         config.setHostName(host);
         config.setPort(port);
-        config.setDatabase(0);  // 默认数据库
+        config.setDatabase(database);
         config.setPassword(password);
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
         factory.afterPropertiesSet();

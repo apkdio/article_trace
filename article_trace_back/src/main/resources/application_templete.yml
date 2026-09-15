@@ -5,8 +5,8 @@ spring:
       max-request-size: 5MB
   data:
     redis:
-      database: 0
-      articleDB: 1
+      database: 0        # token / 验证码 / 限流计数所在的库（测试环境用独立库隔离）
+      articleDB: 1       # 文章浏览量、热点缓存所在的库
       port: 6379
       host: localhost
       timeout: 1500

@@ -32,6 +32,9 @@ public class ArticleStateMachineTest {
     @Autowired
     private ArticleMapper articleMapper;
 
+    @Autowired
+    private TestFixtures fixtures;
+
     @Test
     public void testTransferTable() {
         // ---- 合法 ----
@@ -75,17 +78,18 @@ public class ArticleStateMachineTest {
         }
     }
 
-    /** 造一篇指定状态的文章（复用库里已有的 user / category，避免外键失败）。 */
+    /**
+     * 造一篇指定状态的文章。
+     *
+     * <p>作者由 fixture 现场创建——早先从库里「捞一条已有的 create_user」来绕过外键，
+     * 这会让用例依赖开发库里的残留数据，在干净的测试库上必然失败。</p>
+     */
     private Integer insertArticle(int state) {
-        Integer userId = articleMapper.selectObjs(
-                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Article>()
-                                .select("create_user").last("limit 1"))
-                .stream().findFirst().map(o -> ((Number) o).intValue()).orElse(null);
         Article a = new Article();
         a.setTitle("状态机测试-" + System.currentTimeMillis());
         a.setContent("state-machine-test");
         a.setState(state);
-        a.setCreateUser(userId);
+        a.setCreateUser(fixtures.ensureUser(AUTHOR));
         a.setCreateTime(LocalDateTime.now());
         a.setCoverImg("");
         articleMapper.insert(a);
