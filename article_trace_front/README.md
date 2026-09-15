@@ -41,13 +41,14 @@ article_trace_front/
     │   ├── main.scss               #   全局样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
     ├── components/                 # 公共组件
-    │   ├── UserLayout.vue          #   用户中心布局（侧边栏+header+通知铃铛）
+    │   ├── UserLayout.vue          #   用户中心布局（侧边栏 + header）
     │   ├── UserTypeTag.vue         #   角色标签（站长/作者/读者）
     │   ├── PageHeader.vue          #   页面标题栏
     │   ├── StatCard.vue            #   统计卡片
     │   ├── TopArticlesList.vue     #   热门文章榜
     │   ├── AuthorCard.vue          #   作者/站长名片
     │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
+    │   ├── NotificationBell.vue    #   站内通知铃铛 + 抽屉（后台与门户页共用）
     │   └── AgentChat.vue           #   文迹 AI 聊天窗（多会话，含未启用降级）
     ├── router/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
@@ -119,23 +120,32 @@ article_trace_front/
 - **会话 ID**：首次提问不带 `sessionId`，后端通过 SSE `session` 事件回传新建的会话 ID，前端保存后，后续提问带上以维持多轮上下文。
 - **可用性探测与降级**：挂载时调用 `GET /agent/health` 读取后端的 `enabled` 字段（对应后端总开关 `rpc.agent.enabled`）。未启用时窗口**照常渲染**，仅内容区提示「暂未启用 AI 功能」并隐藏操作按钮与输入框；探测用原生 `fetch` 而非 axios 实例，避免未登录时的 401 触发全局登出跳转。
 
-### 站内通知（UserLayout.vue）
+### 站内通知（NotificationBell.vue）
 
-通知中心挂在用户中心的 header 上，不单独占页面：
+站内信在**两处布局**里都要出现（后台布局 `UserLayout` 与门户页 `publicHome`），所以收在一个组件里。
+复制两份的话，轮询逻辑一旦不一致就会出现「一边响一边不响」。
 
-- **铃铛 + 未读角标**：进入用户中心时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
-- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示；
+- **铃铛 + 未读角标**：挂载时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
+- **实时提醒**：每 60 秒轮询一次未读数，出现新增时轻提示（首次加载不提示，避免刚进页面就弹）；
+- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选；
 - **已读**：点击单条调 `PATCH /notification/read/{id}`，角标即时递减；「全部已读」调 `PATCH /notification/readAll`；
-- **展示规则**：`senderId === -1` 为系统通知（当前全部通知均为系统发送），本期不做业务跳转。
+- **删除**：单条调 `DELETE /notification/{id}`，删掉当前页最后一条时自动回退一页；
+- **展示规则**：`senderId === -1` 为系统通知，本期不做业务跳转。
+
+**外观由使用方决定**：组件通过作用域插槽暴露 `open` / `unread`——不传插槽时用默认图标样式（后台布局），
+传插槽可换成其他控件（门户页用圆形按钮，与旁边的搜索/重置保持一致）。
+
+> **抽屉样式必须放在非 scoped 的 `<style>` 块里**：`el-drawer` 的内容会 teleport 到 `body`，
+> scoped 选择器命中不到。文件里因此有两个 style 块——铃铛用 scoped，抽屉用独立 class 限定。
 
 ### 页面视图（views/）
 
 | 页面 | 功能 |
 |---|---|
-| `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10） |
+| `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10 / 站内通知铃铛，未登录不显示）|
 | `articleInfo.vue` | 文章详情 + 评论 |
 | `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
-| `components/UserLayout.vue` | 后台布局；站内信抽屉支持按类型筛选（全部/系统/作者申请）与单条删除，未读数每 60 秒轮询 |
+| `components/NotificationBell.vue` | 站内通知铃铛 + 抽屉；按类型筛选与单条删除，未读数每 60 秒轮询（后台与门户页共用）|
 | `mainPage.vue` | 后台侧边栏布局 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |
