@@ -198,7 +198,7 @@ article_trace_back/
 ```mermaid
 flowchart LR
     A[读者浏览文章] -->|addViews| B[Redis Hash 累加<br/>article:view]
-    B -->|每 10 分钟定时任务| C[rename 到 :processing]
+    B -->|每 10 分钟定时任务| C[Lua 累加合并进 :processing]
     C --> D[批量 batchAddViews 写回 MySQL]
     D --> E[清空 Top10 缓存]
 ```
@@ -347,7 +347,7 @@ flowchart LR
 ```
 notify(...) → mailService.send(to, subject, content)      # 先落库 notification_mail(pending)
                                                           # 四参重载可带 contentHtml（双载体）
-            → MailDeliverer.deliver(id) @Async(mailExecutor)  # 独立线程池异步投递
+            → MailServiceImpl.submit() → mailExecutor.execute(deliver)  # 显式提交线程池（非 @Async）
             → EmailUtil 发信 → 回写 status=sent / failed(失败次数+1)
 MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ maxRetry 的记录
 ```
@@ -361,7 +361,7 @@ MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ max
 
 `NotificationCleanupTask` 每天凌晨 3 点删除 **30 天前**的站内信（**无论是否已读**），保留天数与 cron 由 `notification.cleanup.*` 配置；清理按 `create_time` 过滤，依赖 `notification` 表上的 `create_time` 索引。
 
-> ⚠️ **命名坑**：投递器类**不能叫 `MailSender`** —— Spring Boot 邮件自动配置已注册同名 bean，会抛 `BeanDefinitionOverrideException`，故命名为 `MailDeliverer`。
+> 投递**不走 `@Async`**：`send()` 与 `retryFailed()` 都在 `MailServiceImpl` 内部触发投递，而 `@Async` 依赖 Spring 代理，同类自调用不会异步（会退化成阻塞业务线程的同步发信）。所以这里直接向线程池 `execute` 提交。
 
 ### 配置
 
@@ -719,6 +719,7 @@ python scripts/init_test_db.py
 | `SensitiveWordReloadTest` | 敏感词热更新对业务立即生效；空词表与缺失文件不影响匹配能力 |
 | `CoverAndLogoConsistencyTest` | 封面随文章提交：服务端生成 key、空串删除、失败回收；图片须 MIME 与扩展名同时通过 |
 | `BoundaryAndExceptionTest` | 异常兜底不泄露内部细节、格式异常保留真因、分页参数归一化、缺分类不 NPE |
+| `ViewSyncReliabilityTest` | 浏览量同步：残留不被覆盖、无新数据时也消费、失败保留待重放 |
 | `ArticleTitleConflictGuardTest` | 串行重名在 Controller 层被拦截，不触碰正文文件 |
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
 | `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |

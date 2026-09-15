@@ -122,7 +122,7 @@ article_trace_front/
 
 ### 站内通知（NotificationBell.vue）
 
-站内信在**两处布局**里都要出现（后台布局 `UserLayout` 与门户页 `publicHome`），所以收在一个组件里。
+站内信在三处出现：后台布局 `UserLayout`（被 `readerHome` 与 `mainPage` 复用），以及门户页 `publicHome`、`articleInfo`。所以收在一个组件里。
 复制两份的话，轮询逻辑一旦不一致就会出现「一边响一边不响」。
 
 - **铃铛 + 未读角标**：挂载时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
@@ -143,10 +143,13 @@ article_trace_front/
 | 页面 | 功能 |
 |---|---|
 | `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10 / 站内通知铃铛，未登录不显示）|
-| `articleInfo.vue` | 文章详情 + 评论 |
+| `articleInfo.vue` | 文章详情 + 评论 + 站内通知铃铛 |
 | `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
-| `components/NotificationBell.vue` | 站内通知铃铛 + 抽屉；按类型筛选与单条删除，未读数每 60 秒轮询（后台与门户页共用）|
-| `mainPage.vue` | 后台侧边栏布局 |
+| `readerHome.vue` | 读者中心布局（复用 `UserLayout`，含站内通知）|
+| `mainPage.vue` | 后台侧边栏布局（复用 `UserLayout`，含站内通知）|
+| `UserInfo.vue` | 用户信息查看与修改 |
+| `UserLogo.vue` | 头像上传与重置（读者端与后台端共用）|
+| `UserResetPassword.vue` | 修改密码 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |
 | `ArticleCategory.vue` | 分类增删改查 |
