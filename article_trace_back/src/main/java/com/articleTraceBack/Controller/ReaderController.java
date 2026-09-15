@@ -4,6 +4,7 @@ import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.ReaderService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,9 +41,8 @@ public class ReaderController {
             @RequestParam(required = false) Integer searchType,
             @RequestParam(required = false) String nickName) {
         Map<String, Object> error = new HashMap<>();
-        if (pageNum <= 0) {
-            pageNum = 1;
-        }
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
         if (searchType != null && search == null) {
             searchType = null;
         }
@@ -190,9 +190,8 @@ public class ReaderController {
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam Integer articleId) {
         Map<String, Object> error = new HashMap<>();
-        if (pageNum <= 0) {
-            pageNum = 1;
-        }
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
         int totalComments = readerService.findAllCommentsCount(articleId);
         PageBean<Comment> allComments = new PageBean<>();
         if (totalComments == 0) {

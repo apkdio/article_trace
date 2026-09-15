@@ -5,6 +5,7 @@ import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.LoginAttemptService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.IPUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import org.springframework.dao.DuplicateKeyException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -379,9 +380,8 @@ public class UserController {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         Map<String, Object> error = new HashMap<>();
         String username = userInfo.get("name").toString();
-        if (pageNum <= 0) {
-            pageNum = 1;
-        }
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
             int total = userService.findAllAccounts();

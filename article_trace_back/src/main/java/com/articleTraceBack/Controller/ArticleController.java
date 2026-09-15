@@ -4,6 +4,7 @@ import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.CategoryService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Article;
@@ -46,9 +47,8 @@ public class ArticleController {
             @RequestParam(required = false) Integer state,
             @RequestParam(required = false) String search) {
         Map<String, Object> error = new HashMap<>();
-        if (pageNum <= 0) {
-            pageNum = 1;
-        }
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         int uid = (int) userInfo.get("id");
         int totalArticles = articleService.findAllArticlesWithConditions(uid, categoryId, state, search);
@@ -87,7 +87,12 @@ public class ArticleController {
             error.put("content", "文章标题/内容包含违规词！");
             return Result.error(error);
         }
-        int categoryId = article.getCategoryId();
+        // 不拆箱：此前写成 int 接收，请求不带 categoryId 会直接 NPE 500
+        Integer categoryId = article.getCategoryId();
+        if (categoryId == null) {
+            error.put("categoryId", "文章类型不能为空！");
+            return Result.error(error);
+        }
         if (articleService.findArticleByUserAndTitle(uid, articleTitle) != null) {
             error.put("title", "你已写过同名文章！");
             return Result.error(error);
@@ -154,7 +159,12 @@ public class ArticleController {
                 error.put("content", "文章标题/内容包含违规词！");
                 return Result.error(error);
             }
-            int categoryId = article.getCategoryId();
+            // 同上：不能直接拆箱，缺失时要给明确提示而不是 500
+            Integer categoryId = article.getCategoryId();
+            if (categoryId == null) {
+                error.put("categoryId", "文章类型不能为空！");
+                return Result.error(error);
+            }
             article.setCreateUser(uid);
             article.setId(id);
             if (art.getCreateUser() != uid) {
@@ -276,9 +286,8 @@ public class ArticleController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer searchType) {
         Map<String, Object> error = new HashMap<>();
-        if (pageNum <= 0) {
-            pageNum = 1;
-        }
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
         if (searchType != null && search == null) {
             searchType = null;
         }
