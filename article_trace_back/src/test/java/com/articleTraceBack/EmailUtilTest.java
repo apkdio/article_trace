@@ -1,6 +1,6 @@
 package com.articleTraceBack;
 
-import com.articleTraceBack.Service.ReaderService;
+import com.articleTraceBack.Utils.EmailUtil;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class EmailUtilTest {
 
     @Autowired
-    private ReaderService readerService;
+    private EmailUtil emailUtil;
 
     @Test
     public void testSendMail() {
@@ -28,7 +28,10 @@ public class EmailUtilTest {
         Assumptions.assumeTrue(to != null && !to.isBlank(),
                 "未指定 -Dmail.to，跳过发信测试");
 
-        boolean ok = readerService.sendTestMail(to);
+        String content = "这是一封来自「文迹」的邮件链路测试邮件。\n"
+                + "收到即表示 SMTP 配置可用。\n"
+                + "发送时间：" + java.time.LocalDateTime.now();
+        boolean ok = emailUtil.sendText(to, "邮件链路测试", content);
         assertTrue(ok, "邮件发送失败：请检查 SMTP 配置与服务端日志");
     }
 }

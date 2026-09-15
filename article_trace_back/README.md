@@ -274,7 +274,6 @@ flowchart LR
 
 - `sendText(to, subject, content)` / `sendHtml(to, subject, html)`
 - 发送失败只记日志并返回 `false`，不影响调用方主流程
-- 链路测试接口：`GET /reader/mail/test?to=xxx`（不传则发到 `email.testTo`）
 - 链路测试：`mvn test -Dtest=EmailUtilTest -Dmail.to=your@mail.com`（未指定收件人自动跳过）
 
 **② 通知门面 `NotificationService`**
@@ -337,11 +336,9 @@ rpc:
       deleteKey: "agent:delete:pending"  # 待删除文章 id 集合
 email:
   from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
-  testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
   subjectPrefix: "[文迹]"            # 邮件主题前缀
 email:
   from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
-  testTo: ${MAIL_TEST_TO:}           # 发信链路测试默认收件人
   subjectPrefix: "[文迹]"            # 邮件主题前缀
 author-apply:
   remindCron: "0 0 0/12 * * ?"       # 每 12 小时检查待审作者申请，有则邮件提醒站长
@@ -563,7 +560,6 @@ notification:
 | POST | `/reader/addComment` | 发表评论 |
 | DELETE | `/reader/deleteComment` | 删除评论 |
 | GET | `/reader/comments` | 评论分页 |
-| GET | `/reader/mail/test` | 邮件链路测试（`to` 为空则发到 `email.testTo`） |
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
 
