@@ -273,8 +273,15 @@ flowchart LR
 **① 发信基础 `EmailUtil`**
 
 - `sendText(to, subject, content)` / `sendHtml(to, subject, html)`
+- `sendMultipart(to, subject, text, html)`：一封邮件同时携带两种载体（`multipart/alternative`），
+  由客户端择一显示——支持 HTML 的渲染富文本，纯文本客户端回落到 `text`
 - 发送失败只记日志并返回 `false`，不影响调用方主流程
 - 链路测试：`mvn test -Dtest=EmailUtilTest -Dmail.to=your@mail.com`（未指定收件人自动跳过）
+
+**邮件模板**：正文不再硬编码在 Service 里，放在 `resources/templates/email/` 下，
+同名模板有 `.html`（富文本）与 `.txt`（纯文本兜底）两份，占位符写作双花括号。渲染由
+`EmailTemplateUtil` 完成；未提供值的占位符原样保留，便于上线前发现漏配。
+模板里的 logo 地址来自 `email.logoUrl`，**必须是公网可访问的绝对 URL**。
 
 **② 通知门面 `NotificationService`**
 
@@ -337,9 +344,7 @@ rpc:
 email:
   from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
   subjectPrefix: "[文迹]"            # 邮件主题前缀
-email:
-  from: ${MAIL_FROM:}                # 发件人，留空则用 spring.mail.username
-  subjectPrefix: "[文迹]"            # 邮件主题前缀
+  logoUrl: ${MAIL_LOGO_URL:}         # 邮件模板 logo 地址（须公网可达的绝对 URL）
 author-apply:
   remindCron: "0 0 0/12 * * ?"       # 每 12 小时检查待审作者申请，有则邮件提醒站长
 notification:
@@ -494,7 +499,9 @@ notification:
 |---|---|---|
 | id | bigint | 主键 |
 | to_email | varchar(128) | 收件邮箱 |
-| subject / content | varchar(200) / text | 主题与正文 |
+| subject | varchar(200) | 主题 |
+| content | text | 纯文本正文（兜底载体）|
+| content_html | mediumtext | HTML 正文；为 `NULL` 时只发纯文本 |
 | status | varchar(16) | pending / sent / failed |
 | retry_count | int | 已重试次数 |
 | error | varchar(500) | 失败原因 |

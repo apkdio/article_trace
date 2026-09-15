@@ -196,6 +196,7 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:?请在 .env 中设置 MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD:?请在 .env 中设置 MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_LOGO_URL: ${MAIL_LOGO_URL:-}
       # 默认站长账号：用户名/邮箱/昵称非敏感，保留默认值
       DEFAULT_USER_ID: ${DEFAULT_USER_ID:-apkdio}
       DEFAULT_USER_PASS: ${DEFAULT_USER_PASS:?请在 .env 中设置 DEFAULT_USER_PASS}
