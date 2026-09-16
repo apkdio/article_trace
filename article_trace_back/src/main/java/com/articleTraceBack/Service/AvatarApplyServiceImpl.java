@@ -23,6 +23,9 @@ import java.util.Map;
  *
  * <p>审批链路照 {@link AuthorApplyService} 的乐观 CAS：条件更新带 {@code status=待审}，
  * 影响行数为 0 即视为「已被他人处理」，后续动作全部不执行。</p>
+ *
+ * <p>通知走 {@link NotificationService}，渠道由 {@code notification.scenes} 配置决定
+ * （提交 → both 通知站长；通过 → inbox 通知申请人；拒绝 → both，邮件按模板把理由送到）。</p>
  */
 @Slf4j
 @Service

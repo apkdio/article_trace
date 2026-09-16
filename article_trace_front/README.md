@@ -33,7 +33,7 @@ article_trace_front/
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
-    │   ├── notification.js         #   站内通知（列表可按 system/apply 筛选、未读数、已读、删除）
+    │   ├── notification.js         #   站内通知（列表可按 system/apply/avatar 筛选、未读数、已读、删除）
     │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
@@ -127,7 +127,7 @@ article_trace_front/
 
 - **铃铛 + 未读角标**：挂载时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
 - **实时提醒**：每 60 秒轮询一次未读数，出现新增时轻提示（首次加载不提示，避免刚进页面就弹）；
-- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选；
+- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选（全部 / 系统 / 作者申请 / 头像审核）；
 - **已读**：点击单条调 `PATCH /notification/read/{id}`，角标即时递减；「全部已读」调 `PATCH /notification/readAll`；
 - **删除**：单条调 `DELETE /notification/{id}`，删掉当前页最后一条时自动回退一页；
 - **展示规则**：`senderId === -1` 为系统通知，本期不做业务跳转。

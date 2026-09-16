@@ -115,12 +115,13 @@ article_trace_back/
     │       ├── AgentSyncTask.java           #   知识库增量同步 + 全量对账（gRPC）
     │       ├── MailRetryTask.java           #   失败邮件重试
     │       ├── AuthorApplyRemindTask.java   #   待审作者申请提醒（每 12 小时邮件站长）
+    │       ├── AvatarApplyRemindTask.java   #   待审头像提醒（每 12 小时邮件站长）
     │       └── NotificationCleanupTask.java #   站内信清理（30 天）
     └── resources/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
         ├── sensitive_words.txt              # 内置敏感词库
-        └── templates/email/                 # 邮件模板（email-code.html 富文本 + .txt 纯文本兜底）
+        └── templates/email/                 # 邮件模板（email-code、avatar-rejected，各含 .html + .txt 两份）
 ```
 
 ## 项目细节实现
@@ -327,6 +328,10 @@ flowchart LR
 **邮件模板**：正文不再硬编码在 Service 里，放在 `resources/templates/email/` 下，
 同名模板有 `.html`（富文本）与 `.txt`（纯文本兜底）两份，占位符写作双花括号。渲染由
 `EmailTemplateUtil` 完成；未提供值的占位符原样保留，便于上线前发现漏配。
+
+**HTML 转义由调用层负责**：`EmailTemplateUtil` 自身不做转义（它对内容来源一无所知）。
+`NotificationServiceImpl` 在渲染前**只对 HTML 载体**转义，纯文本载体按原样输出——
+两个载体若共用一份变量表，纯文本客户端就会看到 `&lt;b&gt;` 这类字面量。
 模板里的 logo 地址来自 `email.logoUrl`，**必须是公网可访问的绝对 URL**。
 推荐把 logo 放在前端 `public/` 下（仓库已内置 `article_trace_front/public/logo2.png`），
 构建后由 Nginx 直接托管，配置 `MAIL_LOGO_URL=https://你的域名/logo2.png` 即可；
@@ -339,8 +344,9 @@ flowchart LR
 | 方法 | 作用 |
 |---|---|
 | `notify(receiverId, scene, title, content)` | 给单个用户发通知（站内 + 可选邮件）|
+| `notify(…, mailTemplate, templateVars)` | 同上，但邮件按模板渲染双载体；业务变量传**原始值**，转义由本服务做 |
 | `notifyRole(roleType, scene, title, content)` | 发给某角色全部用户（逐人一条）|
-| `listByReceiver(receiverId, type, pageNum, pageSize)` | 分页查询，`type` 可选 `system` / `apply`（null 查全部）|
+| `listByReceiver(receiverId, type, pageNum, pageSize)` | 分页查询，`type` 可选 `system` / `apply` / `avatar`（null 查全部）|
 | `unreadCount(receiverId)` | 未读数 |
 | `markRead(receiverId, id)` / `markAllRead(receiverId)` | 标记已读 |
 | `delete(receiverId, id)` | 删除单条（以「id + receiver_id」双条件限定，删不到别人的）|
@@ -403,6 +409,10 @@ notification:
     author-apply-approved: inbox
     author-apply-rejected: inbox
     author-apply-remind: mail
+    avatar-submitted: both
+    avatar-approved: inbox
+    avatar-rejected: both
+    avatar-remind: mail
     email-code: mail
   defaultChannel: inbox              # 未配置场景的默认渠道
   mail:
@@ -672,6 +682,9 @@ notification:
 > 不搬就会指向一个 pic 桶里不存在的对象，表现为头像裂图。搬不动则把记录退回待审，站长可重试。
 >
 > `/manage/**` 同样受拦截器 URL 规则与 `isMaster()` 两道保护。
+>
+> 通知场景：提交 → 站长（`avatar-submitted: both`）；通过 → 申请人（`avatar-approved: inbox`，轻量告知不发邮件）；
+> 拒绝 → 申请人（`avatar-rejected: both`，邮件走 `avatar-rejected` 模板把理由送到）。
 
 ### 站内通知 `/notification`
 
@@ -767,13 +780,15 @@ python scripts/init_test_db.py
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
 | `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
-| `AvatarApplyServiceTest` | 头像提交 / 审批主流程：待审期间 `user_pic` 不变、通过时先搬进 pic 桶、拒绝只丢待审对象、转正失败回退待审（`RustFsUtil` 已 mock，不依赖真实对象存储）|
+| `AvatarApplyServiceTest` | 头像提交 / 审批主流程：待审期间 `user_pic` 不变、通过时先搬进 pic 桶、拒绝只丢待审对象、转正失败回退待审；各环节的通知也一并断言（`RustFsUtil` 已 mock）|
 | `AvatarApplyConcurrencyTest` | 并发提交只落一条待审；并发审批只有一个成功，且 `user_pic` 与最终状态一致 |
 | `AuthorApplyRemindTaskTest` | 待审作者申请的定时邮件提醒 |
+| `AvatarApplyRemindTaskTest` | 待审头像的定时邮件提醒 |
 | `AgentSessionServiceTest` | agent 会话索引与清理（**需 agent 已启动**）|
 | `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
 | `AgentDisabledTest` | agent 关闭时主业务降级 |
 | `EmailTemplateUtilTest` | 邮件模板渲染：双载体、占位符替换与缺值保留 |
+| `NotificationMailTemplateTest` | 带模板的通知：HTML 载体转义、纯文本载体原样、模板缺失退回纯文本、avatar 类型归类 |
 | `EmailUtilTest` · `MailServiceTest` | 发信链路与邮件投递重试（需 `-Dmail.to=` 才真发）|
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
