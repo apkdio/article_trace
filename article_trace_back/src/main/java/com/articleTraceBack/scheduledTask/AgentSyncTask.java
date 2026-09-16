@@ -2,6 +2,7 @@ package com.articleTraceBack.scheduledTask;
 
 import com.articleTraceBack.Service.CategoryService;
 import com.articleTraceBack.Service.UserService;
+import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
@@ -178,7 +179,8 @@ public class AgentSyncTask {
                 continue;
             }
             try {
-                String content = rustFsUtil.getContent(a.getContent());
+                // 与回显保持一致：正文出库先清洗，别把脚本混进知识库索引
+                String content = RichTextCleaner.cleanToSafeHtml(rustFsUtil.getContent(a.getContent()));
                 String authorName = null;
                 User author = userService.findUserById(a.getCreateUser());
                 if (author != null) {

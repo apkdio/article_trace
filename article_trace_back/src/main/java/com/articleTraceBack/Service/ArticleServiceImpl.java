@@ -7,6 +7,7 @@ import com.articleTraceBack.config.SensitiveWordHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.articleTraceBack.constant.RedisKeys;
+import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
@@ -63,6 +64,10 @@ public class ArticleServiceImpl implements ArticleService {
     }
     @Override
     public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username) {
+        // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
+        // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
+        article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
+
         // 0为新增，1为更新
         Map<String, Object> content = new HashMap<>();
         content.put("content", article.getContent());
@@ -174,7 +179,7 @@ public class ArticleServiceImpl implements ArticleService {
         int offset = (pageNum - 1) * pageSize;
         List<Article> allArticles = articleMapper.allArticles(uid, pageNum, pageSize, categoryId, state, offset, search);
         for (Article article : allArticles) {
-            article.setContent(rustFsUtil.getContent(article.getContent()));
+            article.setContent(readCleanContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
                 article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
@@ -202,7 +207,7 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             return null;
         }
-        article.setContent(rustFsUtil.getContent(article.getContent()));
+        article.setContent(readCleanContent(article.getContent()));
         if (!Objects.equals(article.getCoverImg(), "")) {
             article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
             article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));
@@ -243,6 +248,16 @@ public class ArticleServiceImpl implements ArticleService {
         }
         String fileName = System.currentTimeMillis() + username + FileCheckUtil.extensionOf(cover);
         return rustFsUtil.upload(cover, "image", fileName) ? fileName : null;
+    }
+
+    /**
+     * 从对象存储取正文并做白名单清洗。
+     *
+     * <p>保存时已经洗过一遍，这里是为了覆盖<b>修复之前就已存在</b>的历史数据——
+     * 它们可能含脚本，而这些正文会经 {@code v-html} 直接渲染。</p>
+     */
+    private String readCleanContent(String fileKey) {
+        return RichTextCleaner.cleanToSafeHtml(rustFsUtil.getContent(fileKey));
     }
 
     @Override
@@ -287,7 +302,7 @@ public class ArticleServiceImpl implements ArticleService {
         List<Article> allArticles = articleMapper.findAllArticlesInMaster
                 (pageNum, pageSize, categoryId, state, userId, offset, search, searchType, nickName);
         for (Article article : allArticles) {
-            article.setContent(rustFsUtil.getContent(article.getContent()));
+            article.setContent(readCleanContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
                 article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));

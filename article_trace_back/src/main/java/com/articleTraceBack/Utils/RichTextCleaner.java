@@ -4,6 +4,7 @@ package com.articleTraceBack.Utils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Entities;
+import org.jsoup.safety.Safelist;
 
 import java.util.regex.Pattern;
 
@@ -16,6 +17,46 @@ public class RichTextCleaner {
             "<img[^>]+src\\s*=\\s*['\"]data:image/[^;]+;base64,[^'\"]+['\"][^>]*>",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     );
+
+    /**
+     * 落库/回显用的白名单。
+     *
+     * <p>在 {@link Safelist#relaxed()} 基础上补两件事：</p>
+     * <ul>
+     *   <li><b>放行 class</b>——Quill 的对齐/缩进都靠 class 表达，不放行会把排版清掉；
+     *       class 本身不具备执行能力，放行是安全的</li>
+     *   <li><b>限定图片与链接的协议</b>——挡掉 {@code javascript:} 这类可执行伪协议</li>
+     * </ul>
+     *
+     * <p>脚本、事件属性（on*）、style 里的表达式等不在白名单内，一律被剔除。</p>
+     */
+    private static final Safelist SAFELIST = Safelist.relaxed()
+            .addTags("figure", "figcaption", "hr")
+            .addAttributes(":all", "class")
+            .addAttributes("img", "alt", "width", "height")
+            .addAttributes("a", "target", "rel")
+            .addProtocols("img", "src", "http", "https")
+            .addProtocols("a", "href", "http", "https", "mailto");
+
+    /**
+     * 清洗富文本并保留 HTML 排版：按白名单剔除脚本、事件属性与危险协议。
+     *
+     * <p>正文会在前端用 {@code v-html} 直接渲染，脏 HTML 就是存储型 XSS——
+     * 这个方法是那条路径上唯一的关卡，因此保存与回显都要过一遍：
+     * 保存时保证新数据干净，回显时覆盖修复之前就已存在的历史数据。</p>
+     *
+     * <p><b>不要指望前端转义</b>：富文本要么全转义（排版全毁）、要么不转义（XSS），
+     * 没有中间态，所以清洗只能在服务端做。</p>
+     */
+    public static String cleanToSafeHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+        // 与纯文本提取保持一致：先剃掉 base64 图，减轻解析负担
+        String cleanedHtml = BASE64_IMG_PATTERN.matcher(html).replaceAll("");
+        Document.OutputSettings outputSettings = new Document.OutputSettings().prettyPrint(false);
+        return Jsoup.clean(cleanedHtml, "", SAFELIST, outputSettings);
+    }
 
     public static String cleanToPlainText(String html) {
         if (html == null || html.isEmpty()) {
