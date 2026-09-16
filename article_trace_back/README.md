@@ -128,9 +128,14 @@ article_trace_back/
 
 ### 1. 鉴权与权限控制
 
-**流程**：登录成功 → 后端签发 JWT（载荷含 `id` / `username` / `type`）→ 存入 Redis → 返回 Token。后续请求携带 `Authorization` 头，由 `TokenCheck` 拦截器校验。
+**流程**：登录成功 → 后端签发 JWT（载荷含 `id` / `username` / `type`）→ 存入 Redis → 以 **HttpOnly Cookie**（`article_trace_token`）下发。后续请求由浏览器自动携带该 Cookie，`TokenCheck` 拦截器从 Cookie 读取并校验。
 
-- **JWT 有效期**：勾选「记住我」为 72 小时（`longTime`），否则 24 小时（`shortTime`）。
+> **为什么不用 `Authorization` 头**：`localStorage` 对同源 JS 完全可读，一旦出现 XSS（哪怕只是某个第三方脚本被投毒）Token 立刻失窃；HttpOnly Cookie 拿不到 `document.cookie`，脚本偷不走。因此拦截器**只认 Cookie**，不兼容头传方式。
+>
+> **代价是 CSRF**：Cookie 由浏览器自动携带，攻击者站点发起的请求也会带上。用 `SameSite=Lax` 挡住——它规定跨站请求不带 Cookie（顶层导航的 GET 除外），而本项目写操作全是 POST/PATCH/DELETE，所以这一条就够，无需再维护 CSRF token。唯一的 GET 写操作是登出，已随之改为 POST。
+
+- **JWT 有效期**：勾选「记住我」为 72 小时（`longTime`），否则 24 小时（`shortTime`）。Cookie 的 `Max-Age` 与之一致，避免出现「Cookie 还在、Redis 已不认」。
+- **Cookie 安全开关**：`JWT.cookieSecure`（容器侧由 `JWT_COOKIE_SECURE` 透传）。本地 http 调试必须为 `false`，置 `true` 浏览器不会保存 Cookie、登录会一直失败；站点上 HTTPS 后改 `true`。
 - **双重校验**：拦截器解析 JWT 后，再与 Redis 中存储的 Token 比对，实现单点登录（一处登录、他处失效）。
 - **ThreadLocal**：校验通过后，用户信息写入 `ThreadLocalUtil`，业务层无侵入读取；请求结束在 `afterCompletion` 中清理。
 - **权限分级**（`spring.tokenCheck.notAllowUrl`）：
@@ -153,7 +158,8 @@ article_trace_back/
 ### 2. 用户模块（UserController / UserServiceImpl）
 
 - **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。注册时无需填昵称，后端会自动生成一个默认昵称（`文迹探索者` + 6 位随机串）。
-- **登录**：校验密码 → 签发 Token → 写 Redis → 记录最后登录时间。
+- **登录**：校验密码 → 签发 Token → 写 Redis → 下发 HttpOnly Cookie → 记录最后登录时间。
+- **登出**：`POST /user/logout`，删掉 Redis 中的 Token **并**下发过期 Cookie 让浏览器丢弃它——只删 Redis 的话 Cookie 还在，浏览器下次仍会带着它发请求。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 的 **avatar 桶**并生成一条待审记录，**此时 `user_pic` 一动不动**（用户仍看到旧头像）。站长审批通过后，对象被复制到 pic 桶并写入 `user_pic`，旧头像随即删除；拒绝则丢掉待审对象。
 - **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）；删除时会**级联清理该用户的作者申请记录与头像审核记录**（后者由 `avatar_apply` 的外键 `ON DELETE CASCADE` 自动完成），避免留下没有对应用户的悬挂数据。
@@ -215,7 +221,9 @@ flowchart LR
 
 ### 10. 全局异常处理（GlobalExceptionHandler）
 
-自定义异常捕获器，统一封装异常为 `Result` 格式返回，前端 `request.js` 响应拦截器据此提示，401 时自动清除 Token 并跳转首页。
+自定义异常捕获器，统一封装异常为 `Result` 格式返回，前端 `request.js` 响应拦截器据此提示，401 时提示「登录已失效」并跳转首页（凭证在 Cookie 里，由后端清除）。
+
+> ⚠️ **它会把 `405 Method Not Allowed` 也包成 `HTTP 200 + code:1`**。所以改后端 HTTP 方法时必须同步改前端调用方，且前端不能只看状态码判断成败——否则会像登出那样**静默失败**（Cookie 没清，用户却以为已退出）。
 
 | 异常 | 返回 |
 |---|---|

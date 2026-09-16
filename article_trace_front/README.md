@@ -54,11 +54,11 @@ article_trace_front/
     ├── router/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
     ├── stores/                     # Pinia 状态仓库
-    │   ├── tokenStorage.js         #   Token 持久化
-    │   ├── userInfo.js             #   用户信息
+    │   ├── userInfo.js             #   用户信息（令牌不存这里）
     │   └── searchConditions.js     #   搜索条件
     ├── utils/                      # 工具函数
     │   ├── request.js              #   Axios 实例 + 拦截器（401 自动登出）
+    │   ├── session.js              #   401 去重标记（模块级，刷新即重置）
     │   ├── loginCheck.js           #   登录状态校验
     │   ├── timeCheck.js            #   时间格式化
     │   ├── auth.js                 #   登录态判断（配合 UserLayout）
@@ -100,16 +100,20 @@ article_trace_front/
 
 ### 请求封装（utils/request.js）
 
-- Axios 实例 `baseURL = /api`，开发环境由 Vite 代理转发到后端 `localhost:8080`。
-- 请求拦截器自动携带 `Authorization` Token。
-- 响应拦截器统一处理：401 时提示「登录已失效」、清除 Token 与用户信息并跳转首页。
+- Axios 实例 `baseURL = /api`（`withCredentials: true`），开发环境由 Vite 代理转发到后端 `localhost:8080`。
+- **没有请求拦截器**：令牌放在 HttpOnly Cookie 里，由浏览器自动携带，前端拿不到也不该拿。以前往 `Authorization` 头里塞 Token，等于把凭证暴露给同源 JS，XSS 一打就丢。
+- 响应拦截器统一处理：401 时提示「登录已失效」、清除用户信息并跳转首页。去重标记在 `utils/session.js`——并发请求会同时拿到 401，不拦一下会弹一串提示、跳转多次；它刻意用模块级变量而非 pinia persist，因为必须随页面刷新重置。
+
+### 登录态判断
+
+前端**没有令牌可看**，只能问后端：`/user/loginCheck` 返回用户信息即已登录，401 即失效。
+`localStorage.userInfo` 里的用户名只用于快速渲染、避免刷新时闪一下未登录态，**不作鉴权依据**。
 
 ### 状态管理（stores/）
 
 | 仓库 | 用途 |
 |---|---|
-| `tokenStorage` | Token 持久化存储 |
-| `userInfo` | 当前登录用户信息 |
+| `userInfo` | 当前登录用户信息（**仅展示字段，不含凭证**）|
 | `searchConditions` | 跨页面搜索条件 |
 
 ### AI 问答（AgentChat.vue）
