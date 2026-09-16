@@ -378,6 +378,15 @@ public class UserController {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         String username = userInfo.get("name").toString();
+        int userId = (int) userInfo.get("id");
+        // 有待审头像时不允许重置：重置清掉的是当前生效的头像，待审记录仍留在队列里，
+        // 审批通过后又会把那张图设回去——用户会以为「重置没生效」。
+        // 前端在待审期间已禁用按钮，这里是不走界面的兜底。
+        AvatarApply mine = avatarApplyService.findMine(userId);
+        if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
+            error.put("error", "有待审核的头像，请等审核结果出来再重置！");
+            return Result.error(error);
+        }
         if (userService.removeUserLogo(username)) {
             return Result.success();
         }
