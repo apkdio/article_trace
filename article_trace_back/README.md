@@ -38,7 +38,8 @@ article_trace_back/
     │   │   ├── UserController.java          #   用户：注册/登录/信息/账号管理
     │   │   ├── AgentController.java         #   检索问答/会话管理/探活
     │   │   ├── NotificationController.java  #   站内信（列表/未读数/已读/删除）
-    │   │   └── AuthorApplyController.java   #   作者申请（提交/列表/审批）
+    │   │   ├── AuthorApplyController.java   #   作者申请（提交/列表/审批）
+│   │   └── AvatarApplyController.java   #   头像审核（待审状态/审核列表/审批）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
@@ -50,7 +51,8 @@ article_trace_back/
     │   │   ├── EmailCodeService.java / EmailCodeServiceImpl.java      # 邮箱验证码（注册/找回密码）
     │   │   ├── CaptchaService.java / CaptchaServiceImpl.java          # 图形验证码（人机校验）
     │   │   ├── LoginAttemptService.java / LoginAttemptServiceImpl.java # 登录失败计数与黑名单
-    │   │   └── AuthorApplyService.java / AuthorApplyServiceImpl.java
+    │   │   ├── AuthorApplyService.java / AuthorApplyServiceImpl.java
+│   │   └── AvatarApplyService.java / AvatarApplyServiceImpl.java   # 头像上传审核
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   7 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -61,6 +63,7 @@ article_trace_back/
     │   │   ├── NotificationMapper.java      #   站内信（含分页/统计）
     │   │   ├── NotificationMailMapper.java  #   邮件投递记录
     │   │   ├── AuthorApplyMapper.java       #   作者申请（含联查/统计）
+│   │   ├── AvatarApplyMapper.java       #   头像审核（含联查/统计）
     │   │   └── UserMapper.java
     │   ├── pojo/                            # 实体与数据对象
     │   │   ├── Article.java                 #   文章实体
@@ -77,6 +80,7 @@ article_trace_back/
     │   │   ├── Notification.java            #   站内信
     │   │   ├── NotificationMail.java        #   邮件投递记录
     │   │   ├── AuthorApply.java             #   作者申请
+│   │   ├── AvatarApply.java             #   头像审核记录
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -150,8 +154,8 @@ article_trace_back/
 - **注册**：读者自助注册，邮箱验证码校验（见「验证码」相关小节）；密码 BCrypt 加密。注册一律为读者，成为作者走「申请-审批」。注册时无需填昵称，后端会自动生成一个默认昵称（`文迹探索者` + 6 位随机串）。
 - **登录**：校验密码 → 签发 Token → 写 Redis → 记录最后登录时间。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
-- **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 图片桶。
-- **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）；删除时会**级联清理该用户的作者申请记录**，避免留下没有对应用户的悬挂数据。
+- **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 的 **avatar 桶**并生成一条待审记录，**此时 `user_pic` 一动不动**（用户仍看到旧头像）。站长审批通过后，对象被复制到 pic 桶并写入 `user_pic`，旧头像随即删除；拒绝则丢掉待审对象。
+- **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）；删除时会**级联清理该用户的作者申请记录与头像审核记录**（后者由 `avatar_apply` 的外键 `ON DELETE CASCADE` 自动完成），避免留下没有对应用户的悬挂数据。
 
 ### 3. 文章模块（ArticleController / ArticleServiceImpl）
 
@@ -585,7 +589,7 @@ notification:
 | GET | `/user/loginCheck` | 登录态校验 |
 | GET | `/user/userInfo` | 获取个人信息 |
 | PATCH | `/user/update` | 更新信息 |
-| PATCH | `/user/updateUserLogo` | 上传头像 |
+| PATCH | `/user/updateUserLogo` | 提交待审头像（进 avatar 桶并建待审记录，**不**直接改 `user_pic`；站长审批通过后才生效）|
 | PATCH | `/user/updatePass` | 修改密码 |
 | POST | `/user/forgetPass` | 忘记密码 |
 | GET | `/user/logout` | 登出 |
@@ -651,6 +655,24 @@ notification:
 > `/manage/**` 下的接口同时受两道保护：拦截器的 URL 规则，以及 Controller 内的 `isMaster()`。
 > 后者是纵深防御——URL 规则万一没配好，权限判断仍在。
 
+### 头像审核 `/avatar`
+
+**提交入口不在这个前缀下**——「上传自己的头像」是用户侧动作，仍走 `PATCH /user/updateUserLogo`；
+这里只有「查自己的待审状态」与站长侧审核，同样按 `/manage/**` 分段。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/avatar/mine` | 我的最新一条提交记录（无则 `data` 为 null）|
+| GET | `/avatar/manage/list` | 审核列表（站长）；可选 `status` 筛选 |
+| GET | `/avatar/manage/pendingCount` | 待审数量（站长）|
+| PATCH | `/avatar/manage/review/{id}` | 审批（站长）：`pass=true/false`，拒绝必须给 `rejectReason` |
+
+> 审批通过时先把待审对象从 avatar 桶**复制**到 pic 桶，再写 `user_pic`。
+> `user_pic` 的读取侧（预签名、重置、缩略图补齐）一律按 pic 桶解析，而对象名里没有桶信息——
+> 不搬就会指向一个 pic 桶里不存在的对象，表现为头像裂图。搬不动则把记录退回待审，站长可重试。
+>
+> `/manage/**` 同样受拦截器 URL 规则与 `isMaster()` 两道保护。
+
 ### 站内通知 `/notification`
 
 | 方法 | 路径 | 说明 |
@@ -688,7 +710,7 @@ notification:
 ### 启动步骤
 
 1. 初始化数据库：`source article_trace.sql`。
-2. 配置 RustFS：启动后访问 `IP:9001` 创建 `pic` 与 `content` 两个私密桶。
+2. 配置 RustFS：启动后访问 `IP:9001` 创建 `pic`、`content`、`avatar` 三个私密桶（后端不会自动建桶；缺 avatar 桶时提交头像会失败）。
 3. 配置：复制 `application_templete.yml` 为 `application.yml`，填写 `${}` 占位符（数据库、Redis、JWT 密钥、RustFS 凭据、默认管理员、agent 地址等）。`application.yml` 已被 `.gitignore` 忽略，不会提交到仓库。
 4. 启动（`mvn compile` 会自动生成 gRPC stub 到 `com.articleTraceBack.rpc.gen` 包）：
 
@@ -745,6 +767,8 @@ python scripts/init_test_db.py
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
 | `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
+| `AvatarApplyServiceTest` | 头像提交 / 审批主流程：待审期间 `user_pic` 不变、通过时先搬进 pic 桶、拒绝只丢待审对象、转正失败回退待审（`RustFsUtil` 已 mock，不依赖真实对象存储）|
+| `AvatarApplyConcurrencyTest` | 并发提交只落一条待审；并发审批只有一个成功，且 `user_pic` 与最终状态一致 |
 | `AuthorApplyRemindTaskTest` | 待审作者申请的定时邮件提醒 |
 | `AgentSessionServiceTest` | agent 会话索引与清理（**需 agent 已启动**）|
 | `NotificationServiceTest` · `NotificationControllerTest` · `NotificationCleanupTest` | 站内信投递、接口、清理 |
