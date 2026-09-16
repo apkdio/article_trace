@@ -32,6 +32,17 @@ export const removeUserLogoService = () => {
     return request.delete('/user/removeUserLogo')
 }
 
+/**
+ * 提交待审头像（multipart）。
+ *
+ * 上传成功不等于头像已换——会先进入待审队列，站长审批通过后才写进 user_pic。
+ */
+export const submitUserLogoService = (userLogo) => {
+    const formData = new FormData()
+    formData.append('userLogo', userLogo)
+    return request.patch('/user/updateUserLogo', formData)
+}
+
 export const getAllAccountsService = () => {
     return request.get('/user/accountManage')
 }

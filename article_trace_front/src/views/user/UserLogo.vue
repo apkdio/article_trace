@@ -1,23 +1,51 @@
 <script setup>
 import {Upload, Camera, InfoFilled, WarningFilled, Delete} from '@element-plus/icons-vue'
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import logo from '@/assets/defaultLogo.jpg'
 import {userInfoStore} from "@/stores/userInfo.js";
-import {removeUserLogoService} from "@/api/user.js";
-import {tokenStorage} from "@/stores/tokenStorage.js";
-import {checkImageFile, isAllowedImageType} from "@/utils/upload.js";
+import {removeUserLogoService, submitUserLogoService} from "@/api/user.js";
+import {getMyAvatarApply} from "@/api/avatar.js";
+import {isAllowedImageType} from "@/utils/upload.js";
 import PageHeader from "@/components/PageHeader.vue";
 
 const uploadRef = ref()
+const fileList = ref([])
 const imgSrc = ref()
 const imgKey = ref()
+const submitting = ref(false)
+// 我最新一条提交记录；null 表示从未提交过
+const myApply = ref(null)
+
+// 待审期间头像不能改，重置也不该把正在审的那张连带清掉
+const isPending = computed(() => myApply.value?.status === 0)
+const isRejected = computed(() => myApply.value?.status === 2)
+
+const pendingDescription = computed(() => {
+  const time = myApply.value?.createTime ? `提交于 ${myApply.value.createTime}，` : ''
+  return `${time}通过后自动生效，审核期间继续使用当前头像。`
+})
+
+const rejectedDescription = computed(() =>
+    '原因：' + (myApply.value?.rejectReason || '未说明原因')
+)
 
 onMounted(() => {
   loadValue()
+  loadMyApply()
 })
 const loadValue = () => {
   imgSrc.value = userInfoStore().userPicSrc
   imgKey.value = userInfoStore().userPic
+}
+
+const loadMyApply = async () => {
+  try {
+    const res = await getMyAvatarApply()
+    myApply.value = (res.code === 0) ? (res.data || null) : null
+  } catch (err) {
+    // 拿不到状态不该阻断页面，按「无提交记录」处理
+    myApply.value = null
+  }
 }
 
 const removeUserLogo = () => {
@@ -69,18 +97,30 @@ function changeSetSrc(file, fileList) {
   }
 }
 
-const uploadSuccess = async (result) => {
-  if (result.code === 0) {
-    ElMessage.success("上传成功！")
-    await userInfoStore().fetchUserInfo()
-    await loadValue()
-  } else {
-    ElMessage.error("上传失败！")
-    if (uploadRef.value) uploadRef.value.clearFiles()
+const uploadSubmit = async () => {
+  const file = fileList.value[fileList.value.length - 1]?.raw
+  if (!file) {
+    ElMessage.warning("请先选择一张图片！")
+    return
   }
-}
-const uploadSubmit = () => {
-  uploadRef.value?.submit()
+  submitting.value = true
+  try {
+    const res = await submitUserLogoService(file)
+    if (res.code === 0) {
+      // 提交成功 ≠ 头像已换：要等站长审核通过，所以这里只提示「已提交」
+      ElMessage.success("已提交，等待站长审核")
+    } else {
+      ElMessage.error(res.message || "提交失败！")
+    }
+  } catch (err) {
+    ElMessage.error("服务器响应失败！")
+  } finally {
+    submitting.value = false
+    uploadRef.value?.clearFiles()
+    // 无论成败都恢复成当前生效的头像：刚才显示的是本地预览图
+    await loadValue()
+    await loadMyApply()
+  }
 }
 </script>
 
@@ -96,26 +136,42 @@ const uploadSubmit = () => {
             <div class="upload-section">
               <el-upload
                   ref="uploadRef"
+                  v-model:file-list="fileList"
                   class="avatar-uploader"
-                  action="/api/user/updateUserLogo"
-                  :headers="{'Authorization':tokenStorage().token}"
+                  accept="image/*"
                   :show-file-list="false"
                   :auto-upload="false"
-                  :before-upload="checkImageFile"
-                  :on-success="uploadSuccess"
                   :on-change="changeSetSrc"
-                  method="PATCH"
-                  name="userLogo"
               >
-                <div class="preview-box">
+                <div class="preview-box" :class="{'is-pending': isPending}">
                   <img v-if="imgSrc" :src="imgSrc" class="avatar"/>
                   <img v-else :src="logo" class="avatar default-logo"/>
                   <div class="upload-overlay">
                     <el-icon><Camera/></el-icon>
                     <span>更改图片</span>
                   </div>
+                  <div v-if="isPending" class="pending-badge">审核中</div>
                 </div>
               </el-upload>
+
+              <el-alert
+                  v-if="isPending"
+                  class="apply-alert"
+                  type="info"
+                  :closable="false"
+                  show-icon
+                  title="新头像正在审核中"
+                  :description="pendingDescription"
+              />
+              <el-alert
+                  v-else-if="isRejected"
+                  class="apply-alert"
+                  type="warning"
+                  :closable="false"
+                  show-icon
+                  title="上次提交的头像未通过审核"
+                  :description="rejectedDescription"
+              />
 
               <div class="info-text">
                 <p><el-icon><InfoFilled/></el-icon> 支持 JPG/PNG/WEBP 等主流格式</p>
@@ -123,10 +179,13 @@ const uploadSubmit = () => {
               </div>
 
               <div class="button-group">
-                <el-button type="primary" :icon="Upload" size="large" round @click="uploadSubmit" class="main-btn">
+                <el-button type="primary" :icon="Upload" size="large" round
+                           :loading="submitting" :disabled="isPending"
+                           @click="uploadSubmit" class="main-btn">
                   确认上传
                 </el-button>
-                <el-button type="danger" :icon="Delete" plain size="large" round @click="removeUserLogo">
+                <el-button type="danger" :icon="Delete" plain size="large" round
+                           :disabled="isPending" @click="removeUserLogo">
                   重置
                 </el-button>
               </div>
@@ -236,6 +295,14 @@ const uploadSubmit = () => {
       border-color: #409eff;
       .upload-overlay { opacity: 1; }
     }
+    /* 审核期间不能再改，别给出可点的暗示 */
+    &.is-pending {
+      cursor: not-allowed;
+      border-style: solid;
+      border-color: #409eff;
+      .upload-overlay { display: none; }
+      &:hover { border-color: #409eff; }
+    }
   }
   .avatar { width: 100%; height: 100%; object-fit: cover; }
   .upload-overlay {
@@ -245,6 +312,16 @@ const uploadSubmit = () => {
     opacity: 0; transition: 0.3s; cursor: pointer;
     .el-icon { font-size: 24px; margin-bottom: 4px; }
   }
+  .pending-badge {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 6px 0; text-align: center;
+    background: rgba(64, 158, 255, 0.92); color: #fff;
+    font-size: 13px; letter-spacing: 1px;
+  }
+}
+
+.apply-alert {
+  max-width: 460px;
 }
 
 /* 右侧预览区展示 */
