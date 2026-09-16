@@ -153,6 +153,19 @@ services:
     environment:
       AGENT_PORT: "50051"
       TZ: Asia/Shanghai
+      # LLM / embedding 端点。留空则用挂载进来的 agent.yaml / chroma.yaml 默认值
+      # （指向 compose 内的 ollama）。Ollama 单独部署在另一台机器时（见 docs/TODO.md 6.6），
+      # 在 .env 里把 LLM_BASE_URL 指向那台即可，不必改配置文件、也不用重建镜像。
+      # 空字符串会被 config_tool 忽略，所以不填不会覆盖 yaml 里的值。
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_CHAT_MODEL: ${LLM_CHAT_MODEL:-}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-}
+      # embedding 与生成模型同端点时只填 LLM_* 即可，这两个会自动跟随；
+      # 分别部署时再单独指定。
+      EMBED_BASE_URL: ${EMBED_BASE_URL:-}
+      EMBED_API_KEY: ${EMBED_API_KEY:-}
+      LLM_EMBED_MODEL: ${LLM_EMBED_MODEL:-}
     volumes:
       # 容器内覆盖配置：LLM / embedding 指向 ollama 服务（仓库内默认是 localhost）
       - ./docker/agent/agent.yaml:/app/config/agent.yaml:ro

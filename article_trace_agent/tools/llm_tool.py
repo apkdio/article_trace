@@ -1,22 +1,28 @@
 """基于 OpenAI 兼容端点的 LLM / embedding 工厂。
 
 默认连接本地 Ollama（http://localhost:11434/v1），也支持任意 OpenAI 兼容
-服务商（云端或自建）：只需在 config/agent.yaml 与 config/chroma.yaml 里
-修改 base_url / api_key / model 即可，无需改代码。
+服务商（云端或自建）：改 config/agent.yaml 与 config/chroma.yaml 里的
+base_url / api_key / model，或用环境变量覆盖（见 tools/config_tool.py），
+无需改代码。
 """
 
 import os
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+from tools.config_tool import load_config
 from tools.log_tool import get_logger
 
 logger = get_logger(name="llm_tool")
 
-# 默认连接配置（本地 Ollama，无需真实 API key）
-_DEFAULT_BASE_URL = os.environ.get("LLM_BASE_URL", "http://localhost:11434/v1")
-_DEFAULT_API_KEY = os.environ.get("LLM_API_KEY", "ollama")
-_DEFAULT_CHAT_MODEL = os.environ.get("LLM_CHAT_MODEL", "qwen2.5:7b")
+# 生成模型的连接参数取自 config/agent.yaml。该文件在 load_config 里已经应用过
+# 环境变量覆盖，所以读 yaml 等价于「环境变量 > yaml > 内置默认值」。
+# 注意：调用方只显式传 model / temperature，base_url 与 api_key 走的是下面两个默认值。
+_llm_cfg = load_config("agent").get("llm", {})
+
+_DEFAULT_BASE_URL = _llm_cfg.get("base_url") or "http://localhost:11434/v1"
+_DEFAULT_API_KEY = _llm_cfg.get("api_key") or "ollama"
+_DEFAULT_CHAT_MODEL = _llm_cfg.get("model") or "qwen2.5:7b"
 _DEFAULT_EMBED_MODEL = os.environ.get("LLM_EMBED_MODEL", "bge-m3")
 
 

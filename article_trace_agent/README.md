@@ -143,8 +143,16 @@ uv pip install -r requirements.txt  # 安装依赖
 
 ### 4. 配置
 
-`config/*.yaml` 已随仓库提供默认值（本地 Ollama，无密钥）。如需接入云端 OpenAI 兼容服务，
-改 `config/agent.yaml` 与 `config/chroma.yaml` 里的 `base_url / api_key / model` 即可。
+`config/*.yaml` 已随仓库提供默认值（本地 Ollama，无密钥）。换端点有两种方式：
+
+- **改 yaml**：`config/agent.yaml`（生成模型）与 `config/chroma.yaml`（embedding）里的
+  `base_url / api_key / model`。
+- **用环境变量覆盖**（推荐给容器与多机部署）：`LLM_BASE_URL`、`LLM_API_KEY`、`LLM_CHAT_MODEL`、
+  `LLM_TEMPERATURE`，以及 embedding 单独用的 `EMBED_BASE_URL` / `EMBED_API_KEY` / `LLM_EMBED_MODEL`。
+
+覆盖在 `load_config`（`tools/config_tool.py`）里统一应用，优先级为
+**环境变量 > yaml > 内置默认值**；embedding 未单独指定时跟随 `LLM_*`，因此单端点只填 `LLM_BASE_URL` 即可。
+Docker 部署下这些变量由 `.env` 透传到 agent 容器，见根目录 `.env.example`。
 
 ### 5. 生成 stub（仅 proto 变更后需要）
 
