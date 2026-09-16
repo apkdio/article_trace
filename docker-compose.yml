@@ -195,6 +195,8 @@ services:
       RUSTFS_AVATAR_BUCKET: ${RUSTFS_AVATAR_BUCKET:-avatar}
       # 应用侧密钥与默认站长账号
       JWT_SECURE_KEY: ${JWT_SECURE_KEY:?请在 .env 中设置 JWT_SECURE_KEY}
+      # 令牌 Cookie 是否只在 HTTPS 下发送；站点上 HTTPS 后置 true
+      JWT_COOKIE_SECURE: ${JWT_COOKIE_SECURE:-false}
       MASTER_PASS: ${MASTER_PASS:?请在 .env 中设置 MASTER_PASS}
       # 邮件（SMTP）：用于验证码与通知投递
       MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
