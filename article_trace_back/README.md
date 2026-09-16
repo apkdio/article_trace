@@ -606,7 +606,7 @@ notification:
 | GET | `/user/accountManage` | 账号分页（站长） |
 | PATCH | `/user/changeType` | 变更身份（站长） |
 | DELETE | `/user/delete` | 删除账号（站长） |
-| DELETE | `/user/removeUserLogo` | 移除头像 |
+| DELETE | `/user/removeUserLogo` | 移除头像（**有待审头像时拒绝**：重置清的是当前生效的头像，待审记录还在队列里，审批通过后又会把它设回去）|
 
 ### 文章 `/article`
 
