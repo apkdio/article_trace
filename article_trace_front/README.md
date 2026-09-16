@@ -31,10 +31,11 @@ article_trace_front/
     ├── api/                        # 接口请求封装
     │   ├── article.js              #   文章相关接口
     │   ├── category.js             #   分类相关接口
-    │   ├── user.js                 #   用户相关接口
+    │   ├── user.js                 #   用户相关接口（含待审头像的提交）
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
     │   ├── notification.js         #   站内通知（列表可按 system/apply/avatar 筛选、未读数、已读、删除）
     │   ├── apply.js                #   作者申请（提交/查询/审批）
+    │   ├── avatar.js               #   头像审核（查自己的待审状态）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     ├── assets/                     # 静态资源
@@ -148,7 +149,7 @@ article_trace_front/
 | `readerHome.vue` | 读者中心布局（复用 `UserLayout`，含站内通知）|
 | `mainPage.vue` | 后台侧边栏布局（复用 `UserLayout`，含站内通知）|
 | `UserInfo.vue` | 用户信息查看与修改 |
-| `UserLogo.vue` | 头像上传与重置（读者端与后台端共用）|
+| `UserLogo.vue` | 头像提交与重置（读者端与后台端共用）。待审期间头像框打上「审核中」角标、上传与重置按钮锁住，并展示待审或上次被拒的理由 |
 | `UserResetPassword.vue` | 修改密码 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |
