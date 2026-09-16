@@ -1,5 +1,6 @@
 <script setup>
 import {
+    Avatar,
     Crop,
     EditPen,
     HomeFilled,
@@ -39,6 +40,12 @@ const route = useRoute()
                     <Promotion/>
                 </el-icon>
                 <span>文章管理</span>
+            </el-menu-item>
+            <el-menu-item index="/avatar/review" v-if="userInfoStore().type === 0">
+                <el-icon>
+                    <Avatar/>
+                </el-icon>
+                <span>头像审核</span>
             </el-menu-item>
 
             <el-sub-menu index="/user">

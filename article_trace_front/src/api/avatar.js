@@ -13,3 +13,24 @@ import request from "@/utils/request.js";
 export function getMyAvatarApply() {
     return request.get("/avatar/mine")
 }
+
+/**
+ * 待审数量（站长）。
+ */
+export function pendingAvatarCount() {
+    return request.get("/avatar/manage/pendingCount")
+}
+
+/**
+ * 审核列表（站长）；status 不传查全部。
+ */
+export function listAvatarApplies(status, pageNum = 1, pageSize = 10) {
+    return request.get("/avatar/manage/list", {params: {status, pageNum, pageSize}})
+}
+
+/**
+ * 审批（站长）：pass=true 通过，false 拒绝（拒绝需给理由）。
+ */
+export function reviewAvatarApply(id, pass, rejectReason) {
+    return request.patch("/avatar/manage/review/" + id, null, {params: {pass, rejectReason}})
+}
