@@ -3,8 +3,10 @@ package com.articleTraceBack;
 import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AvatarApplyMapper;
+import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.AvatarApply;
+import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -18,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,6 +59,9 @@ public class AvatarApplyServiceTest {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private NotificationMapper notificationMapper;
+
     @MockitoBean
     private RustFsUtil rustFsUtil;
 
@@ -89,6 +95,17 @@ public class AvatarApplyServiceTest {
         QueryWrapper<AvatarApply> aw = new QueryWrapper<>();
         aw.eq("user_id", testUserId);
         applyMapper.delete(aw);
+
+        // 发给申请人本人的通知
+        QueryWrapper<Notification> nw = new QueryWrapper<>();
+        nw.eq("receiver_id", testUserId);
+        notificationMapper.delete(nw);
+
+        // 发给站长的待审通知（内容里带测试用户名，便于精确清理）
+        QueryWrapper<Notification> masterNw = new QueryWrapper<>();
+        masterNw.like("content", testUsername);
+        notificationMapper.delete(masterNw);
+
         userMapper.deleteById(testUserId);
     }
 
@@ -116,6 +133,11 @@ public class AvatarApplyServiceTest {
         // 待审数量
         assertTrue(avatarApplyService.pendingCount() >= 1);
 
+        // 提交后站长收到待审通知，且独立归入 avatar 类型（前端可按类型筛）
+        QueryWrapper<Notification> masterNw = new QueryWrapper<>();
+        masterNw.eq("type", Notification.TYPE_AVATAR).like("content", testUsername);
+        assertTrue(notificationMapper.selectCount(masterNw) >= 1, "提交后站长应收到待审通知");
+
         // 通过：先把待审对象搬到 pic 桶，再换 user_pic，最后清理旧头像与 avatar 桶那份
         assertTrue(avatarApplyService.review(mine.getId(), true, null, testUserId));
         AvatarApply after = applyMapper.selectById(mine.getId());
@@ -126,6 +148,11 @@ public class AvatarApplyServiceTest {
                 "通过后 user_pic 应指向待审对象");
         verify(rustFsUtil).delete(OLD_PIC, "image");
         verify(rustFsUtil).delete(mine.getPendingPic(), "avatar");
+
+        // 通过是轻量告知，只发站内信（avatar-approved 配置为 inbox）
+        QueryWrapper<Notification> approvedNw = new QueryWrapper<>();
+        approvedNw.eq("receiver_id", testUserId).eq("title", "头像审核已通过");
+        assertTrue(notificationMapper.selectCount(approvedNw) >= 1, "通过后申请人应收到站内信");
 
         // 已处理的记录不能重复审批
         assertFalse(avatarApplyService.review(mine.getId(), true, null, testUserId),
@@ -148,6 +175,12 @@ public class AvatarApplyServiceTest {
         assertEquals(OLD_PIC, userMapper.selectById(testUserId).getUserPic(),
                 "转正失败时 user_pic 不应改变");
         verify(rustFsUtil, never()).delete(eq(OLD_PIC), eq("image"));
+
+        // 审批没成功就不该告诉用户「已通过」
+        QueryWrapper<Notification> approvedNw = new QueryWrapper<>();
+        approvedNw.eq("receiver_id", testUserId).eq("title", "头像审核已通过");
+        assertEquals(0L, notificationMapper.selectCount(approvedNw).longValue(),
+                "转正失败时不应发出通过通知");
     }
 
     @Test
@@ -167,6 +200,14 @@ public class AvatarApplyServiceTest {
                 "拒绝后 user_pic 不应改变");
         verify(rustFsUtil).delete(pendingPic, "avatar");
         verify(rustFsUtil, never()).delete(eq(OLD_PIC), eq("image"));
+
+        // 拒绝理由要送达用户（avatar-rejected 配置为 both，测试里邮件渠道关闭）
+        QueryWrapper<Notification> nw = new QueryWrapper<>();
+        nw.eq("receiver_id", testUserId).eq("title", "头像审核未通过");
+        List<Notification> rejected = notificationMapper.selectList(nw);
+        assertEquals(1, rejected.size(), "拒绝应产生一条站内信");
+        assertTrue(rejected.get(0).getContent().contains("图片不清晰"), "站内信应带上拒绝理由");
+        assertEquals(Notification.TYPE_AVATAR, rejected.get(0).getType(), "应归入 avatar 类型");
 
         // 被拒后可重新提交；再提交时旧记录不再占着待审位
         assertTrue(avatarApplyService.submit(testUserId, png()), "被拒后应允许重新提交");
