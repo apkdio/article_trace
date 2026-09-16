@@ -189,6 +189,10 @@ services:
       RUSTFS_ENDPOINT: http://rustfs:9000
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
+      # 桶名：建桶（rustfs-init）与后端读写用的是同一组值，改就一起改
+      RUSTFS_PIC_BUCKET: ${RUSTFS_PIC_BUCKET:-pic}
+      RUSTFS_CONTENT_BUCKET: ${RUSTFS_CONTENT_BUCKET:-content}
+      RUSTFS_AVATAR_BUCKET: ${RUSTFS_AVATAR_BUCKET:-avatar}
       # 应用侧密钥与默认站长账号
       JWT_SECURE_KEY: ${JWT_SECURE_KEY:?请在 .env 中设置 JWT_SECURE_KEY}
       MASTER_PASS: ${MASTER_PASS:?请在 .env 中设置 MASTER_PASS}

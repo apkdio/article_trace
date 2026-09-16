@@ -79,9 +79,9 @@ S3:
   endpoint: ${RUSTFS_ENDPOINT:http://rustfs:9000}
   accessKey: ${RUSTFS_ACCESS_KEY}
   secretKey: ${RUSTFS_SECRET_KEY}
-  picBucket: "pic"
-  contentBucket: "content"
-  avatarBucket: "avatar"
+  picBucket: ${RUSTFS_PIC_BUCKET:pic} # 图片存储桶（封面等既有图片）
+  contentBucket: ${RUSTFS_CONTENT_BUCKET:content} # 文章内容存储桶
+  avatarBucket: ${RUSTFS_AVATAR_BUCKET:avatar} # 头像待审存储桶
 
 thumbnail:
   backfill:
