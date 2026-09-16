@@ -247,8 +247,15 @@ const uploadSubmit = async () => {
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.5s ease-out;
-  overflow: hidden;
-  height: 100%;
+  /**
+   * 不能写 height:100% + overflow:hidden。
+   *
+   * 外层 UserLayout 的 .router-content 才是滚动容器（overflow:auto），而它只在
+   * 自己的内容超出时才滚。height:100% 让本容器恰好撑满，永远不超出；overflow:hidden
+   * 又把超出的部分裁掉——两者一夹，内容超出窗口后就无处可滚。
+   * 改用 min-height：内容少时仍占满，内容多时随内容长高，把滚动交回 .router-content。
+   */
+  min-height: 100%;
 }
 
 
