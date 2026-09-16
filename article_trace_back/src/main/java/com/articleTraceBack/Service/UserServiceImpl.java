@@ -22,7 +22,6 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -151,41 +150,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean upload(MultipartFile userLogo, String username) {
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
+    public String updateUserPic(int userId, String newPic) {
+        User user = userMapper.selectById(userId);
         if (user == null) {
-            return false;
+            return null;
         }
-        String extension = Objects.requireNonNull(userLogo.getOriginalFilename()).substring(userLogo.getOriginalFilename().lastIndexOf("."));
-        String rawName = user.getUserPic();
-        String fileName = System.currentTimeMillis() + username + "logo" + extension;
-        if (StringUtils.isBlank(rawName)) {
-            if (rustFsUtil.upload(userLogo, "image", fileName)) {
-                UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
-                updateWrapper.eq("username", username)
-                        .set("user_pic", fileName)
-                        .set("update_time", LocalDateTime.now());
-                return userMapper.update(updateWrapper) == 1;
-            }
-            return false;
+        String oldPic = user.getUserPic();
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", userId)
+                .set("user_pic", newPic)
+                .set("update_time", LocalDateTime.now());
+        if (userMapper.update(updateWrapper) != 1) {
+            return null;
         }
-        if (rustFsUtil.upload(userLogo, "image", fileName)) {
-            UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
-            updateWrapper.eq("username", username)
-                    .set("user_pic", fileName)
-                    .set("update_time", LocalDateTime.now());
-            if (userMapper.update(updateWrapper) == 1) {
-                // 写库成功，旧头像已无人引用，可以删了
-                if (!rustFsUtil.delete(rawName, "image")) {
-                    log.warn("old user logo delete failed, may be orphan: username={}, key={}", username, rawName);
-                }
-                return true;
-            }
-            // 写库失败：回收刚上传的新文件，DB 仍指向旧头像，两边保持一致
-            rustFsUtil.delete(fileName, "image");
-            return false;
-        }
-        return false;
+        return oldPic;
     }
 
     @Override

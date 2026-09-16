@@ -17,6 +17,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -200,6 +201,43 @@ public class RustFsUtil {
             return true;
         } catch (Exception e) {
             log.error("delete object failed: key={}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * 把对象及其缩略图复制到另一种业务类型的桶（对象名不变）。
+     *
+     * <p>用于头像审核通过：待审对象在 avatar 桶，转正后要落到 pic 桶。
+     * 这样 {@code user_pic} 的读取侧（签名、重置、缩略图补齐）可以一律按 pic 桶解析，
+     * 不必去分辨这个对象来自哪个桶——对象名里并没有桶信息。</p>
+     *
+     * @return 原图复制成功为 true；缩略图可能因生成失败本就不存在，缺失不算失败
+     */
+    public boolean copyTo(String key, String fromType, String toType) {
+        String from = bucketOf(fromType);
+        String to = bucketOf(toType);
+        if (from == null || to == null || key == null || key.isEmpty()) {
+            return false;
+        }
+        if (!copyObject(from, to, key)) {
+            return false;
+        }
+        copyObject(from, to, THUMB_PREFIX + key);
+        return true;
+    }
+
+    private boolean copyObject(String fromBucket, String toBucket, String key) {
+        try {
+            s3Client.copyObject(CopyObjectRequest.builder()
+                    .sourceBucket(fromBucket)
+                    .sourceKey(key)
+                    .destinationBucket(toBucket)
+                    .destinationKey(key)
+                    .build());
+            return true;
+        } catch (Exception e) {
+            log.error("copy object failed: {} -> {}, key={}", fromBucket, toBucket, key, e);
             return false;
         }
     }

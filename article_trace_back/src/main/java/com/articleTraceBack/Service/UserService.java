@@ -21,7 +21,12 @@ public interface UserService {
 
     boolean isValidFile(MultipartFile file);
 
-    boolean upload(MultipartFile userLogo, String username);
+    /**
+     * 把用户头像换成新的对象名。
+     *
+     * @return 被替换掉的旧头像对象名，供调用方清理；原本无头像、用户不存在或更新失败时为 null
+     */
+    String updateUserPic(int userId, String newPic);
 
     boolean setRedisToken(String username, String token, int type);
 

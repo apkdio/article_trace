@@ -1,5 +1,6 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.LoginAttemptService;
@@ -33,6 +34,7 @@ public class UserController {
             Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final UserService userService;
+    private final AvatarApplyService avatarApplyService;
     private final EmailCodeService emailCodeService;
     private final CaptchaService captchaService;
     private final LoginAttemptService loginAttemptService;
@@ -41,9 +43,11 @@ public class UserController {
     @Value("${Password.masterPass}")
     private String masterPassword;
 
-    public UserController(UserService userService, EmailCodeService emailCodeService,
+    public UserController(UserService userService, AvatarApplyService avatarApplyService,
+                          EmailCodeService emailCodeService,
                           CaptchaService captchaService, LoginAttemptService loginAttemptService) {
         this.userService = userService;
+        this.avatarApplyService = avatarApplyService;
         this.emailCodeService = emailCodeService;
         this.captchaService = captchaService;
         this.loginAttemptService = loginAttemptService;
@@ -266,7 +270,7 @@ public class UserController {
     public Result<String> updateUserLogo(@RequestParam("userLogo") MultipartFile userLogo) {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        int userId = (int) userInfo.get("id");
         if (userLogo == null || userLogo.isEmpty()) {
             error.put("file", "文件为空！");
             return Result.error(error);
@@ -280,10 +284,18 @@ public class UserController {
             return Result.error(error);
         }
         if (userService.isValidFile(userLogo)) {
-            if (userService.upload(userLogo, username)) {
+            // 头像不再直接生效：先进 avatar 桶等待审核，通过后才写进 user_pic。
+            // 先探一次待审状态，这样「重复提交」和「上传失败」能给出不同的提示，
+            // 而不是把存储故障报成「已提交过」。
+            AvatarApply mine = avatarApplyService.findMine(userId);
+            if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
+                error.put("error", "已有待审核的头像，请勿重复提交！");
+                return Result.error(error);
+            }
+            if (avatarApplyService.submit(userId, userLogo)) {
                 return Result.success();
             }
-            error.put("error", "上传失败！");
+            error.put("error", "提交失败，请稍后重试！");
             return Result.error(error);
         }
         error.put("file", "不是一个图片文件！");
