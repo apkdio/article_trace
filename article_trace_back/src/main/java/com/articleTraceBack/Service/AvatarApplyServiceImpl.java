@@ -6,6 +6,7 @@ import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AvatarApplyMapper;
 import com.articleTraceBack.pojo.AvatarApply;
 import com.articleTraceBack.pojo.PageBean;
+import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 头像上传审核实现。
@@ -31,16 +33,28 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
     /** 已生效头像的业务类型，在 pic 桶 */
     private static final String TYPE_IMAGE = "image";
 
+    /** 与 application.yml 的 notification.scenes 对齐 */
+    private static final String SCENE_SUBMITTED = "avatar-submitted";
+    private static final String SCENE_APPROVED = "avatar-approved";
+    private static final String SCENE_REJECTED = "avatar-rejected";
+    /** 拒绝邮件模板（放 templates/email/），需 .html 与 .txt 两份 */
+    private static final String TEMPLATE_REJECTED = "avatar-rejected";
+    /** 站长角色 type */
+    private static final int ROLE_MASTER = 0;
+
     private final AvatarApplyMapper applyMapper;
     private final UserService userService;
     private final RustFsUtil rustFsUtil;
+    private final NotificationService notificationService;
 
     public AvatarApplyServiceImpl(AvatarApplyMapper applyMapper,
                                   UserService userService,
-                                  RustFsUtil rustFsUtil) {
+                                  RustFsUtil rustFsUtil,
+                                  NotificationService notificationService) {
         this.applyMapper = applyMapper;
         this.userService = userService;
         this.rustFsUtil = rustFsUtil;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -80,6 +94,14 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
             return false;
         }
         log.info("avatar apply submitted: userId={}, applyId={}", userId, apply.getId());
+
+        // 通知所有站长（配置为 both：站内 + 邮件）
+        User applicant = userService.findUserById(userId);
+        String who = (applicant == null)
+                ? ("用户#" + userId)
+                : (applicant.getNickname() + "（" + applicant.getUsername() + "）");
+        notificationService.notifyRole(ROLE_MASTER, SCENE_SUBMITTED, "有新的头像待审核",
+                who + " 提交了新的头像，请及时审核。");
         return true;
     }
 
@@ -155,12 +177,21 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
             if (!rustFsUtil.delete(pendingPic, TYPE_AVATAR)) {
                 log.warn("pending avatar cleanup failed, may be orphan: key={}", pendingPic);
             }
+            // 通过是「已生效」的轻量告知，只发站内信（场景配置为 inbox）
+            notificationService.notify(applicantId, SCENE_APPROVED, "头像审核已通过",
+                    "你的新头像已通过审核，现在已经在使用中了。");
             log.info("avatar apply approved: applyId={}, userId={}", applyId, applicantId);
         } else {
             // 拒绝：user_pic 不动，只丢掉待审对象
             if (pendingPic != null && !pendingPic.isEmpty() && !rustFsUtil.delete(pendingPic, TYPE_AVATAR)) {
                 log.warn("pending avatar delete failed, may be orphan: key={}", pendingPic);
             }
+            // 理由要送到用户手上，所以走站内信 + 邮件（场景配置为 both）
+            String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
+            notificationService.notify(applicantId, SCENE_REJECTED, "头像审核未通过",
+                    "你提交的头像未通过审核。原因：" + reason,
+                    TEMPLATE_REJECTED,
+                    Map.of("reason", reason, "nickname", nicknameOf(applicantId)));
             log.info("avatar apply rejected: applyId={}, userId={}", applyId, applicantId);
         }
         return true;
@@ -183,6 +214,15 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         if (!rustFsUtil.delete(key, TYPE_AVATAR)) {
             log.warn("pending avatar rollback failed, may be orphan: key={}", key);
         }
+    }
+
+    /** 取昵称用于邮件的称呼；用户不存在或未填昵称时退回「用户」 */
+    private String nicknameOf(int userId) {
+        User user = userService.findUserById(userId);
+        if (user == null || user.getNickname() == null || user.getNickname().isBlank()) {
+            return "用户";
+        }
+        return user.getNickname();
     }
 
     /** 转正失败时把记录退回待审，让站长还能重试 */

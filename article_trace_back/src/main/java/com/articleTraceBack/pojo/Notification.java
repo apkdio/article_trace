@@ -26,10 +26,12 @@ public class Notification {
     public static final String TYPE_SYSTEM = "system";
     /** 类型：作者申请相关 */
     public static final String TYPE_APPLY = "apply";
+    /** 类型：头像审核相关 */
+    public static final String TYPE_AVATAR = "avatar";
 
     private String title;
 
-    /** system-系统 / apply-作者申请 */
+    /** system-系统 / apply-作者申请 / avatar-头像审核 */
     @TableField("`type`")
     private String type;
 

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  文迹 · 头像审核未通过邮件模板（HTML 载体）
+
+  占位符由 EmailTemplateUtil 渲染（写法为双花括号包住变量名）：
+    nickname 用户昵称
+    reason   拒绝理由
+    logoUrl  品牌 logo 的公网绝对 URL
+    year     版权年份
+
+  注意：占位符是纯文本替换，HTML 注释里的占位符同样会被替换——
+  所以本注释内不写占位符字面量，避免留下未被赋值的残留。
+
+  nickname 与 reason 都来自用户输入。NotificationServiceImpl 在渲染前会做 HTML 转义
+  （EmailTemplateUtil 自身不转义），所以这里可以直接输出。
+
+  约束：邮件客户端会剥离 <style>、不支持 flex/grid，因此全部用 table 布局 + 内联样式。
+  宽度固定 600px（邮件标准），移动端靠 viewport + max-width 自适应。
+
+  版权行用「© + MIT License」，不写 All Rights Reserved —— 本项目是 MIT 协议。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>文迹 · 头像审核未通过</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;-webkit-text-size-adjust:100%;">
+
+  <!-- 预header：收件箱列表里的摘要，正文中不可见 -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f5f5f5;font-size:1px;">
+    你提交的头像未能通过审核，原因：{{reason}}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:#f5f5f5;">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <!-- 卡片 -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:600px;max-width:600px;background-color:#ffffff;">
+
+          <!-- logo：alt 保证图片被拦截时仍显示「文迹」 -->
+          <tr>
+            <td style="padding:36px 40px 0 40px;">
+              <img src="{{logoUrl}}" width="150" height="60" alt="文迹"
+                   style="display:block;border:0;outline:none;width:150px;height:60px;">
+            </td>
+          </tr>
+
+          <!-- 结论 -->
+          <tr>
+            <td style="padding:32px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              你好，{{nickname}}：<br>
+              你提交的头像未能通过审核。
+            </td>
+          </tr>
+
+          <!-- 理由：浅底 + 左侧色条，与正文区分开 -->
+          <tr>
+            <td style="padding:16px 40px 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#fafafa;border-left:3px solid #d9d9d9;">
+                <tr>
+                  <td style="padding:14px 16px;
+                             font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                             font-size:14px;line-height:1.6;color:#555555;">
+                    <span style="color:#999999;">原因：</span><br>
+                    {{reason}}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- 说明 -->
+          <tr>
+            <td style="padding:16px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              你原来的头像不受影响，也可以重新选择一张图片再次提交。
+            </td>
+          </tr>
+
+          <!-- 署名 -->
+          <tr>
+            <td style="padding:36px 40px 40px 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:14px;line-height:1.6;color:#333333;">
+              感谢你的使用，<br>ArticleTrace Team
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- 卡片外底部小字 -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:600px;max-width:600px;">
+          <tr>
+            <td align="center" style="padding:20px 40px 0 40px;
+                       font-family:'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;
+                       font-size:12px;line-height:1.8;color:#999999;">
+              此邮件由系统自动生成，请勿直接回复！<br>
+              &copy; {{year}} ArticleTrace &middot; MIT License
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

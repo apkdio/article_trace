@@ -107,6 +107,10 @@ notification:
     author-apply-approved: inbox
     author-apply-rejected: inbox
     author-apply-remind: mail
+    avatar-submitted: both
+    avatar-approved: inbox
+    avatar-rejected: both
+    avatar-remind: mail
     email-code: mail
   defaultChannel: inbox
   mail:

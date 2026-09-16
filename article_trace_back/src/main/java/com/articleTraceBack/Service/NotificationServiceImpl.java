@@ -1,6 +1,7 @@
 package com.articleTraceBack.Service;
 
 import com.articleTraceBack.config.NotificationProperties;
+import com.articleTraceBack.Utils.EmailTemplateUtil;
 import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.Notification;
@@ -9,11 +10,16 @@ import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.LocalDateTime;
+import java.time.Year;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * 通知基础设施实现（站内信 + 邮件）。
@@ -39,19 +45,27 @@ public class NotificationServiceImpl implements NotificationService {
     private final UserMapper userMapper;
     private final NotificationProperties properties;
     private final MailService mailService;
+    private final EmailTemplateUtil emailTemplateUtil;
+
+    /** 邮件模板里的 logo 地址；留空则 logo 位置为空 */
+    @Value("${email.logoUrl:}")
+    private String logoUrl;
 
     public NotificationServiceImpl(NotificationMapper notificationMapper,
                                    UserMapper userMapper,
                                    NotificationProperties properties,
-                                   MailService mailService) {
+                                   MailService mailService,
+                                   EmailTemplateUtil emailTemplateUtil) {
         this.notificationMapper = notificationMapper;
         this.userMapper = userMapper;
         this.properties = properties;
         this.mailService = mailService;
+        this.emailTemplateUtil = emailTemplateUtil;
     }
 
     @Override
-    public void notify(int receiverId, String scene, String title, String content) {
+    public void notify(int receiverId, String scene, String title, String content,
+                       String mailTemplate, Map<String, String> templateVars) {
         try {
             String channel = resolveChannel(scene);
             if (supportsInbox(channel)) {
@@ -66,12 +80,7 @@ public class NotificationServiceImpl implements NotificationService {
                 notificationMapper.insert(notification);
             }
             if (supportsMail(channel)) {
-                String toEmail = findUserEmail(receiverId);
-                if (toEmail == null || toEmail.isBlank()) {
-                    log.warn("skip mail channel: receiver has no email, receiverId={}, scene={}", receiverId, scene);
-                } else {
-                    mailService.send(toEmail, title, content);
-                }
+                sendMail(receiverId, title, content, mailTemplate, templateVars);
             }
         } catch (Exception e) {
             log.error("notify failed: receiverId={}, scene={}", receiverId, scene, e);
@@ -151,10 +160,16 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /** 场景 → 站内信类型：作者申请相关单独归类，其余归系统 */
+    /** 场景 → 站内信类型：作者申请、头像审核各自归类，其余归系统 */
     private String resolveType(String scene) {
-        if (scene != null && scene.startsWith("author-apply")) {
+        if (scene == null) {
+            return Notification.TYPE_SYSTEM;
+        }
+        if (scene.startsWith("author-apply")) {
             return Notification.TYPE_APPLY;
+        }
+        if (scene.startsWith("avatar")) {
+            return Notification.TYPE_AVATAR;
         }
         return Notification.TYPE_SYSTEM;
     }
@@ -165,7 +180,9 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
         }
         String normalized = type.trim().toLowerCase(Locale.ROOT);
-        if (Notification.TYPE_SYSTEM.equals(normalized) || Notification.TYPE_APPLY.equals(normalized)) {
+        if (Notification.TYPE_SYSTEM.equals(normalized)
+                || Notification.TYPE_APPLY.equals(normalized)
+                || Notification.TYPE_AVATAR.equals(normalized)) {
             return normalized;
         }
         return null;
@@ -175,6 +192,54 @@ public class NotificationServiceImpl implements NotificationService {
     private String findUserEmail(int receiverId) {
         User user = userMapper.selectById(receiverId);
         return user == null ? null : user.getEmail();
+    }
+
+    /**
+     * 投递邮件渠道：指定了模板就渲染双载体，否则发纯文本。
+     *
+     * <p>两个载体用不同的变量表——HTML 转义、纯文本不转义。若把转义后的值同时喂给 {@code .txt}，
+     * 纯文本客户端会看到 {@code &lt;b&gt;} 这类字面量。</p>
+     */
+    private void sendMail(int receiverId, String title, String content,
+                          String mailTemplate, Map<String, String> templateVars) {
+        String toEmail = findUserEmail(receiverId);
+        if (toEmail == null || toEmail.isBlank()) {
+            log.warn("skip mail channel: receiver has no email, receiverId={}", receiverId);
+            return;
+        }
+        if (mailTemplate == null || mailTemplate.isBlank()) {
+            mailService.send(toEmail, title, content);
+            return;
+        }
+        Map<String, String> textVars = buildTemplateVars(templateVars);
+        String text = emailTemplateUtil.render(mailTemplate, "txt", textVars);
+        String html = emailTemplateUtil.render(mailTemplate, "html", escapeHtml(textVars));
+        if (text == null || html == null) {
+            // 模板缺失属于部署问题：退回纯文本，宁可不美化也不发一封空邮件
+            log.error("mail template missing, fallback to plain text: template={}, text={}, html={}",
+                    mailTemplate, text != null, html != null);
+            mailService.send(toEmail, title, content);
+            return;
+        }
+        mailService.send(toEmail, title, text, html);
+    }
+
+    /** 补上模板通用变量（年份、logo 地址），再叠加业务变量 */
+    private Map<String, String> buildTemplateVars(Map<String, String> businessVars) {
+        Map<String, String> vars = new HashMap<>();
+        vars.put("year", String.valueOf(Year.now().getValue()));
+        vars.put("logoUrl", logoUrl == null ? "" : logoUrl.trim());
+        if (businessVars != null) {
+            vars.putAll(businessVars);
+        }
+        return vars;
+    }
+
+    /** 逐个变量做 HTML 转义，供 HTML 载体使用 */
+    private Map<String, String> escapeHtml(Map<String, String> vars) {
+        Map<String, String> escaped = new HashMap<>(vars.size());
+        vars.forEach((key, value) -> escaped.put(key, HtmlUtils.htmlEscape(value)));
+        return escaped;
     }
 
     /** 解析场景对应的投递渠道；未配置时取 defaultChannel */
