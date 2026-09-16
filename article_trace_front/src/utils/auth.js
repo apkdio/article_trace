@@ -1,7 +1,6 @@
 import {ElMessage} from 'element-plus';
 import router from '@/router/index.js';
 import {userInfoStore} from '@/stores/userInfo.js';
-import {tokenStorage} from '@/stores/tokenStorage.js';
 import {logoutService} from '@/api/user.js';
 
 /**
@@ -16,7 +15,6 @@ export async function logout() {
         ElMessage.warning('服务端未响应！执行本地登出！');
     } finally {
         await userInfoStore().clearUserInfo();
-        await tokenStorage().clearToken();
         const url = window.location.href
         if (url.includes("publicHome")){
             window.location.reload()

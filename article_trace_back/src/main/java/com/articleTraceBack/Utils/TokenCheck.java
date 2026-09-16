@@ -40,7 +40,9 @@ public class TokenCheck implements AsyncHandlerInterceptor {
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response, Object handler) {
         String uri = request.getRequestURI();
-        String token = request.getHeader("Authorization");
+        // 令牌只认 Cookie：它是 HttpOnly 的，脚本拿不到；Authorization 头对同源 JS 完全可见，
+        // 留着它就等于给 XSS 留了后门，所以不再兼容旧的头传方式。
+        String token = CookieUtil.readToken(request);
         if (uri.matches("/reader/.*")) {
             // 先清除上一次遗留的user信息
             ThreadLocalUtil.remove();

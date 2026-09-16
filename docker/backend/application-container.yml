@@ -71,6 +71,8 @@ JWT:
   Secure_KEY: ${JWT_SECURE_KEY}
   longTime: 259200000     # 72 小时
   shortTime: 86400000     # 24 小时
+  # 令牌 Cookie 是否只在 HTTPS 下发送；站点上了 HTTPS 后在 .env 里置 true
+  cookieSecure: ${JWT_COOKIE_SECURE:false}
 
 Password:
   masterPass: ${MASTER_PASS}

@@ -5,11 +5,13 @@ import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.LoginAttemptService;
 import com.articleTraceBack.Service.UserService;
+import com.articleTraceBack.Utils.CookieUtil;
 import com.articleTraceBack.Utils.IPUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import org.springframework.dao.DuplicateKeyException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import com.articleTraceBack.pojo.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
@@ -42,6 +44,13 @@ public class UserController {
     private String defaultUser;
     @Value("${Password.masterPass}")
     private String masterPassword;
+    @Value("${JWT.longTime}")
+    private long longTime;
+    @Value("${JWT.shortTime}")
+    private long shortTime;
+    /** 令牌 Cookie 是否只在 HTTPS 下发送；本地 http 调试必须为 false，否则浏览器不保存 */
+    @Value("${JWT.cookieSecure:false}")
+    private boolean cookieSecure;
 
     public UserController(UserService userService, AvatarApplyService avatarApplyService,
                           EmailCodeService emailCodeService,
@@ -155,7 +164,8 @@ public class UserController {
 
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody @Validated(User.login.class) User user,
-                                             HttpServletRequest request) {
+                                             HttpServletRequest request,
+                                             HttpServletResponse response) {
         Map<String, Object> error = new HashMap<>();
         String clientKey = IPUtil.mixOf(request);
 
@@ -191,6 +201,10 @@ public class UserController {
                     error.put("error", "Redis 服务异常！");
                     return Result.error(error);
                 }
+                // 令牌只下发到 HttpOnly Cookie，不再交给前端脚本；
+                // 有效期与 Redis 里的 TTL 保持一致，否则会出现「Cookie 还在、后端已不认」。
+                CookieUtil.writeToken(response, token,
+                        (rememberMe == 1 ? longTime : shortTime) / 1000, cookieSecure);
                 String lastLogin;
                 if (result.getLastLogin() == null) {
                     lastLogin = "暂无";
@@ -203,7 +217,6 @@ public class UserController {
                 // 登录成功立即清零，避免正常用户被历史失败继续累计
                 loginAttemptService.clear(clientKey);
                 Map<String, Object> loginResult = new HashMap<>();
-                loginResult.put("token", token);
                 loginResult.put("lastLogin", lastLogin);
                 return Result.success(loginResult);
             }
@@ -366,11 +379,13 @@ public class UserController {
         return Result.success();
     }
 
-    @GetMapping("/logout")
-    public void logout() {
+    @PostMapping("/logout")
+    public void logout(HttpServletResponse response) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         String username = userInfo.get("name").toString();
         userService.deleteRedisToken(username);
+        // 光删 Redis 不够：Cookie 还在浏览器里，得让它一起过期
+        CookieUtil.clearToken(response, cookieSecure);
     }
 
     @DeleteMapping("/removeUserLogo")

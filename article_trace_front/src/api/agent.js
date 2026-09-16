@@ -1,4 +1,3 @@
-import {tokenStorage} from "@/stores/tokenStorage.js";
 import request from "@/utils/request.js";
 
 /**
@@ -16,8 +15,7 @@ export async function askAgentStream(params, callbacks) {
     const resp = await fetch('/api/agent/ask', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': tokenStorage().token || ''
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({query, sessionId, categoryId, topK})
     });
@@ -84,9 +82,7 @@ export async function askAgentStream(params, callbacks) {
  * 返回后端 Result：{ code, message, data: { enabled, ok, ... } }
  */
 export async function getAgentHealth() {
-    const resp = await fetch('/api/agent/health', {
-        headers: {'Authorization': tokenStorage().token || ''}
-    });
+    const resp = await fetch('/api/agent/health');
     if (!resp.ok) {
         throw new Error('HTTP ' + resp.status);
     }

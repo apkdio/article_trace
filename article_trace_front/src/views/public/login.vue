@@ -9,9 +9,9 @@ import {
   sendEmailCodeService
 } from "@/api/user.js";
 import router from "@/router/index.js";
-import {tokenStorage} from "@/stores/tokenStorage.js";
 import {userInfoStore} from "@/stores/userInfo.js";
 import {loginCheck} from "@/utils/loginCheck.js";
+import {resetAuthHandled} from "@/utils/session.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
 
 
@@ -248,8 +248,7 @@ function login() {
         if (result.code === 0) {
           loginNeedCaptcha.value = false
           ElMessage.success("登录成功！")
-          tokenStorage().processed = false
-          tokenStorage().setToken(result.data.token)
+          resetAuthHandled()
           await userInfoStore().fetchUserInfo()
           userInfoStore().setLastLogin(result.data.lastLogin)
           setTimeout(() => {

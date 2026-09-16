@@ -75,6 +75,8 @@ JWT:
   Secure_KEY: test-only-key-not-for-production
   longTime: 259200000
   shortTime: 86400000
+  # 测试全走 http，置 true 会让 Cookie 存不下来
+  cookieSecure: false
 Password:
   masterPass: test-master-pass
 S3:

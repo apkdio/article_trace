@@ -11,7 +11,7 @@ import {
 } from "@/api/article.js";
 import router from "@/router/index.js";
 import {logout as doLogout} from "@/utils/auth.js";
-import {tokenStorage} from "@/stores/tokenStorage.js";
+import {isAuthHandled, markAuthHandled} from "@/utils/session.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import {loginCheckPublic} from "@/utils/loginCheck.js";
 import AgentChat from "@/components/AgentChat.vue";
@@ -48,11 +48,10 @@ onMounted(async () => {
     await loginCheckPublic()
   } catch (e) {
     if(e.message === "not login") return
-    if (!tokenStorage().processed)
+    if (!isAuthHandled())
       ElMessage.warning("登录已失效！")
     userInfoStore().clearUserInfo()
-    tokenStorage().clearToken()
-    tokenStorage().processed = true
+    markAuthHandled()
   } finally {
     if (userInfoStore().username !== "") isLogin.value = true
     await getTopArticles()

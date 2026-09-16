@@ -4,7 +4,6 @@ import {userInfoStore} from "@/stores/userInfo.js";
 import { updateUserPassService} from "@/api/user.js";
 import {Lock} from '@element-plus/icons-vue'
 import router from "@/router/index.js";
-import {tokenStorage} from "@/stores/tokenStorage.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
 import InfoFormShell from "@/components/InfoFormShell.vue";
 
@@ -45,7 +44,6 @@ const updateUserPass = () => {
             const result = await updateUserPassService(userPass.value)
             if (result.code === 0) {
               await userInfoStore().clearUserInfo()
-              await tokenStorage().clearToken()
               ElMessage.success("修改成功！请重新登录！");
               router.push('/login')
             } else if (result.code === 1 && ('Redis' in result.message)) {

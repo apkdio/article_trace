@@ -1,22 +1,16 @@
 import axios from 'axios'
-import {tokenStorage} from "@/stores/tokenStorage.js";
 import {ElMessage} from "element-plus";
 import router from "@/router/index.js";
 import {userInfoStore} from "@/stores/userInfo.js";
+import {isAuthHandled, markAuthHandled} from "@/utils/session.js";
 
 const baseUrl = '/api'
-const instance = axios.create({baseURL: baseUrl})
+// withCredentials：令牌在 HttpOnly Cookie 里，要允许跨端口/跨域调试时也带上它。
+// 同源请求本来就带 Cookie，这里显式写出来是为了避免以后改代理配置时踩坑。
+const instance = axios.create({baseURL: baseUrl, withCredentials: true})
 
-// 请求拦截器
-instance.interceptors.request.use(config => {
-    const token = tokenStorage().token
-    if (token != null) {
-        config.headers.Authorization = token
-    }
-    return config
-}, error => {
-    return Promise.reject(error)
-})
+// 故意没有请求拦截器：令牌由浏览器自动附带，前端拿不到也不该拿。
+// 以前往 Authorization 头里塞 token，等于把凭证暴露给同源 JS，XSS 一打就丢。
 
 // 响应拦截器
 instance.interceptors.response.use(
@@ -28,16 +22,13 @@ instance.interceptors.response.use(
         if (err.response) {
             // 401 未授权错误
             if (err.response.status === 401) {
-                if (!tokenStorage().processed) {
-                    tokenStorage().processed = true
+                if (!isAuthHandled()) {
+                    markAuthHandled()
                     ElMessage.warning("登录已失效！")
-                    tokenStorage().clearToken()
                     userInfoStore().clearUserInfo()
                     router.push({name: "PublicHome"})
-                    return Promise.reject(err)
-                } else {
-                    return Promise.reject(err)
                 }
+                return Promise.reject(err)
             }
         }
         return Promise.reject(err)

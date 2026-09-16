@@ -18,7 +18,7 @@ export const forgetPassService = (forgetPassData) => {
     return request.post('/user/forgetPass', forgetPassData)
 }
 export const logoutService = () => {
-    return request.get('/user/logout')
+    return request.post('/user/logout')
 }
 export const updateUserPassService = (updateData) => {
     return request.patch('/user/updatePass', updateData)
