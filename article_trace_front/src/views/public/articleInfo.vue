@@ -323,7 +323,7 @@ const pushSearch = (type) => {
         </el-aside>
       </el-container>
 
-      <el-footer class="custom-footer">文迹 2026 @Apkdio</el-footer>
+      <el-footer class="custom-footer">© {{ new Date().getFullYear() }} 文迹 · MIT License</el-footer>
     </el-container>
   </div>
 </template>

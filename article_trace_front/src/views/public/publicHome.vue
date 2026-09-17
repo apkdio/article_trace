@@ -345,7 +345,7 @@ const searchArticleInWriter = (nickName) => {
       </el-container>
 
       <el-footer class="custom-footer">
-        文迹 2026 @Apkdio
+        © {{ new Date().getFullYear() }} 文迹 · MIT License
       </el-footer>
     </el-container>
   </div>

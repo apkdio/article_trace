@@ -78,7 +78,7 @@ const logout = (command) => {
                     <router-view></router-view>
                 </div>
             </el-main>
-            <el-footer>文迹 2026 @Apkdio</el-footer>
+            <el-footer>© {{ new Date().getFullYear() }} 文迹 · MIT License</el-footer>
         </el-container>
 
     </el-container>
