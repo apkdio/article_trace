@@ -5,7 +5,7 @@ import logo from '@/assets/defaultLogo.jpg'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {removeUserLogoService, submitUserLogoService} from "@/api/user.js";
 import {getMyAvatarApply} from "@/api/avatar.js";
-import {isAllowedImageType} from "@/utils/upload.js";
+import {isAllowedImageType, MAX_IMAGE_SIZE, MAX_IMAGE_SIZE_TEXT} from "@/utils/upload.js";
 import PageHeader from "@/components/PageHeader.vue";
 
 const uploadRef = ref()
@@ -82,8 +82,8 @@ function changeSetSrc(file, fileList) {
   if (fileList.length > 0) {
     const currentFile = fileList[fileList.length - 1]
     if (currentFile.raw && isAllowedImageType(currentFile.raw.type)) {
-      if (currentFile.raw.size > 5 * 1024 * 1024) {
-        ElMessage.error("上传图片不能大于5MB!")
+      if (currentFile.raw.size > MAX_IMAGE_SIZE) {
+        ElMessage.error(`上传图片不能大于${MAX_IMAGE_SIZE_TEXT}!`)
         uploadRef.value.clearFiles()
         return
       }
@@ -175,7 +175,7 @@ const uploadSubmit = async () => {
 
               <div class="info-text">
                 <p><el-icon><InfoFilled/></el-icon> 支持 JPG/PNG/WEBP 等主流格式</p>
-                <p><el-icon><WarningFilled/></el-icon> 图片大小不超过 5MB</p>
+                <p><el-icon><WarningFilled/></el-icon> 图片大小不超过 {{ MAX_IMAGE_SIZE_TEXT }}</p>
               </div>
 
               <div class="button-group">

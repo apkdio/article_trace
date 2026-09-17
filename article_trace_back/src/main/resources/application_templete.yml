@@ -1,8 +1,8 @@
 spring:
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
+      max-file-size: 2MB
+      max-request-size: 2MB
   data:
     redis:
       database: 0        # token / 验证码 / 限流计数所在的库（测试环境用独立库隔离）

@@ -1,6 +1,9 @@
 import {ElMessage} from 'element-plus';
 
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+// 上限受服务器带宽限制，与后端 spring.servlet.multipart.max-file-size 保持一致
+export const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+/** 供提示文案复用：改了上限，文案跟着变，不会两边不一致 */
+export const MAX_IMAGE_SIZE_TEXT = `${MAX_IMAGE_SIZE / 1024 / 1024}MB`;
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'];
 
 /**
@@ -16,7 +19,7 @@ export function isAllowedImageType(type) {
 export function checkImageFile(file) {
     if (!file) return false;
     if (file.size > MAX_IMAGE_SIZE) {
-        ElMessage.error('上传图片不能大于5MB!');
+        ElMessage.error(`上传图片不能大于${MAX_IMAGE_SIZE_TEXT}!`);
         return false;
     }
     if (file.type && file.type.startsWith('image/')) {

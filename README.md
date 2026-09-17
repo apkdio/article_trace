@@ -176,7 +176,7 @@ server {
     server_name example.com;
     ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-    client_max_body_size 10m;              # 与容器内 nginx 一致，否则上传先在这层被 413
+    client_max_body_size 3m;               # 应用层上限 2MB，这层留余量（原因见 docker 容器内 nginx.conf）
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -197,7 +197,7 @@ server {
     server_name files.example.com;
     ssl_certificate     /etc/letsencrypt/live/files.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/files.example.com/privkey.pem;
-    client_max_body_size 10m;
+    client_max_body_size 3m;
 
     location / {
         proxy_pass http://127.0.0.1:9000;

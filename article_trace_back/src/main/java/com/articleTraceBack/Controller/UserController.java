@@ -292,8 +292,8 @@ public class UserController {
             error.put("file", "文件不是图片文件！");
             return Result.error(error);
         }
-        if (userLogo.getSize() >= 5 * 1024 * 1024) {
-            error.put("file", "文件过大（>=5MB）!");
+        if (userLogo.getSize() >= 2 * 1024 * 1024) {
+            error.put("file", "文件过大（>=2MB）!");
             return Result.error(error);
         }
         if (userService.isValidFile(userLogo)) {
