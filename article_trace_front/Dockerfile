@@ -7,7 +7,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# 国内服务器直连 registry.npmjs.org 很慢，默认走 npmmirror；海外构建可覆盖
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+RUN npm ci --registry=$NPM_REGISTRY
 
 COPY . .
 RUN npm run build

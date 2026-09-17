@@ -9,7 +9,10 @@ ENV PYTHONUNBUFFERED=1 \
     TZ=Asia/Shanghai
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# 国内服务器直连 PyPI 会拿不到部分 wheel（onnxruntime 等直接报 no matching distribution），
+# 默认走腾讯云镜像；海外构建可 --build-arg PIP_INDEX_URL=https://pypi.org/simple/ 覆盖
+ARG PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple/
+RUN pip install --no-cache-dir -i $PIP_INDEX_URL -r requirements.txt
 
 COPY . .
 
