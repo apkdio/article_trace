@@ -79,7 +79,8 @@ services:
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
-      RUSTFS_CONSOLE_ENABLE: "true"
+      # 控制台：上公网建议置 false，并把 ports 里的 9001 映射一并去掉
+      RUSTFS_CONSOLE_ENABLE: ${RUSTFS_CONSOLE_ENABLE:-true}
       TZ: Asia/Shanghai
     command: ["/data"]
     ports:
@@ -190,16 +191,16 @@ services:
         condition: service_completed_successfully
     environment:
       TZ: Asia/Shanghai
-      # MySQL
-      DB_CONNECT_URL: jdbc:mysql://mysql:3306/article_trace?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-      DB_USER: root
+      # MySQL：接外部/托管数据库时改 .env 里的 DB_CONNECT_URL 与 DB_USER
+      DB_CONNECT_URL: "${DB_CONNECT_URL:-jdbc:mysql://mysql:3306/article_trace?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}"
+      DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:?请在 .env 中设置 DB_PASSWORD}
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
-      # RustFS（S3）
-      RUSTFS_ENDPOINT: http://rustfs:9000
+      # RustFS（S3）：ENDPOINT 会写进图片的预签名 URL，上公网时必须改成浏览器可达的地址
+      RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-http://rustfs:9000}
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
       # 桶名：建桶（rustfs-init）与后端读写用的是同一组值，改就一起改
