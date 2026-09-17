@@ -148,12 +148,157 @@ cd article_trace_agent
 # 独立进程，详见该目录 README；Java 侧通过 rpc.agent.enabled 控制是否启用
 ```
 
-### Docker 部署
+### Docker 部署（云端）
+
+这套编排面向**服务器部署**。本机开发直接用 IDEA + Vite，不需要起容器。
+
+**两层 nginx，职责不同**：宿主机那层终止 TLS 并按域名分流；容器内那层只负责托管静态资源与转发 `/api`。
+
+```
+浏览器 ──https://example.com───────► 宿主机 Nginx :443 ──► 127.0.0.1:8080 ──► 前端容器 :80
+                                                                                      │ /api
+                                                                                      ▼
+                                                                                backend :8080
+       ──https://files.example.com─► 宿主机 Nginx :443 ──► 127.0.0.1:9000 ──► RustFS
+```
+
+**前置**：一个域名，两条 A 记录（主域 + 对象存储子域）；服务器装 `nginx` 与 `certbot`。
+
+#### 1. 宿主机反向代理
+
+写入 `/etc/nginx/conf.d/article-trace.conf`，把 `example.com` 换成你的域名：
+
+```nginx
+# 主站 → 前端容器
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name example.com;
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    client_max_body_size 10m;              # 与容器内 nginx 一致，否则上传先在这层被 413
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # SSE：AI 问答是流式的，不关缓冲打字机效果就没了。逐跳生效，这层也要关
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+}
+
+# 对象存储子域 → RustFS（预签名 URL 是浏览器直接来取的，不经前端）
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name files.example.com;
+    ssl_certificate     /etc/letsencrypt/live/files.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/files.example.com/privkey.pem;
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:9000;
+        # 必须显式写：nginx 默认传 $proxy_host，而 S3 签名认的是原始 Host
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# 80 只做跳转，顺带给 certbot 验证
+server {
+    listen 80;
+    server_name example.com files.example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+再申证书——会自动补全上面的 `ssl_certificate` 并装好续期任务：
 
 ```bash
-cp .env.example .env    # 填写数据库 / Redis / SMTP / RustFS 等凭据
-docker compose up -d
+certbot --nginx -d example.com -d files.example.com
 ```
+
+#### 2. `.env` 必填项
+
+除原有凭据外，上云必须再设这四项：
+
+| 变量 | 值 | 不设的后果 |
+|---|---|---|
+| `RUSTFS_ENDPOINT` | `https://files.example.com` | 图片 URL 里是 Docker 内网名 `rustfs`，浏览器解析不了，**全站图片加载失败** |
+| `LLM_BASE_URL` | `http://<Ollama 机器>:11434/v1` | 默认编排不启本地 ollama，agent 会去连一个不存在的服务 |
+| `JWT_COOKIE_SECURE` | 上了 HTTPS 后置 `true` | 置 true 却没 HTTPS → Cookie 存不下，登录后一刷新就退出 |
+| `MAIL_LOGO_URL` | `https://example.com/logo2.png` | 邮件里 logo 位置裂图 |
+
+#### 3. 启动
+
+```bash
+cp .env.example .env     # 首次必须，凭据缺失时 compose 会直接报错
+docker compose up -d --build
+```
+
+默认起 7 个服务（mysql / redis / rustfs / rustfs-init / agent / backend / frontend）。
+Ollama 归在 `local-llm` profile，两机部署时不在这台起；单机跑全栈用 `--profile local-llm`。
+
+安全组 / 防火墙只放 **80 和 443**。其余端口在 compose 里已绑死 `127.0.0.1`，公网上不会有监听者。
+
+#### 4. 验证顺序
+
+分步测，混在一起排查会很痛苦：
+
+1. 先**不设** `JWT_COOKIE_SECURE`，开 `https://example.com` —— 确认锁标正常、能登录
+2. 传一张封面 —— 确认图片显示（这一步验的是 `RUSTFS_ENDPOINT`）
+3. 两项都通后，把 `JWT_COOKIE_SECURE` 改 `true`，`docker compose up -d backend`
+
+### 后续更新
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+数据卷不会被动（`mysql-data` / `rustfs-data` / `redis-data` / `agent-data` / `ollama-data`），
+`.env` 不在仓库里也不会被覆盖。按改动范围可以收窄重建目标：
+
+| 改了什么 | 命令 |
+|---|---|
+| 后端 / 前端 / agent 代码 | `docker compose up -d --build backend`（换服务名） |
+| 依赖（`pom.xml` / `requirements.txt`） | 必须带 `--build` |
+| 挂载的配置（`docker/**/*.yml`、`*.yaml`） | `docker compose up -d <服务>`，**不用** `--build` |
+| `.env` | 同上（环境变量在容器创建时固化，必须重建容器） |
+
+> ⚠️ **永远不要带 `-v`**：`docker compose down -v` 会连数据卷一起删掉。
+
+**三处不会自动生效的地方**
+
+1. **数据库结构变更**。`article_trace.sql` 只在 MySQL 数据目录为空时执行（即首次部署）；
+   之后改它、`git pull`、重建镜像，数据库里都没有变化，**而且不报错**。加字段/加表要在服务器上手工执行 DDL。
+2. **换 embedding 模型**。Chroma 里存量向量是旧模型算的，与新模型不在同一向量空间，
+   检索结果会变成垃圾但**不报错**。必须清掉重建：
+   ```bash
+   docker compose stop agent
+   docker compose run --rm --entrypoint sh agent -c "rm -rf /app/data/vector_store"
+   docker compose up -d agent
+   ```
+   然后等全量同步（默认凌晨 1 点，`rpc.agent.sync.fullSyncCron`）重新灌一遍。
+3. **存量缩略图补齐**。`thumbnail.backfill.enabled` 默认 `false`，需要时临时置 `true` 重启后端，跑完改回。
+
+**备份与回滚**
+
+```bash
+# 更新前备份
+docker compose exec mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" article_trace' > backup-$(date +%F).sql
+
+# 回滚
+git checkout <上一个提交> && docker compose up -d --build
+```
+
+代码回滚是安全的（数据卷不动），但 **DDL 不回滚**——带结构变更的更新务必先备份数据库。
+
+> 单机部署做不到零停机：重建 backend 时 `/api` 会短暂 502（静态页仍可打开），
+> 重建 frontend 时整个站点几秒不可用。小站接受即可。
 
 ## 项目展示
 

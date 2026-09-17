@@ -741,6 +741,16 @@ mvn spring-boot:run
 mvn clean package && java -jar target/article_trace-*.jar
 ```
 
+### 上公网时的两个额外配置
+
+- **`S3.endpoint`**：它会被写进图片的预签名 URL，**必须填浏览器能访问到的地址**。
+  默认的 `http://127.0.0.1:9000` 只在浏览器与后端同机时可用；部署到服务器后要改成对象的对外地址
+  （如 `https://files.example.com`），再用反向代理接回 RustFS 的 9000。
+  建议用**独立子域**而不是主域下的路径前缀——S3 签名把 Host 和路径都算进去了，路径被改写会验签失败。
+- **`JWT.cookieSecure`**（环境变量 `JWT_COOKIE_SECURE`）：站点上了 HTTPS 后置 `true`。
+  反之（置 `true` 却没有 HTTPS）浏览器会拒绝保存登录 Cookie，表现是「登录成功但一刷新就退出」，
+  而且没有任何报错提示。
+
 ### 外部敏感词库
 
 在服务启动的工作目录下创建 `res/sensitive_words.txt`，一行一词。默认每 30 分钟检查一次文件变化并热更新，无需重启服务。

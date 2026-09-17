@@ -183,3 +183,10 @@ npm run preview
 ## 部署到 Nginx
 
 前端 `dist/` 由 Nginx 托管静态资源，`/api` 反向代理到后端 `8080` 端口。开发环境无需额外配置代理（`vite.config.js` 已内置 `/api` 代理）。
+
+容器化部署时这份配置由 `nginx.conf` 提供（见 `Dockerfile`）。它只监听容器内的 80、**不处理 TLS**——
+公网入口的证书终止与域名分流由宿主机上的另一层 Nginx 负责，完整步骤见根 [README](../README.md)
+的「Docker 部署」一节。
+
+> 容器内这层的 SSE 关缓冲（`proxy_buffering off`）**不能省**。它逐跳生效，宿主机那层也要各自配一份，
+> 否则 AI 问答的打字机效果会在其中一跳被攒成一批返回。
