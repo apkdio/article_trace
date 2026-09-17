@@ -243,6 +243,10 @@ services:
     volumes:
       # ⚠️ 源文件名不能叫 application.yml（根 .gitignore 忽略了它），挂载进容器后仍是标准配置名
       - ./docker/backend/application-container.yml:/app/config/application.yml:ro
+      # 敏感词库：**外部优先**（容器内即 sensitive_word.filePath 的 ./res/sensitive_words.txt），
+      # 文件缺失或读取失败时自动降级到 jar 内置词表。
+      # 改这个词库文件即可生效（后端每 30 分钟热更新），不必重建镜像
+      - ./article_trace_back/res:/app/res:ro
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8081}:8080"
     healthcheck:

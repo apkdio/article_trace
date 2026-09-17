@@ -191,7 +191,9 @@ article_trace_back/
 ### 6. 敏感词过滤（AhoCorasickUtil + SyncSensitiveWordLoader）
 
 - 采用 **Aho-Corasick** 自动机，一次遍历文本即可匹配所有敏感词，效率远高于逐个 `contains`。
-- 词库支持**热更新**：定时任务（默认 30 分钟）检测 `res/sensitive_words.txt` 的修改时间，变化则重建自动机，无需重启。
+- 词库支持**热更新**：外部词库 `res/sensitive_words.txt`（compose 已挂到容器 `/app/res`），
+  **外部优先、缺失或读取失败时降级到 jar 内置词表**（`src/main/resources/sensitive_words.txt`）。
+  默认 30 分钟检测一次修改时间，变化则重建自动机；**改词库不用重启、也不用重建镜像**。详见下方「敏感词库（外部优先）」。
 - 文章标题 + 内容（富文本清洗后）与评论均做敏感词校验。
 
 ### 7. 富文本清洗（RichTextCleaner / TextExtractor）
@@ -751,14 +753,24 @@ mvn clean package && java -jar target/article_trace-*.jar
   反之（置 `true` 却没有 HTTPS）浏览器会拒绝保存登录 Cookie，表现是「登录成功但一刷新就退出」，
   而且没有任何报错提示。
 
-### 外部敏感词库
+### 敏感词库（外部优先）
 
-在服务启动的工作目录下创建 `res/sensitive_words.txt`，一行一词。默认每 30 分钟检查一次文件变化并热更新，无需重启服务。
+- **外部词库（运行时以它为准）**：`article_trace_back/res/sensitive_words.txt`，一行一词。
+  `docker-compose.yml` 已把它挂到容器 `/app/res`，正好是配置项 `sensitive_word.filePath`
+  （`./res/sensitive_words.txt`，容器工作目录是 `/app`）指向的路径。
+  **改这个文件即可生效**：默认 30 分钟内热更新，不用重启、不用重建镜像。
+- **内置词库（兜底）**：`src/main/resources/sensitive_words.txt`，打包进 jar。
+  外部文件不存在或读取失败时用它；本次重载失败会保留原有词表并在下一轮重试，
+  不会让违规词校验凭空失效。
+- ⚠️ **两份内容务必同步**：外部文件只要存在就被优先采用，所以**放一个空的 / 占位的 / 过期的
+  外部文件，会静默把过滤能力削弱甚至清空**——历史上 `res/sensitive_words.txt` 就只是个写着
+  `666` / `999` 的占位文件。改词库时改外部那份，并且同步内置那份。
+- **匹配语义：Aho-Corasick 纯子串、大小写敏感、没有词边界**，所以过短的词条很容易误伤：
+  例如裸词 `代开` 会命中「迭**代开**发」（2026-09-17 已从两份词库移除，只保留 `代开发票` 等组合词）。
+  加词时优先用长词 / 组合词，避免 2 字高频词。
 
 热更新的实现方式：`SensitiveWordHolder` 持有一个可替换的匹配器引用，业务每次匹配时现取；
 定时任务检测到文件变更后构建新实例并整体替换引用，因此变更**立即对业务生效**。
-外部文件读不到或读取失败时降级到 classpath 内置词表；本次重载失败会保留原有词表并在下一轮重试，
-不会让违规词校验凭空失效。
 
 ## 测试
 
