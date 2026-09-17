@@ -1,12 +1,13 @@
 # =============================================================================
-# 文迹 · article_trace 全栈一键启动
+# 文迹 · article_trace 云端部署编排
 # =============================================================================
-# 启动：docker compose up -d --build
-# 访问：http://localhost:8080         前端（Nginx 静态资源 + /api 反代）
-#       http://localhost:9001         RustFS 控制台（S3 对象存储）
-#       http://localhost:8081/actuator/health   后端直连（调试用）
+# 定位：这份编排是给**服务器**用的。本机开发走 IDEA（后端）+ Vite（前端），不起容器。
 #
-# 首次使用还需拉取模型（数 GB，只做一次，存放在 ollama-data 卷里）：
+# 启动（默认，不含 Ollama—— 两机部署的常态）：
+#   docker compose up -d --build
+#
+# 启动（单机跑通全栈，含本地 Ollama，模型占数 GB）：
+#   docker compose --profile local-llm up -d --build
 #   docker compose exec ollama ollama pull bge-m3       # embedding
 #   docker compose exec ollama ollama pull qwen2.5:7b   # 生成模型
 #
@@ -19,8 +20,8 @@
 # 端口等非敏感项同样可在 .env 中覆盖。
 #
 # 所有端口都**只绑到宿主机回环 127.0.0.1**，不对局域网 / 公网开放。
-# 这不影响本机访问（localhost 就是回环），也不影响容器互访（走 Docker 内网服务名，
-# 与这些映射无关）。上公网时在宿主机挂一层 Nginx / Caddy 反代到 127.0.0.1:8080 并终止 TLS。
+# 容器之间走 Docker 内网服务名互访，与这些映射无关。
+# 对外入口由宿主机上的 Nginx / Caddy 反代到 127.0.0.1:8080 并终止 TLS。
 # =============================================================================
 
 name: article-trace
@@ -125,8 +126,11 @@ services:
   # ---------------------------------------------------------------------------
   # AI 能力（agent 的 LLM / embedding 均走 OpenAI 兼容端点）
   # ---------------------------------------------------------------------------
+  # Ollama 归在 local-llm profile，默认**不启动**：两机部署时它跑在 GPU 那台机器上，
+  # 这套编排不该去拉起它（agent 的 LLM_BASE_URL 指过去即可）。
   ollama:
     image: ollama/ollama:latest
+    profiles: ["local-llm"]
     container_name: article-trace-ollama
     restart: unless-stopped
     environment:
@@ -154,7 +158,11 @@ services:
     container_name: article-trace-agent
     restart: unless-stopped
     depends_on:
-      - ollama
+      # required: false —— ollama 归在 local-llm profile，默认不存在，
+      # 少了它 agent 也必须能起来，否则云端根本没 agent 可用。
+      ollama:
+        condition: service_started
+        required: false
     environment:
       AGENT_PORT: "50051"
       TZ: Asia/Shanghai
