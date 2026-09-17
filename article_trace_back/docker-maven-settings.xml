@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  仅供 Docker 构建阶段使用（由 Dockerfile 以 -s 指定），不影响本地开发。
+
+  原因：国内服务器直连 Maven Central 拉全量依赖极慢，
+  dependency:go-offline 这一步会拖到几十分钟。走阿里云公共仓库后降到分钟级。
+  海外构建如不需要，可在 Dockerfile 里去掉 -s 参数。
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+    <mirrors>
+        <mirror>
+            <id>aliyun-public</id>
+            <name>Aliyun Public Repository</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <mirrorOf>central</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>

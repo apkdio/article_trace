@@ -7,12 +7,15 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
+# Maven 走国内镜像（见 docker-maven-settings.xml）：直连 Maven Central 在国内会极慢
+COPY docker-maven-settings.xml /tmp/settings.xml
+
 # 先只拷 pom，依赖层可缓存
 COPY pom.xml ./
-RUN mvn -B -q dependency:go-offline
+RUN mvn -B -q -s /tmp/settings.xml dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -DskipTests package
+RUN mvn -B -s /tmp/settings.xml -DskipTests package
 
 # ---------- 运行阶段 ----------
 FROM eclipse-temurin:21-jre
