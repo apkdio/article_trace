@@ -29,7 +29,7 @@ public class TestFixtures {
     /**
      * 短期唯一标签，8 位数字。
      *
-     * <p>长度受限：{@code user.username} 为 varchar(20)、{@code nickname} 为 varchar(15)，
+     * <p>长度受限：{@code user.username} 为 varchar(20)、{@code nickname} 为 varchar(20)，
      * 命名过长会直接报 {@code Data too long}。PREFIX(8) + 8 位 = 16，两列都容得下。</p>
      */
     private static String tag() {

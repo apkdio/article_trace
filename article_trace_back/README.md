@@ -481,7 +481,7 @@ notification:
 | id | int | 主键，自增 |
 | username | varchar(20) | 用户名（唯一） |
 | password | varchar(60) | 密码（BCrypt） |
-| nickname | varchar(15) | 昵称（**允许重复**；注册未填时后端生成「文迹探索者+6 位随机串」）|
+| nickname | varchar(20) | 昵称（**允许重复**；注册未填时后端生成「文迹探索者+6 位随机串」）|
 | email | varchar(128) | 邮箱（NOT NULL，唯一）|
 | user_pic | varchar(128) | 头像文件名 |
 | create_time / update_time / last_login | datetime | 时间戳 |
