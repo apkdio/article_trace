@@ -17,6 +17,10 @@
 # 凭据统一由同目录 .env 注入（.env 已被 .gitignore 忽略，不会提交到仓库）：
 #   cp .env.example .env && vi .env      # 首次必须执行，凭据缺失时 compose 会直接报错
 # 端口等非敏感项同样可在 .env 中覆盖。
+#
+# 所有端口都**只绑到宿主机回环 127.0.0.1**，不对局域网 / 公网开放。
+# 这不影响本机访问（localhost 就是回环），也不影响容器互访（走 Docker 内网服务名，
+# 与这些映射无关）。上公网时在宿主机挂一层 Nginx / Caddy 反代到 127.0.0.1:8080 并终止 TLS。
 # =============================================================================
 
 name: article-trace
@@ -38,7 +42,7 @@ services:
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=+08:00
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       # 首次启动自动执行建库脚本（含 CREATE DATABASE / 7 张表）
@@ -59,7 +63,7 @@ services:
     # 后端使用 db0（登录态）+ db1（浏览量/agent 同步队列），开启 AOF 持久化
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -84,8 +88,8 @@ services:
       TZ: Asia/Shanghai
     command: ["/data"]
     ports:
-      - "${RUSTFS_PORT:-9000}:9000"
-      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${RUSTFS_PORT:-9000}:9000"
+      - "127.0.0.1:${RUSTFS_CONSOLE_PORT:-9001}:9001"
     volumes:
       - rustfs-data:/data
 
@@ -128,7 +132,7 @@ services:
     environment:
       TZ: Asia/Shanghai
     ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama-data:/root/.ollama
     # 有 NVIDIA GPU 且装了 nvidia-container-toolkit 时，取消下面注释可显著加速
@@ -174,7 +178,7 @@ services:
       # 向量库 / BM25 缓存 / 会话 jsonl 等运行时产物
       - agent-data:/app/data
     ports:
-      - "${AGENT_HOST_PORT:-50051}:50051"
+      - "127.0.0.1:${AGENT_HOST_PORT:-50051}:50051"
 
   # Spring Boot 3 主后端（REST + 定时任务 + gRPC 客户端）
   backend:
@@ -232,7 +236,7 @@ services:
       # ⚠️ 源文件名不能叫 application.yml（根 .gitignore 忽略了它），挂载进容器后仍是标准配置名
       - ./docker/backend/application-container.yml:/app/config/application.yml:ro
     ports:
-      - "${BACKEND_PORT:-8081}:8080"
+      - "127.0.0.1:${BACKEND_PORT:-8081}:8080"
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
       interval: 15s
@@ -250,7 +254,7 @@ services:
       backend:
         condition: service_started
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
 
 volumes:
   mysql-data:
