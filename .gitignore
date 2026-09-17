@@ -29,6 +29,9 @@
 # 内部设计/待办文档（含安全实现细节，不入库）
 article_trace_back/docs/
 
+# Agent 间 bug 汇报（本机协作状态，不入库）
+.agent-bugs/
+
 # 系统文件
 .DS_Store
 Thumbs.db
