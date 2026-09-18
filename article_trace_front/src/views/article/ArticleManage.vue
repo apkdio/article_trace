@@ -458,17 +458,17 @@ const assessArticle = async (id, state) => {
             </template>
           </el-table-column>
 
-          <el-table-column label="状态" >
+          <el-table-column label="状态" width="130">
             <template #default="scope">
-              <el-tag v-if="scope.row.state === 0" type="primary" disable-transitions>草稿</el-tag>
-              <el-tag v-else-if="scope.row.state === 1" type="success" disable-transitions>发布</el-tag>
-              <el-tag v-else-if="scope.row.state === 2" type="warning" disable-transitions>待审核</el-tag>
-              <el-tag v-else-if="scope.row.state === 3" type="danger" disable-transitions>已驳回</el-tag>
-              <el-tag v-else type="info">未知状态</el-tag>
-              <!-- 命中标记只由后端回给站长：作者侧拿不到这个字段，因此不会显示 -->
-              <el-tag v-if="scope.row.sensitiveHit === 1" type="danger" effect="dark" disable-transitions
-                      style="margin-left: 6px">命中违禁词
-              </el-tag>
+              <div class="state-cell">
+                <el-tag v-if="scope.row.state === 0" type="primary" disable-transitions>草稿</el-tag>
+                <el-tag v-else-if="scope.row.state === 1" type="success" disable-transitions>发布</el-tag>
+                <el-tag v-else-if="scope.row.state === 2" type="warning" disable-transitions>待审核</el-tag>
+                <el-tag v-else-if="scope.row.state === 3" type="danger" disable-transitions>已驳回</el-tag>
+                <el-tag v-else type="info">未知状态</el-tag>
+                <!-- 命中标记只由后端回给站长：作者侧拿不到这个字段，因此不会显示 -->
+                <el-tag v-if="scope.row.sensitiveHit === 1" type="danger" effect="dark" disable-transitions>命中违禁词</el-tag>
+              </div>
             </template>
           </el-table-column>
 
@@ -651,6 +651,14 @@ const assessArticle = async (id, state) => {
   padding: 10px 20px 2px;
   border-radius: 8px;
   margin-bottom: 10px;
+}
+
+/* 状态与命中标记竖排、左对齐：并排时「命中违禁词」会被挤到换行，看着像没对齐 */
+.state-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .pic_box {
