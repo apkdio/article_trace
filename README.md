@@ -240,6 +240,8 @@ docker compose up -d --build
 ```
 
 默认起 7 个服务（mysql / redis / rustfs / rustfs-init / agent / backend / frontend）。
+
+> ⚠️ **只能单实例运行**：项目里有 8 个 `@Scheduled` 任务（邮件重试、通知清理、浏览量落库、敏感词热更、agent 同步等）都**没有分布式锁**，扩到多副本会重复执行。要横向扩容得先引入 ShedLock 之类。
 Ollama 归在 `local-llm` profile，两机部署时不在这台起；单机跑全栈用 `--profile local-llm`。
 
 安全组 / 防火墙只放 **80 和 443**。其余端口在 compose 里已绑死 `127.0.0.1`，公网上不会有监听者。

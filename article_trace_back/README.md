@@ -177,6 +177,7 @@ article_trace_back/
   - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。
   - 这样用户中途放弃发布**不会在服务端留下无引用对象**（此前"选图即上传"会产生这类垃圾）。
 - **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先按状态机校验当前状态能否流转（`2→1`、`2→3`、`1→3`），再带「当前状态」条件更新 —— 两个站长并发审批时只有先到者成功。
+  > **为什么 WHERE 里必须带状态**：MySQL 驱动默认返回的是**匹配行数**而非实际修改行数。若判断「是否抢到」时 WHERE 只带主键，并发下两条更新都会匹配到 1 行，双双被误判成功。
 - **删除**：级联删除 RustFS 图片/内容文件 + 清理 Redis 浏览量 + 删除数据库记录。
 
 ### 4. 分类模块（CategoryController / CategoryServiceImpl）
@@ -200,9 +201,19 @@ article_trace_back/
 
 基于 jsoup 清洗富文本：移除 `<script>/<style>` 与图片标签、base64 图片，块级标签转换行，压缩空白，输出纯文本用于敏感词校验与文章摘要展示。
 
+另提供 `cleanToSafeHtml()` 做**白名单清洗并保留 HTML**，用于落库与回显：基于 `Safelist.relaxed()`，额外放行 `figure/figcaption/hr` 与 `:all` 的 `class`、`img` 的 `alt/width/height`、`a` 的 `target/rel`，协议限 `http/https`（外链另加 `mailto`）。
+
+**存前与读时两头都清洗**：`articleAddOrUpdate` 落库前洗一次；三处读取走 `readCleanContent()`，`AgentSyncTask` 同步给 agent 前也洗。这样历史脏数据在**读时**同样被拦住，不必手工洗存量。
+
+> 前端转义不是替代方案：富文本要么全转义（排版全毁）、要么不转义（XSS），没有中间态。
+
 ### 8. 对象存储（RustFsUtil）
 
 基于 AWS S3 SDK 封装，按业务分三个桶：`图片桶（pic）`、`内容桶（content）`、`头像桶（avatar）`。图片访问通过 `S3Presigner` 生成 3 天有效期的预签名 URL，并缓存至 Redis 减少签名开销。
+
+桶名不是写死的：由 `RUSTFS_PIC_BUCKET` / `RUSTFS_CONTENT_BUCKET` / `RUSTFS_AVATAR_BUCKET` 统一驱动（`.env` → compose → 容器配置 `application-container.yml` 里的 `${RUSTFS_*_BUCKET:...}` 占位符）。**建桶（`rustfs-init`）与后端读写用的是同一组值**，改就一起改，避免「桶建成新名字、后端仍连旧名字」。
+
+> `S3.endpoint` 会写进预签名 URL 的 host（同一个值同时喂给 SDK 客户端和签名器），所以它必须是**浏览器能访问到的地址**；上公网部署时把它改成对象存储的对外域名。
 
 对象归属由**类型字符串**决定，而不是散落的桶名常量：`json` → content、`image` → pic、`avatar` → avatar，`upload` / `delete` / `exists` / `getPciUrl` / `getThumbUrl` / `generateThumbFor` 都按它解析目标桶。预签名的 Redis 缓存键是 `桶名:对象名`——两个桶可能出现同名对象，只用对象名会串味。
 
@@ -789,8 +800,16 @@ python scripts/init_test_db.py
 表结构以仓库根目录的 `article_trace.sql` 为唯一来源，不存在第二份需要同步的建库脚本。
 数据库连接可用环境变量覆盖，便于 CI：`TEST_DB_HOST` / `TEST_DB_PORT` / `TEST_DB_USER` / `TEST_DB_PASSWORD` / `TEST_DB_NAME`。
 
-> **注意**：`src/test/resources/application.yml` 是一份独立副本，主配置改了它不会自动跟随。
-> 新增配置项时记得两边都加，否则测试会用默认值静默跑过。
+> **注意**：本项目的配置有**四份**，新增配置项时要逐个同步，漏一处就会出现「一边能用、另一边静默用默认值」：
+>
+> | 文件 | 用途 |
+> |---|---|
+> | `src/main/resources/application.yml` | 本地开发（gitignore，各人自建） |
+> | `src/main/resources/application_templete.yml` | 对外模板，随仓库发布 |
+> | `docker/backend/application-container.yml` | 容器内配置，compose 挂载为 `/app/config/application.yml` |
+> | `src/test/resources/application.yml` | 测试专用（独立库 + Redis DB 14/15） |
+>
+> 测试那份改了主配置不会自动跟随，否则测试会用默认值静默跑过。
 
 ### 单元 / 集成测试清单
 

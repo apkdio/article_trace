@@ -157,10 +157,18 @@ article_trace_front/
 | `UserResetPassword.vue` | 修改密码 |
 | `AvatarReview.vue` | 头像审核（站长）：缩略图点开看原图、通过/拒绝，拒绝弹窗收理由 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
-| `ArticleManage.vue` | 文章撰写、编辑、删除、审核 |
+| `ArticleManage.vue` | 文章撰写、编辑、删除、审核。界面只有「存为草稿 / 立即发布」两个按钮，因此**已发布文章的任何编辑都会走「重新送审」（`1→2`）**，不存在「改了但不送审」的路径 |
 | `ArticleCategory.vue` | 分类增删改查 |
 | `AuthorApply.vue` | 申请成为作者（提交申请 + 查看审核状态）|
 | `AccountManage.vue` | 账号管理（站长） |
+
+## 页面布局与滚动
+
+页面级滚动容器是 `components/UserLayout.vue` 里的 `.router-content`（`flex: 1; overflow: auto`）。
+
+**页面自身不要再写 `height: 100% + overflow: hidden`** —— `height:100%` 会让页面恰好撑满容器（永不「超出」→ 外层不产生滚动），`overflow:hidden` 又把超出部分裁掉，两者一夹就是「内容超出窗口却滚不动」。需要占满时用 `min-height: 100%`。
+
+`assets/main.scss` 里的 `width: 100% !important` 是**为抵消 Element Plus 给 body 加的滚动条补偿宽度**（`calc(100% - 15px)`）——它与常驻滚动条叠加会多减 15px 造成横向抖动。这条不能删。
 
 ## 启动与构建
 
