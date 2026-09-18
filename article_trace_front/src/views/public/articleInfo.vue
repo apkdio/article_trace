@@ -110,7 +110,7 @@ const AddComment = async () => {
       await getComments()
     } else {
       if (res.message.error) {
-        ElMessage.error("发表失败! nn" + res.message.error)
+        ElMessage.error("发表失败! " + res.message.error)
       }
     }
   } catch (e) {
