@@ -18,10 +18,11 @@ const rules = {
   nickname: [
     { required: true, message: '请输入用户昵称', trigger: 'blur' },
     {
-      pattern: /^\S{2,20}$/,
-      message: '昵称必须是2-20位的非空字符串',
+      pattern: /^\S(.*\S)?$/,
+      message: '昵称首尾不能是空格',
       trigger: 'blur'
-    }
+    },
+    {min: 2, max: 20, message: '昵称长度需为 2-20 个字符', trigger: 'blur'}
   ],
   email: [
     { required: true, message: '请输入用户邮箱', trigger: 'blur' },

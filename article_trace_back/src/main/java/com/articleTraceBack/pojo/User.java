@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -30,7 +31,8 @@ public class User {
 
     // 仅在「修改资料」时必填：注册时后端会自动生成默认昵称
     @NotEmpty(groups = update.class)
-    @Pattern(regexp = "^\\S{1,10}$", message = "为1-10个非空白字符！", groups = update.class)
+    @Size(min = 2, max = 20, message = "昵称长度需为 2-20 个字符！", groups = update.class)
+    @Pattern(regexp = "^\\S(.*\\S)?$", message = "昵称首尾不能是空格！", groups = update.class)
     private String nickname; // 昵称（允许重复）
 
     // 仅「修改资料」时需要：注册走 RegisterUserPojo 自己的校验

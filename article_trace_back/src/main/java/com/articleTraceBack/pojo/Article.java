@@ -17,9 +17,9 @@ public class Article {
     @TableId(type = IdType.AUTO)
     private Integer id;//主键ID
 
-    @NotNull(message = "不能为空！")
-    @NotEmpty
-    @Pattern(regexp = "^\\S{1,30}$", message = "为1-30个非空白字符！")
+    @NotBlank(message = "标题不能为空！")
+    @Size(max = 30, message = "标题长度不能超过 30 个字符！")
+    @Pattern(regexp = "^\\S(.*\\S)?$", message = "标题首尾不能是空格！")
     private String title;//文章标题
 
     @NotNull(message = "不能为空！")

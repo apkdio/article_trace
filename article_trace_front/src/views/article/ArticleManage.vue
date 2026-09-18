@@ -66,7 +66,8 @@ const validateContent = (rule, value, callback) => {
 const articleModelRule = {
   title: [
     {required: true, message: '请输入标题', trigger: 'blur'},
-    {min: 1, max: 30, message: '长度在 1 到 30 个字符', trigger: 'blur'}
+    {min: 1, max: 30, message: '长度在 1 到 30 个字符', trigger: 'blur'},
+    {pattern: /^\S(.*\S)?$/, message: '首尾不能是空格', trigger: 'blur'}
   ],
   content: [{validator: validateContent}],
   categoryId: [{required: true, message: '请选择分类！'}],

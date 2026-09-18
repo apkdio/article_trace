@@ -24,7 +24,8 @@ const categoryData = ref({
 
 const rules = {
   categoryName: [{required: true, message: '请输入分类名称', trigger: 'blur'},
-    {min: 1, max: 20, message: "描述过长！"}]
+    {min: 1, max: 20, message: "分类名称长度需在 1 到 20 个字符", trigger: 'blur'},
+    {pattern: /^\S(.*\S)?$/, message: '首尾不能是空格', trigger: 'blur'}]
 }
 
 const myCategoriesCount = computed(() => {
@@ -202,11 +203,11 @@ const handleClose = (done) => {
     <el-dialog v-model="showAddCategory" :title="state === 1 ? '新增文章分类' : '编辑分类信息'" width="450px"
                class="custom-dialog" :before-close="handleClose">
       <el-form :model="categoryData" :rules="rules" label-position="top" ref="categoryRef">
-        <el-form-item label="分类名称" prop="categoryName">
+        <el-form-item label="分类名称" prop="categoryName" :error="errorList.categoryName">
           <el-input v-model="categoryData.categoryName" placeholder="输入名称（如：技术分享、生活随笔）" maxlength="20"
                     show-word-limit></el-input>
         </el-form-item>
-        <el-form-item label="分类别名 / 描述" prop="categoryAlias">
+        <el-form-item label="分类别名 / 描述" prop="categoryAlias" :error="errorList.categoryAlias">
           <el-input v-model="categoryData.categoryAlias" type="textarea" :rows="3"
                     placeholder="输入该分类的详细描述，有助于清晰管理内容" maxlength="30" show-word-limit></el-input>
         </el-form-item>
