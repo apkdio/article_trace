@@ -49,11 +49,12 @@ public class ArticleStateMachineTest {
         assertTrue(articleService.canTransfer(2, 3, MASTER), "站长审核驳回");
         assertTrue(articleService.canTransfer(1, 3, MASTER), "站长追回已误审发布的文章");
         assertTrue(articleService.canTransfer(0, 1, MASTER), "站长直接发布自己的草稿");
+        assertTrue(articleService.canTransfer(1, 1, MASTER), "站长改完已发布文章后仍保持发布");
 
         // ---- 非法 ----
         assertFalse(articleService.canTransfer(0, 1, AUTHOR), "作者不得绕过审核直接发布");
         assertFalse(articleService.canTransfer(3, 1, AUTHOR), "作者不得直接把驳回稿发布");
-        assertFalse(articleService.canTransfer(1, 1, AUTHOR), "已发布不能原地不动地改写状态");
+        assertFalse(articleService.canTransfer(1, 1, AUTHOR), "作者的已发布文章要走重新送审，不能原地保持发布");
         assertFalse(articleService.canTransfer(0, 3, MASTER), "站长不能驳回一篇草稿");
         assertFalse(articleService.canTransfer(3, 3, MASTER), "不能重复驳回");
         assertFalse(articleService.canTransfer(0, 99, MASTER), "非法目标状态");

@@ -334,8 +334,12 @@ public class ArticleServiceImpl implements ArticleService {
                 return from == STATE_DRAFT || from == STATE_PUBLISHED
                         || from == STATE_REJECTED || from == STATE_PENDING;
             case STATE_PUBLISHED:
-                // 仅站长：审核通过（2→1），或直接发布自己的草稿（0→1）
-                return master && (from == STATE_PENDING || from == STATE_DRAFT);
+                // 仅站长：审核通过（2→1）、直接发布自己的草稿（0→1），
+                // 以及「已发布文章改完仍保持已发布」（1→1）。没有最后这条，站长想改个错字
+                // 就只能先下架再发布，中间文章是离线的。
+                // 注意：文章命中违禁词时，目标状态在 Controller 里已被改成待审，根本走不到这一支。
+                return master && (from == STATE_PENDING || from == STATE_DRAFT
+                        || from == STATE_PUBLISHED);
             case STATE_REJECTED:
                 // 仅站长：驳回待审（2→3），或追回已误审发布的文章（1→3）
                 return master && (from == STATE_PENDING || from == STATE_PUBLISHED);
