@@ -109,6 +109,52 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
     }
 
     @Override
+    public boolean submitDirect(int userId, MultipartFile file) {
+        String extension = FileCheckUtil.extensionOf(file);
+        if (extension == null) {
+            return false;
+        }
+        String fileName = System.currentTimeMillis() + userId + "avatar" + extension;
+        if (!rustFsUtil.upload(file, TYPE_AVATAR, fileName)) {
+            log.error("avatar upload failed: userId={}, key={}", userId, fileName);
+            return false;
+        }
+        // 站长的头像不排队，但「搬运 → 换 user_pic → 清旧图与待审对象」这套副作用一次都不能少，
+        // 所以和审核通过共用 promote——少写一步就是裂图或孤儿对象。
+        if (!promote(userId, fileName)) {
+            reclaim(fileName);
+            return false;
+        }
+        log.info("avatar applied directly (master): userId={}, key={}", userId, fileName);
+        return true;
+    }
+
+    /**
+     * 把待审对象提升为生效头像：搬到 pic 桶 → 写 user_pic → 清掉旧图与待审对象。
+     *
+     * <p>审核通过走这里，站长直通（{@link #submitDirect}）也走这里。两处几乎相同的副作用
+     * 各写一遍的话，将来改搬运策略必然漏一处。</p>
+     */
+    private boolean promote(int userId, String pendingPic) {
+        // 待审对象在 avatar 桶，而 user_pic 的读取侧（签名、重置、缩略图补齐）一律按 pic 桶解析，
+        // 所以先把它搬到 pic 桶再写 user_pic，否则头像会变成裂图。
+        if (!rustFsUtil.copyTo(pendingPic, TYPE_AVATAR, TYPE_IMAGE)) {
+            return false;
+        }
+        // 先换 DB 指向、拿到旧头像名，成功后再删旧对象——反过来的话，写库失败会让
+        // user_pic 指向一个已删除的对象，头像变裂图且用户自己恢复不了。
+        String oldPic = userService.updateUserPic(userId, pendingPic);
+        if (oldPic != null && !oldPic.isEmpty() && !rustFsUtil.delete(oldPic, TYPE_IMAGE)) {
+            log.warn("old user logo delete failed, may be orphan: userId={}, key={}", userId, oldPic);
+        }
+        // pic 桶已经有转正的那份，avatar 桶的待审对象可以丢了
+        if (!rustFsUtil.delete(pendingPic, TYPE_AVATAR)) {
+            log.warn("pending avatar cleanup failed, may be orphan: key={}", pendingPic);
+        }
+        return true;
+    }
+
+    @Override
     public AvatarApply findMine(int userId) {
         QueryWrapper<AvatarApply> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId).orderByDesc("create_time").last("limit 1");
@@ -160,25 +206,12 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         }
 
         if (pass) {
-            // 待审对象在 avatar 桶，而 user_pic 的读取侧（签名、重置、缩略图补齐）一律按 pic 桶解析，
-            // 所以先把它搬到 pic 桶再写 user_pic，否则头像会变成裂图。
-            if (!rustFsUtil.copyTo(pendingPic, TYPE_AVATAR, TYPE_IMAGE)) {
+            if (!promote(applicantId, pendingPic)) {
                 // 搬不动就不要往下走：退回待审，站长还可以重试。
                 // 留下一条 approved 但 user_pic 没换的记录反而更难收拾。
                 rollbackToPending(applyId);
                 log.error("avatar promote failed, rolled back to pending: applyId={}, key={}", applyId, pendingPic);
                 return false;
-            }
-
-            // 先换 DB 指向、拿到旧头像名，成功后再删旧对象——反过来的话，写库失败会让
-            // user_pic 指向一个已删除的对象，头像变裂图且用户自己恢复不了。
-            String oldPic = userService.updateUserPic(applicantId, pendingPic);
-            if (oldPic != null && !oldPic.isEmpty() && !rustFsUtil.delete(oldPic, TYPE_IMAGE)) {
-                log.warn("old user logo delete failed, may be orphan: userId={}, key={}", applicantId, oldPic);
-            }
-            // pic 桶已经有转正的那份，avatar 桶的待审对象可以丢了
-            if (!rustFsUtil.delete(pendingPic, TYPE_AVATAR)) {
-                log.warn("pending avatar cleanup failed, may be orphan: key={}", pendingPic);
             }
             // 通过是「已生效」的轻量告知，只发站内信（场景配置为 inbox）
             notificationService.notify(applicantId, SCENE_APPROVED, "头像审核已通过",

@@ -297,6 +297,15 @@ public class UserController {
             return Result.error(error);
         }
         if (userService.isValidFile(userLogo)) {
+            // 站长改自己的头像不进审核队列：他是唯一能审的人，审自己没意义，
+            // 还会让待审状态卡在自己身上。副作用与审核通过完全一致（见 submitDirect）。
+            if ((int) userInfo.get("type") == 0) {
+                if (avatarApplyService.submitDirect(userId, userLogo)) {
+                    return Result.success();
+                }
+                error.put("error", "提交失败，请稍后重试！");
+                return Result.error(error);
+            }
             // 头像不再直接生效：先进 avatar 桶等待审核，通过后才写进 user_pic。
             // 先探一次待审状态，这样「重复提交」和「上传失败」能给出不同的提示，
             // 而不是把存储故障报成「已提交过」。

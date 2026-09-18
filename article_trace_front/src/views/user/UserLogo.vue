@@ -107,8 +107,9 @@ const uploadSubmit = async () => {
   try {
     const res = await submitUserLogoService(file)
     if (res.code === 0) {
-      // 提交成功 ≠ 头像已换：要等站长审核通过，所以这里只提示「已提交」
-      ElMessage.success("已提交，等待站长审核")
+      // 提交成功 ≠ 头像已换：普通用户要等站长审核通过，所以只提示「已提交」；
+      // 站长本人免审核，提交即生效。
+      ElMessage.success(userInfoStore().type === 0 ? "头像已更新" : "已提交，等待站长审核")
     } else {
       ElMessage.error(res.message || "提交失败！")
     }

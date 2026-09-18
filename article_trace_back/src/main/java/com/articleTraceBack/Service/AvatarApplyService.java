@@ -15,6 +15,9 @@ public interface AvatarApplyService {
     /** 提交待审头像；已有待审记录或对象上传失败时返回 false */
     boolean submit(int userId, MultipartFile file);
 
+    /** 站长直通：上传后直接生效，不进审核队列（他是唯一能审的人，审自己没有意义） */
+    boolean submitDirect(int userId, MultipartFile file);
+
     /** 我的最新一条记录（无则 null） */
     AvatarApply findMine(int userId);
 
