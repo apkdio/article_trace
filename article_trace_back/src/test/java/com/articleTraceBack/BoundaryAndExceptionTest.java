@@ -128,7 +128,7 @@ public class BoundaryAndExceptionTest {
 
         // 此前这里是 int categoryId = article.getCategoryId() → 拆箱 NPE → 500，
         // 而且该行位于重名校验之前，连内容类报错都走不到
-        Result<String> result = assertDoesNotThrow(() -> articleController.addArticle(article, null),
+        Result<Map<String, Object>> result = assertDoesNotThrow(() -> articleController.addArticle(article, null),
                 "缺少分类时应当返回提示而不是抛 NPE");
 
         assertEquals(1, result.getCode(), "应当返回失败");

@@ -18,9 +18,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/article")
@@ -73,8 +75,8 @@ public class ArticleController {
      * 文章却没提交成功所留下的孤儿对象。</p>
      */
     @PostMapping("/add")
-    public Result<String> addArticle(@RequestPart("article") @Validated Article article,
-                                     @RequestPart(value = "cover", required = false) MultipartFile cover) {
+    public Result<Map<String, Object>> addArticle(@RequestPart("article") @Validated Article article,
+                                                  @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         int uid = (int) userInfo.get("id");
@@ -82,11 +84,8 @@ public class ArticleController {
         String articleTitle = article.getTitle();
         String content = article.getTitle() + article.getContent();
         String cleanContent = RichTextCleaner.cleanToPlainText(content);
+        // 命中违禁词不再直接驳回：转为「落待审 + 打标」，由站长优先审核（见 applySensitiveMark）
         List<AhoCorasickUtil.Match> matches = articleService.containsSensitive(cleanContent);
-        if (!matches.isEmpty()) {
-            error.put("content", "文章标题/内容包含违规词！");
-            return Result.error(error);
-        }
         // 不拆箱：此前写成 int 接收，请求不带 categoryId 会直接 NPE 500
         Integer categoryId = article.getCategoryId();
         if (categoryId == null) {
@@ -107,10 +106,16 @@ public class ArticleController {
                 error.put("state", "非合理值！");
                 return Result.error(error);
             }
+            // 命中违禁词一律转待审，站长也不例外——站长是唯一能改词库的人，
+            // 只有让命中结果落进他能看见的审核队列，误伤才能反馈回词表。
+            if (!matches.isEmpty()) {
+                target = ArticleService.STATE_PENDING;
+            }
             article.setState(target);
+            applySensitiveMark(article, matches);
             try {
                 if (articleService.articleAddOrUpdate(article, 0, cover, username)) {
-                    return Result.success();
+                    return Result.success(savedResult(article, (int) userInfo.get("type")));
                 }
             } catch (DuplicateKeyException e) {
                 // 并发下两个请求可能同时通过查重，由唯一索引 uk_user_title 兜底
@@ -137,9 +142,9 @@ public class ArticleController {
 
     /** 更新文章。封面随本次请求一起提交；不传 cover 时按 {@code article.coverImg} 决定保留还是清空。 */
     @PatchMapping("/update/{id}")
-    public Result<String> update(@PathVariable("id") int id,
-                                 @RequestPart("article") @Validated Article article,
-                                 @RequestPart(value = "cover", required = false) MultipartFile cover) {
+    public Result<Map<String, Object>> update(@PathVariable("id") int id,
+                                              @RequestPart("article") @Validated Article article,
+                                              @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
         Article art = articleService.findArticleByIdWithEntity(id);
         if (art == null) {
@@ -154,11 +159,8 @@ public class ArticleController {
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
+            // 同新增：命中不再驳回，只影响目标状态与标记
             List<AhoCorasickUtil.Match> matches = articleService.containsSensitive(cleanContent);
-            if (!matches.isEmpty()) {
-                error.put("content", "文章标题/内容包含违规词！");
-                return Result.error(error);
-            }
             // 同上：不能直接拆箱，缺失时要给明确提示而不是 500
             Integer categoryId = article.getCategoryId();
             if (categoryId == null) {
@@ -185,14 +187,19 @@ public class ArticleController {
                     error.put("state", "非合理值！");
                     return Result.error(error);
                 }
+                // 命中违禁词的流转目标固定为待审（站长也一样），再交给状态机判断该流转是否合法
+                if (!matches.isEmpty()) {
+                    target = ArticleService.STATE_PENDING;
+                }
                 if (!articleService.canTransfer(art.getState(), target, roleType)) {
                     error.put("state", "当前文章状态不允许该操作！");
                     return Result.error(error);
                 }
                 article.setState(target);
+                applySensitiveMark(article, matches);
                 try {
                     if (articleService.articleAddOrUpdate(article, 1, cover, username)) {
-                        return Result.success();
+                        return Result.success(savedResult(article, roleType));
                     }
                 } catch (DuplicateKeyException e) {
                     error.put("title", "你已写过同名文章！");
@@ -230,6 +237,59 @@ public class ArticleController {
         return (roleType == ArticleService.ROLE_MASTER)
                 ? ArticleService.STATE_PUBLISHED
                 : ArticleService.STATE_PENDING;
+    }
+
+    /**
+     * 落「命中违禁词」标记。
+     *
+     * <p>每次写入都要重算：作者把命中的词改掉后重投，标记必须跟着回 0，
+     * 否则这篇会永远排在待审列表最前面。</p>
+     */
+    private void applySensitiveMark(Article article, List<AhoCorasickUtil.Match> matches) {
+        if (matches.isEmpty()) {
+            article.setSensitiveHit(0);
+            article.setSensitiveWords(null);
+            return;
+        }
+        article.setSensitiveHit(1);
+        article.setSensitiveWords(joinKeywords(matches));
+    }
+
+    /** 命中的词去重后拼成顿号分隔的一行，超长截断——数据库列只有 varchar(255)。 */
+    private String joinKeywords(List<AhoCorasickUtil.Match> matches) {
+        Set<String> keywords = new LinkedHashSet<>();
+        for (AhoCorasickUtil.Match match : matches) {
+            keywords.add(match.keyword);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String keyword : keywords) {
+            if (sb.length() + keyword.length() > 250) {
+                sb.append('…');
+                break;
+            }
+            if (!sb.isEmpty()) {
+                sb.append('、');
+            }
+            sb.append(keyword);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 保存成功后的回执：告诉前端这次落到了哪个状态。
+     *
+     * <p>命中词只回给站长——普通作者连「命中了」都不该知道，否则他会拿词表逐条试探。
+     * 前端据此只对站长弹提示。</p>
+     */
+    private Map<String, Object> savedResult(Article article, int roleType) {
+        boolean hit = article.getSensitiveHit() != null && article.getSensitiveHit() == 1;
+        Map<String, Object> data = new HashMap<>();
+        data.put("state", article.getState());
+        data.put("sensitiveHit", hit);
+        if (hit && roleType == ArticleService.ROLE_MASTER) {
+            data.put("sensitiveWords", article.getSensitiveWords());
+        }
+        return data;
     }
 
     @DeleteMapping("/delete")

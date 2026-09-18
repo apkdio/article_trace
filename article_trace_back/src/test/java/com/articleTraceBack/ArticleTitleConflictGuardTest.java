@@ -97,7 +97,7 @@ public class ArticleTitleConflictGuardTest {
         edit.setCategoryId(categoryId);
         edit.setState(ArticleService.STATE_DRAFT);
 
-        Result<String> result = articleController.update(target, edit, null);
+        Result<Map<String, Object>> result = articleController.update(target, edit, null);
 
         // 返回重名提示（Controller 的失败响应把字段错误装在 Map 里返回）
         assertEquals(1, result.getCode(), "应当返回失败码");

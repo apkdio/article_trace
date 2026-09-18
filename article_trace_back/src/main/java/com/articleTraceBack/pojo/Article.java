@@ -10,6 +10,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class Article {
@@ -40,6 +41,12 @@ public class Article {
 
     private Long views;
 
+    /** 是否命中违禁词（1 命中）—— 只回给审核方，见 {@link #hideSensitiveDetail} */
+    private Integer sensitiveHit;
+
+    /** 命中的违禁词，顿号分隔 —— 只回给审核方 */
+    private String sensitiveWords;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;//更新时间
 
@@ -54,4 +61,22 @@ public class Article {
 
     @TableField(exist = false)
     private String coverThumbSrc;
+
+    /**
+     * 清掉只该给审核方看的字段。
+     *
+     * <p>作者与公众的响应里不能留下“命中违禁词”的痕迹——尤其是 {@code sensitiveWords}，
+     * 那等于把词库逐条告诉作者，他便可以绕着写。面向非站长的返回必须先过一遍这里。</p>
+     */
+    public static void hideSensitiveDetail(List<Article> articles) {
+        if (articles == null) {
+            return;
+        }
+        for (Article article : articles) {
+            if (article != null) {
+                article.setSensitiveHit(null);
+                article.setSensitiveWords(null);
+            }
+        }
+    }
 }

@@ -197,6 +197,19 @@ const handleEditorBlur = () => {
   })
 }
 
+// 命中违禁词时后端不再驳回，而是转入待审；只有站长会看到提示——
+// 对普通作者保持静默，否则等于把词表逐条告诉他。
+const alertSensitiveHit = (data) => {
+  if (!data || !data.sensitiveHit || userInfoStore().type !== 0) return
+  const words = data.sensitiveWords ? `：${data.sensitiveWords}` : ''
+  ElMessageBox.alert(
+      `标题或正文命中了违禁词${words}。这篇文章已转入「待审核」，可在筛选「待审核」中处理。`,
+      "命中违禁词",
+      {confirmButtonText: "知道了", type: "warning"}
+  ).catch(() => {
+  })
+}
+
 const addOrUpdateArticle = async (state) => {
   errorList.value = {}
   if (state !== 0) {
@@ -209,6 +222,7 @@ const addOrUpdateArticle = async (state) => {
         const resultData = await addArticleService(articleModel.value, pendingCover.value)
         if (resultData.code === 0) {
           ElMessage.success("添加成功！")
+          alertSensitiveHit(resultData.data)
           clearModel()
           await getArticles()
         } else {
@@ -227,6 +241,7 @@ const addOrUpdateArticle = async (state) => {
         const resultData = await updateArticleService(articleModel.value, pendingCover.value)
         if (resultData.code === 0) {
           ElMessage.success("修改成功！")
+          alertSensitiveHit(resultData.data)
           clearModel()
           await getArticles()
         } else {
@@ -449,6 +464,10 @@ const assessArticle = async (id, state) => {
               <el-tag v-else-if="scope.row.state === 2" type="warning" disable-transitions>待审核</el-tag>
               <el-tag v-else-if="scope.row.state === 3" type="danger" disable-transitions>已驳回</el-tag>
               <el-tag v-else type="info">未知状态</el-tag>
+              <!-- 命中标记只由后端回给站长：作者侧拿不到这个字段，因此不会显示 -->
+              <el-tag v-if="scope.row.sensitiveHit === 1" type="danger" effect="dark" disable-transitions
+                      style="margin-left: 6px">命中违禁词
+              </el-tag>
             </template>
           </el-table-column>
 
@@ -582,6 +601,17 @@ const assessArticle = async (id, state) => {
             <el-tag v-else type="info" size="small" round effect="dark">未知状态</el-tag>
           </div>
         </div>
+
+        <el-alert
+            v-if="previewData.sensitiveHit === 1"
+            type="error"
+            :closable="false"
+            show-icon
+            class="sensitive-alert"
+            title="命中违禁词：已取消直接发布，转入待审核并排在最前"
+        >
+          <template #default>命中的词：{{ previewData.sensitiveWords || '（未记录）' }}</template>
+        </el-alert>
 
         <el-divider/>
         <div class="article-content ql-editor" v-html="previewData.content"></div>

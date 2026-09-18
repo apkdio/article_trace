@@ -39,6 +39,8 @@ CREATE TABLE `article` (
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   `views` bigint DEFAULT '0' COMMENT '阅览数',
+  `sensitive_hit` tinyint(1) NOT NULL DEFAULT '0' COMMENT '命中违禁词需优先审核: 0-未命中 1-命中',
+  `sensitive_words` varchar(255) DEFAULT NULL COMMENT '命中的违禁词，顿号分隔',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_title` (`create_user`,`title`),
   KEY `fk_article_category` (`category_id`),

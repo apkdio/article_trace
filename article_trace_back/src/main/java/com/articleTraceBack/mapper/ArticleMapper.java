@@ -90,7 +90,8 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "or (#{searchType} =1 and u.nickname like concat('%',#{search},'%')))")
     int findAllArticlesCountInPublic(Integer categoryId, Integer state, String search, Integer searchType, String nickName);
 
-    @Select("select a.*,IFNULL(c.category_name,'未分类') as categoryName,u.nickname as createUserName " +
+    @Select("<script>" +
+            "select a.*,IFNULL(c.category_name,'未分类') as categoryName,u.nickname as createUserName " +
             "from article a left join user u on a.create_user = u.id " +
             "left join category c on a.category_id = c.id " +
             "where " +
@@ -109,11 +110,16 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} = 1 and u.nickname like concat('%',#{search},'%')))" +
             "order by " +
+            // 只有筛「待审核」时命中违禁词的才排前面：审核动作集中在这个视图，
+            // 其余视图（全部 / 已发布…）保持原时间序，免得看起来像排序坏了。
+            // 分页在前端做不了这层排序，必须在这里排。
+            "<if test='state != null and state == 2'>a.sensitive_hit desc,</if>" +
             "case " +
             "when a.update_time is not null then a.update_time " +
             "else a.create_time " +
             "end desc " +
-            "limit #{offset},#{pageSize}")
+            "limit #{offset},#{pageSize}" +
+            "</script>")
     List<Article> findAllArticlesInMaster(int pageNum, int pageSize,
                                           Integer categoryId, Integer state, Integer userId,
                                           Integer offset, String search, Integer searchType, String nickName);

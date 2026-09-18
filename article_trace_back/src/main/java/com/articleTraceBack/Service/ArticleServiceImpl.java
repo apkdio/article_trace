@@ -187,6 +187,8 @@ public class ArticleServiceImpl implements ArticleService {
                 article.setCoverImg("");
             }
         }
+        // 这是作者看自己的列表，命中词不能给
+        Article.hideSensitiveDetail(allArticles);
         pageBean.setItems(allArticles);
         return pageBean;
     }
@@ -207,6 +209,9 @@ public class ArticleServiceImpl implements ArticleService {
         if (article == null) {
             return null;
         }
+        // 该实体既服务详情页也服务内部校验，但调用方都不需要「命中违禁词」这两个字段，
+        // 一律清掉——详情接口对所有人开放，不能从这里反推词库
+        Article.hideSensitiveDetail(List.of(article));
         article.setContent(readCleanContent(article.getContent()));
         if (!Objects.equals(article.getCoverImg(), "")) {
             article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
@@ -291,6 +296,8 @@ public class ArticleServiceImpl implements ArticleService {
             Long v = article.getViews();
             article.setViews(v != null ? v : 0L);
         }
+        // 公开列表同理：命中词只给审核方
+        Article.hideSensitiveDetail(allArticles);
         pageBean.setItems(allArticles);
         return pageBean;
     }
