@@ -457,6 +457,13 @@ notification:
 - 场景常量隔离：`SCENE_REGISTER`（注册）/ `SCENE_RESET`（找回密码），Redis key 为 `email:code:{scene}:{email}`。
 - **6 位数字、5 分钟有效**；同一邮箱 **60 秒发送冷却**（`setIfAbsent` 抢占，防止刷验证码）。
 - **一次性消费**：只有比对成功才删除 key，**输错不消费**（5 分钟内可反复重填，对手填场景更友好）。
+- **失败计数 + 作废 + 锁定**（堵撞库）：输错累计 **5 次**即**删除验证码**并锁定该邮箱 **5 分钟**。三点缺一不可——
+  - 必须**删码**：留着的话第 6 次撞对依然会通过，计数等于白加；
+  - 必须**独立锁键**：借验证码剩余的 TTL 当锁，锁的时长会随「第几次才用尽」漂移；
+  - **`send` 也要认锁**：只锁 verify 不锁 send，重新发一枚码就把计数与作废全绕过去了。
+- **来源限流**：同一 IP+UA 每分钟最多 **30 次**校验（`email:code:client:{key}`），防止脚本换着邮箱扫。
+- 上述「来源限流 → 锁定判定 → 比对 → 计数 → 作废/上锁」**全在一次 Redis Lua 内完成**，靠 Redis 单线程执行保证并发唯一性（在 Java 里读-改-写会两条线程同时读到同一个计数值）；顺带也消掉了「`INCR` 与 `EXPIRE` 之间进程退出 → 计数永不过期」那个窗口。
+- 结果码：`CODE_OK(1)` / `CODE_WRONG(0)` / `CODE_EXHAUSTED(-1)` / `CODE_LOCKED(-2)` / `CODE_RATE_LIMITED(-3)`，调用方据此给出带剩余时长的提示。
 
 **② 图形验证码 `CaptchaService`**（easy-captcha + Redis）
 
@@ -830,7 +837,7 @@ python scripts/init_test_db.py
 | `ViewSyncReliabilityTest` | 浏览量同步：残留不被覆盖、无新数据时也消费、失败保留待重放 |
 | `ArticleTitleConflictGuardTest` | 串行重名在 Controller 层被拦截，不触碰正文文件 |
 | `AuthorApplyConcurrencyTest` | 并发审批只有一方成功；并发提交只留一条待审 |
-| `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次 |
+| `EmailCodeServiceTest` | 验证码发送 / 冷却 / 一次性消费；并发消费只成功一次；**输错 5 次后作废 + 锁定，此时拿正确的码也进不去**，且锁定期间不允许重发 |
 | `UserCheckPassTest` | 用户不存在（或并发注销）时校验返回 false，而非抛异常 |
 | `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |

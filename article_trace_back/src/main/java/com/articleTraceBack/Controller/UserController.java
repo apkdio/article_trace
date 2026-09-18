@@ -105,7 +105,11 @@ public class UserController {
         } else {
             scene = EmailCodeService.SCENE_REGISTER;
         }
-        // 4. 发码
+        // 4. 发码（锁定中的邮箱会被 send 拒绕，这里先给出带剩余时长的提示）
+        long lockedSeconds = emailCodeService.lockRemainingSeconds(email, scene);
+        if (lockedSeconds > 0) {
+            return Result.error("尝试次数过多，请 " + minutesOf(lockedSeconds) + " 分钟后再试！");
+        }
         if (!emailCodeService.send(email, scene)) {
             return Result.error("发送过于频繁，请稍后再试！");
         }
@@ -117,7 +121,8 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public Result<String> register(@RequestBody @Validated RegisterUserPojo user) {
+    public Result<String> register(@RequestBody @Validated RegisterUserPojo user,
+                                   HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         String username = user.getUsername();
         String password = user.getPassword();
@@ -138,9 +143,11 @@ public class UserController {
             error.put("email", "该邮箱已被注册！");
             return Result.error(error);
         }
-        // 邮箱验证码：一次性，校验成功即失效
-        if (!emailCodeService.verify(email, EmailCodeService.SCENE_REGISTER, emailCode)) {
-            error.put("emailCode", "验证码错误或已过期！");
+        // 邮箱验证码：一次性；输错会累计次数，用尽即作废该码并锁定邮箱
+        int codeResult = emailCodeService.verify(email, EmailCodeService.SCENE_REGISTER, emailCode,
+                IPUtil.mixOf(request));
+        if (codeResult != EmailCodeService.CODE_OK) {
+            error.put("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_REGISTER));
             return Result.error(error);
         }
         // 注册一律为读者；成为作者请走「申请成为作者」
@@ -235,6 +242,27 @@ public class UserController {
         error.put("needCaptcha", failures >= LoginAttemptService.CAPTCHA_THRESHOLD);
         error.put("remaining", Math.max(0, LoginAttemptService.BLOCK_THRESHOLD - failures));
         return Result.error(error);
+    }
+
+    /** 把验证码校验的结果码翻成给用户看的话；“次数用尽”与“锁定中”都要把等待时长说清楚 */
+    private String emailCodeMessage(int result, String email, String scene) {
+        return switch (result) {
+            case EmailCodeService.CODE_EXHAUSTED ->
+                    "验证码错误次数过多，该验证码已作废；请 "
+                            + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
+                            + " 分钟后重新获取！";
+            case EmailCodeService.CODE_LOCKED ->
+                    "该邮箱已被暂时锁定，请 "
+                            + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
+                            + " 分钟后再试！";
+            case EmailCodeService.CODE_RATE_LIMITED -> "操作过于频繁，请稍后再试！";
+            default -> "验证码错误或已过期！";
+        };
+    }
+
+    /** 秒数向上取整成分钟，至少算 1 分钟——“请 0 分钟后再试”比不说还糟 */
+    private long minutesOf(long seconds) {
+        return Math.max(1, (seconds + 59) / 60);
     }
 
     @GetMapping("/userInfo")
@@ -355,7 +383,8 @@ public class UserController {
     }
 
     @PostMapping("/forgetPass")
-    public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo) {
+    public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo,
+                                     HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         String email = passInfo.getEmail();
         String emailCode = passInfo.getEmailCode();
@@ -366,9 +395,11 @@ public class UserController {
             error.put("confirmPassword", "两次密码不一致！");
             return Result.error(error);
         }
-        // 邮箱验证码（一次性，校验成功即失效）
-        if (!emailCodeService.verify(email, EmailCodeService.SCENE_RESET, emailCode)) {
-            error.put("emailCode", "验证码错误或已过期！");
+        // 邮箱验证码（一次性；输错累计次数，用尽即作废并锁定）
+        int codeResult = emailCodeService.verify(email, EmailCodeService.SCENE_RESET, emailCode,
+                IPUtil.mixOf(request));
+        if (codeResult != EmailCodeService.CODE_OK) {
+            error.put("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_RESET));
             return Result.error(error);
         }
         User user = userService.findUserByEmail(email);

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Year;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -39,19 +40,52 @@ public class EmailCodeServiceImpl implements EmailCodeService {
 
     private static final String KEY_CODE = "email:code:%s:%s";
     private static final String KEY_COOLDOWN = "email:code:cooldown:%s:%s";
+    /** 同一邮箱在同一场景下的连续失败次数 */
+    private static final String KEY_FAIL = "email:code:fail:%s:%s";
+    /** 失败超阈值后的邮箱锁定；独立于验证码寿命，否则锁的时长会随「第几次才用尽」漂移 */
+    private static final String KEY_LOCK = "email:code:lock:%s:%s";
+    /** 同一来源（IP+UA）的请求计数，防止脚本换着邮箱扫 */
+    private static final String KEY_CLIENT = "email:code:client:%s";
+
+    /** 连续失败达到该次数即作废验证码并锁定邮箱 */
+    private static final long FAIL_THRESHOLD = 5;
+    /** 锁定与失败计数的存活时间（秒），与验证码有效期对齐 */
+    private static final long LOCK_SECONDS = CODE_TTL_MINUTES * 60;
+    /** 同一来源的请求窗口（秒）与窗口内上限 */
+    private static final long CLIENT_WINDOW_SECONDS = 60;
+    private static final long CLIENT_THRESHOLD = 30;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
     /**
-     * 原子校验：只有取出的值与传入值相同才删除该 key。
+     * 一次 Lua 完成「来源限流 → 锁定判定 → 比对 → 计数 → 作废 / 上锁」。
      *
-     * <p>等价于「GET 比对成功后 DEL」，但整个过程在 Redis 内一次完成，
-     * 避免并发下同一个验证码被两个请求各消费一次；
-     * 同时保留「输错不消费」的语义（错误的尝试不销毁验证码）。</p>
+     * <p>为什么整段塞进脚本：Redis 执行 Lua 是单线程串行的，脚本内部天然互斥，
+     * 所以并发下计数不会丢、验证码只会被消费一次；在 Java 里读-改-写则会两条线程同时读到
+     * 同一个计数值。顺带也没有了「INCR 与 EXPIRE 之间进程退出 → 计数永不过期」的窗口。</p>
+     *
+     * <p>返回码与 {@link EmailCodeService} 的 CODE_* 一致：1 通过 / 0 错误 / -1 用尽 / -2 锁定 / -3 来源限流。</p>
      */
-    private static final DefaultRedisScript<Long> VERIFY_AND_DELETE_SCRIPT = new DefaultRedisScript<>(
-            "local v = redis.call('GET', KEYS[1]) "
-                    + "if v and v == ARGV[1] then redis.call('DEL', KEYS[1]) return 1 end "
+    private static final DefaultRedisScript<Long> VERIFY_SCRIPT = new DefaultRedisScript<>(
+            // KEYS[1] 验证码  KEYS[2] 失败计数  KEYS[3] 邮箱锁定  KEYS[4] 来源计数
+            // ARGV[1] 用户输入  ARGV[2] 计数TTL  ARGV[3] 失败阈值  ARGV[4] 锁定TTL
+            // ARGV[5] 来源阈值  ARGV[6] 来源窗口
+            "local hits = redis.call('INCR', KEYS[4]) "
+                    + "if hits == 1 then redis.call('EXPIRE', KEYS[4], ARGV[6]) end "
+                    + "if hits > tonumber(ARGV[5]) then return -3 end "
+                    // 先判限流再碰邮箱维度的计数：扫描行为不该把别人的账号锁掉
+                    + "if redis.call('EXISTS', KEYS[3]) == 1 then return -2 end "
+                    + "local v = redis.call('GET', KEYS[1]) "
+                    + "if not v then return 0 end "
+                    + "if v == ARGV[1] then "
+                    + "  redis.call('DEL', KEYS[1]) redis.call('DEL', KEYS[2]) return 1 end "
+                    + "local n = redis.call('INCR', KEYS[2]) "
+                    + "if n == 1 then redis.call('EXPIRE', KEYS[2], ARGV[2]) end "
+                    + "if n >= tonumber(ARGV[3]) then "
+                    // 必须删码：留着的话第 6 次撞对仍然会通过，计数就白加了
+                    + "  redis.call('DEL', KEYS[1]) "
+                    + "  redis.call('SET', KEYS[3], '1', 'EX', ARGV[4]) "
+                    + "  return -1 end "
                     + "return 0",
             Long.class);
 
@@ -78,6 +112,13 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         try {
+            // 0. 锁定检查：连续失败超阈值后，连「重新获取」也挡住。
+            //    只锁 verify 不锁 send 等于没锁——重新发一枚码，计数与作废就都绕过去了。
+            if (lockRemainingSeconds(normalized, scene) > 0) {
+                log.info("email code rejected by lock: email={}, scene={}", normalized, scene);
+                return false;
+            }
+
             // 1. 冷却检查（防止刷验证码）
             Boolean acquired = stringRedisTemplate.opsForValue()
                     .setIfAbsent(String.format(KEY_COOLDOWN, scene, normalized), "1",
@@ -130,22 +171,39 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     }
 
     @Override
-    public boolean verify(String email, String scene, String code) {
+    public int verify(String email, String scene, String code, String clientKey) {
         if (email == null || email.isBlank() || code == null || code.isBlank()
                 || scene == null || scene.isBlank()) {
-            return false;
+            return CODE_WRONG;
         }
         String normalized = email.trim().toLowerCase(Locale.ROOT);
         try {
-            String key = String.format(KEY_CODE, scene, normalized);
-            // 一次性：匹配成功才失效；输错不消费（可在有效期内重填）
-            Long matched = stringRedisTemplate.execute(
-                    VERIFY_AND_DELETE_SCRIPT, java.util.Collections.singletonList(key), code.trim());
-            return matched != null && matched == 1L;
+            Long result = stringRedisTemplate.execute(VERIFY_SCRIPT,
+                    List.of(String.format(KEY_CODE, scene, normalized),
+                            String.format(KEY_FAIL, scene, normalized),
+                            String.format(KEY_LOCK, scene, normalized),
+                            String.format(KEY_CLIENT, (clientKey == null || clientKey.isBlank())
+                                    ? "unknown" : clientKey)),
+                    code.trim(),
+                    String.valueOf(LOCK_SECONDS), String.valueOf(FAIL_THRESHOLD),
+                    String.valueOf(LOCK_SECONDS), String.valueOf(CLIENT_THRESHOLD),
+                    String.valueOf(CLIENT_WINDOW_SECONDS));
+            return (result == null) ? CODE_WRONG : result.intValue();
         } catch (Exception e) {
             log.error("verify email code failed: email={}, scene={}", normalized, scene, e);
-            return false;
+            return CODE_WRONG;
         }
+    }
+
+    @Override
+    public long lockRemainingSeconds(String email, String scene) {
+        if (email == null || email.isBlank() || scene == null || scene.isBlank()) {
+            return 0;
+        }
+        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        Long ttl = stringRedisTemplate.getExpire(String.format(KEY_LOCK, scene, normalized),
+                TimeUnit.SECONDS);
+        return (ttl == null || ttl < 0) ? 0 : ttl;
     }
 
     private String randomCode() {
