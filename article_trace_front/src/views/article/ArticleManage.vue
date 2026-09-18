@@ -211,6 +211,27 @@ const alertSensitiveHit = (data) => {
   })
 }
 
+/**
+ * 处理后端返回的字段错误。
+ *
+ * title 会显示在标题输入框下方，其余字段（content / state / categoryId …）
+ * 页面上根本没有可绑的位置——只塞进 errorList 就等于静默丢弃，
+ * 用户点完提交什么都不会发生，也看不到为什么。这里统一补一次提示。
+ */
+const handleSubmitError = (message) => {
+  const msg = message || {}
+  errorList.value = msg
+  const shown = []
+  Object.keys(msg).forEach((field) => {
+    if (field === 'title') return          // 已有 :error 绑定，就地显示
+    const text = msg[field]
+    if (text && !shown.includes(text)) shown.push(text)
+  })
+  if (shown.length) {
+    ElMessage.error(shown.join('；'))
+  }
+}
+
 const addOrUpdateArticle = async (state) => {
   errorList.value = {}
   if (state !== 0) {
@@ -227,12 +248,7 @@ const addOrUpdateArticle = async (state) => {
           clearModel()
           await getArticles()
         } else {
-          if (resultData.message.content) {
-            ElMessage.error(resultData.message.content)
-          } else if (resultData.message.error) {
-            ElMessage.error("修改失败！")
-          }
-          else{errorList.value = resultData.message || {}}
+          handleSubmitError(resultData.message)
         }
       } catch (error) {
         ElMessage.error("添加失败！服务端响应失败！")
@@ -246,12 +262,7 @@ const addOrUpdateArticle = async (state) => {
           clearModel()
           await getArticles()
         } else {
-          if (resultData.message.content) {
-            ElMessage.error(resultData.message.content)
-          } else if (resultData.message.error) {
-            ElMessage.error("修改失败！")
-          }
-          else{errorList.value = resultData.message || {}}
+          handleSubmitError(resultData.message)
         }
       } catch (error) {
         ElMessage.error("修改失败！服务端响应失败！")
