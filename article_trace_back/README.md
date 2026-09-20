@@ -495,6 +495,42 @@ notification:
 - 失败响应额外带 `needCaptcha`（下次是否要图形码）与 `remaining`（距离锁定还剩几次），前端据此提示与倒计时。
 - 已知取舍：纯 IP+UA 计数在 NAT 共享出口（公司网络等）下会误伤同 UA 的旁人，见 `docs/TODO.md`。
 
+### 13. 站点功能开关（`site.*` / 单用户态）
+
+把站点收敛成**个人博客形态**的一组开关，服务于个人 ICP 备案口径——个人备案要求网站内容不涉及
+企业、团体、论坛，而「开放注册 + 多作者供稿 + 评论」正好踩在这三条上。
+
+| 配置项 | 默认 | 作用 |
+|---|---|---|
+| `site.register-enabled` | `true` | 注册接口 + 发码接口的 `register` 场景 |
+| `site.comment-enabled` | `true` | 新增评论（列表接口不动，历史评论照常展示）|
+| `site.author-apply-enabled` | `true` | 提交作者申请 |
+| `site.logo-enabled` | `true` | 首页 / 详情页页头的 logo（线上通常关掉：logo 上是「文迹」，与备案名同现容易被认为不一致）|
+| `site.display-name` | `文迹` | 浏览器标题与页脚版权行用的站名（线上填备案的网站名称）|
+
+**默认全开 = 本地开发的多用户态**；线上由 `.env` 注入 `false` 切换，**代码不分叉**：
+
+```
+SITE_REGISTER_ENABLED=false
+SITE_COMMENT_ENABLED=false
+SITE_AUTHOR_APPLY_ENABLED=false
+SITE_LOGO_ENABLED=false
+SITE_DISPLAY_NAME=文迹小站
+```
+
+**关闭要做两层，缺一不可**：接口拒绝（上面四个入口）+ 界面隐藏（前端读 `GET /site/features`
+决定要不要渲染）。只做接口的话，用户是在界面上点了之后才吃一句报错；只做界面则形同虚设。
+
+- 配置绑定见 `config/SiteFeatureProperties`（照 `NotificationProperties` 的写法，用内联默认值兜底）
+- `GET /site/features` 是**免登录**公开接口，返回上述开关的当前值。放行写在 `WebConfig` 里而不是
+  yml——理由和 `TokenCheck` 硬编码放行 `/reader/**` 一样：这类「结构上就该公开」的路径不随环境变化，
+  写进配置只会平白多出四处要同步的地方
+- 前端统一走 `api/site.js`：原生 `fetch`（不用 axios 实例——登录页和文章页在未登录时也会加载，
+  axios 拦截器碰到 401 会触发全局登出跳转，那不该发生）、结果缓存、**探测失败按「全开」兜底**
+  （宁可多显示一个入口，后端还会拒；也不要因为一次网络抖动把本地开发的功能全藏起来）
+- 测试环境不配这段，走代码默认值（多用户态）；要覆盖关闭态的用例用
+  `@SpringBootTest(properties = "site.register-enabled=false")` 单独指定
+
 ## 数据库设计
 
 数据库 `article_trace`，共 8 张表（见根目录 `article_trace.sql`）。

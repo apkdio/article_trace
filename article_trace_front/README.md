@@ -38,6 +38,7 @@ article_trace_front/
     │   ├── avatar.js               #   头像审核（查自己的待审状态 + 站长侧列表/审批）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
+    │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
     ├── assets/                     # 静态资源
     │   ├── main.scss               #   全局样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
