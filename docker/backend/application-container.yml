@@ -8,8 +8,12 @@
 spring:
   servlet:
     multipart:
-      max-file-size: 2MB
-      max-request-size: 2MB
+      # 单文件上限只约束「封面/头像」这类文件部件；应用层还有更严的 2MB 校验，会给出友好提示
+      max-file-size: 3MB
+      # 整个 multipart 请求的上限 = 正文 JSON + 封面。原先的 2MB 会让稍长的文章直接保存失败
+      # （2026-09-17 线上 PATCH /api/article/update/65 就是这个原因）。必须小于 nginx 的
+      # client_max_body_size，否则用户看到的是裸 413 页而不是应用层提示。
+      max-request-size: 10MB
   data:
     redis:
       database: 0

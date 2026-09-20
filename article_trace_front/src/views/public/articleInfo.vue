@@ -106,7 +106,7 @@ const AddComment = async () => {
     if (res.code === 0) {
       ElMessage.success("发表成功")
       commentModel.value.content = ""
-      commentConditions.value.pageNum = 1
+      commentConditions.value.pageNum = 1`m`
       await getComments()
     } else {
       if (res.message.error) {

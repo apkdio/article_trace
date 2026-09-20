@@ -20,6 +20,12 @@ instance.interceptors.response.use(
     err => {
         // 检查 err.response 是否存在
         if (err.response) {
+            // 413：请求体超过 nginx / Spring 的上限。默认只会提示「网络错误」，
+            // 用户猜不到是内容太大——长文里粘了图片（编辑器会转成 base64）时最容易踩到。
+            if (err.response.status === 413) {
+                ElMessage.error("内容过大，未能保存。请精简正文，或把图片改用封面 / 外链。")
+                return Promise.reject(err)
+            }
             // 401 未授权错误
             if (err.response.status === 401) {
                 if (!isAuthHandled()) {
