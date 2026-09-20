@@ -46,9 +46,14 @@ const canComment = computed(() => {
 
 // 评论开关：线上做个人备案时会关掉「新增」，历史评论仍照常展示（列表和总数不动）
 const commentEnabled = ref(true)
+// 站名与 logo 开关：同上，线上换备案名、页头不露 logo
+const siteName = ref('文迹')
+const logoEnabled = ref(true)
 onMounted(async () => {
   const features = await getSiteFeatures()
   commentEnabled.value = features.commentEnabled
+  siteName.value = features.displayName
+  logoEnabled.value = features.logoEnabled
 })
 
 const searchCondition = ref({
@@ -186,7 +191,7 @@ const pushSearch = (type) => {
 <template>
   <div class="front-layout">
     <el-header class="custom-header">
-      <div class="logo-area" @click="router.push({name: 'PublicHome'})">
+      <div class="logo-area" v-if="logoEnabled" @click="router.push({name: 'PublicHome'})">
         <div class="logo-img"></div>
       </div>
       <div class="spacer-div"></div>
@@ -333,7 +338,7 @@ const pushSearch = (type) => {
         </el-aside>
       </el-container>
 
-      <el-footer class="custom-footer">© {{ new Date().getFullYear() }} 文迹 · MIT License</el-footer>
+      <el-footer class="custom-footer">© {{ new Date().getFullYear() }} {{ siteName }} · MIT License</el-footer>
     </el-container>
   </div>
 </template>

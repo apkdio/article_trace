@@ -242,6 +242,9 @@ services:
       SITE_REGISTER_ENABLED: ${SITE_REGISTER_ENABLED:-true}
       SITE_COMMENT_ENABLED: ${SITE_COMMENT_ENABLED:-true}
       SITE_AUTHOR_APPLY_ENABLED: ${SITE_AUTHOR_APPLY_ENABLED:-true}
+      # 站点显示名（浏览器标题与页脚）与 logo 开关
+      SITE_DISPLAY_NAME: ${SITE_DISPLAY_NAME:-文迹}
+      SITE_LOGO_ENABLED: ${SITE_LOGO_ENABLED:-true}
       AGENT_HOST: agent
       AGENT_PORT: "50051"
     volumes:

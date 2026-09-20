@@ -11,7 +11,13 @@
 let cached = null
 
 /** 探测失败或字段缺失时的兜底：当作全开 */
-const ALL_ON = {registerEnabled: true, commentEnabled: true, authorApplyEnabled: true}
+const ALL_ON = {
+    registerEnabled: true,
+    commentEnabled: true,
+    authorApplyEnabled: true,
+    logoEnabled: true,
+    displayName: '文迹',
+}
 
 export async function getSiteFeatures() {
     if (cached) {

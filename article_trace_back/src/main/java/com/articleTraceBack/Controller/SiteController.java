@@ -35,6 +35,8 @@ public class SiteController {
         features.put("registerEnabled", siteFeatures.isRegisterEnabled());
         features.put("commentEnabled", siteFeatures.isCommentEnabled());
         features.put("authorApplyEnabled", siteFeatures.isAuthorApplyEnabled());
+        features.put("displayName", siteFeatures.getDisplayName());
+        features.put("logoEnabled", siteFeatures.isLogoEnabled());
         return Result.success(features);
     }
 }

@@ -4,6 +4,8 @@ site:
   register-enabled: true          # 注册接口 + 发码接口的 register 场景
   comment-enabled: true           # 新增评论（历史评论照常展示）
   author-apply-enabled: true      # 申请成为作者
+  display-name: 文迹              # 站点显示名（浏览器标题与页脚）；线上填备案的网站名称
+  logo-enabled: true              # 站内是否展示 logo（首页/详情页页头）；线上做备案时通常置 false
 
 spring:
   servlet:

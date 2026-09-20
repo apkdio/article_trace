@@ -19,6 +19,7 @@ import NotificationBell from "@/components/NotificationBell.vue";
 import {formatDate} from "@/utils/date.js";
 import TopArticlesList from "@/components/TopArticlesList.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
+import {getSiteFeatures} from "@/api/site.js";
 
 const loading = ref(true)
 const topArticleLoading = ref(true)
@@ -42,8 +43,16 @@ const articleList = ref([])
 
 const topArticles = ref()
 
+// 站名与 logo 由后端开关决定：线上做个人备案时页头不露 logo、站名换成备案名，
+// 避免与备案信息看起来不一致。本地不配就是原样（文迹 + 显 logo）
+const siteName = ref('文迹')
+const logoEnabled = ref(true)
+
 onMounted(async () => {
-  document.title = "文迹 - 让每一份文章都有迹可循"
+  const features = await getSiteFeatures()
+  siteName.value = features.displayName
+  logoEnabled.value = features.logoEnabled
+  document.title = `${siteName.value} - 让每一份文章都有迹可循`
   try {
     await loginCheckPublic()
   } catch (e) {
@@ -193,7 +202,7 @@ const searchArticleInWriter = (nickName) => {
 <template>
   <div class="front-layout">
     <el-header class="custom-header">
-      <div class="logo-area" @click="router.push({name: 'PublicHome'})">
+      <div class="logo-area" v-if="logoEnabled" @click="router.push({name: 'PublicHome'})">
         <div class="logo-img"></div>
       </div>
       <div class="spacer-div"></div>
@@ -345,7 +354,7 @@ const searchArticleInWriter = (nickName) => {
       </el-container>
 
       <el-footer class="custom-footer">
-        © {{ new Date().getFullYear() }} 文迹 · MIT License
+        © {{ new Date().getFullYear() }} {{ siteName }} · MIT License
       </el-footer>
     </el-container>
   </div>

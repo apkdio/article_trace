@@ -29,4 +29,15 @@ public class SiteFeatureProperties {
 
     /** 是否开放「申请成为作者」 */
     private boolean authorApplyEnabled = true;
+
+    /** 站点显示名（浏览器标题与页脚用它）；线上设成备案的网站名称 */
+    private String displayName = "文迹";
+
+    /**
+     * 站内是否展示 logo（首页与文章详情页的页头）。
+     *
+     * <p>线上做个人备案时通常置 false：logo 图上是「文迹」，而备案的网站名称另有叫法，
+     * 两者同时出现容易被认为「内容与备案信息不符」。藏起来最省事。</p>
+     */
+    private boolean logoEnabled = true;
 }

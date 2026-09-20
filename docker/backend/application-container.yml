@@ -10,6 +10,8 @@ site:
   register-enabled: ${SITE_REGISTER_ENABLED:true}
   comment-enabled: ${SITE_COMMENT_ENABLED:true}
   author-apply-enabled: ${SITE_AUTHOR_APPLY_ENABLED:true}
+  display-name: ${SITE_DISPLAY_NAME:文迹}
+  logo-enabled: ${SITE_LOGO_ENABLED:true}
 
 spring:
   servlet:
