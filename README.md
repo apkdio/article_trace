@@ -179,7 +179,7 @@ server {
     server_name example.com;
     ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
-    client_max_body_size 3m;               # 应用层上限 2MB，这层留余量（原因见 docker 容器内 nginx.conf）
+    client_max_body_size 11m;              # 必须大于后端的 max-request-size（10MB），否则刚超限的请求会先被这层拦成裸 413（正文 JSON + 封面走同一个 multipart）
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -234,6 +234,20 @@ certbot --nginx -d example.com -d files.example.com
 | `LLM_BASE_URL` | `http://<Ollama 机器>:11434/v1` | 默认编排不启本地 ollama，agent 会去连一个不存在的服务 |
 | `JWT_COOKIE_SECURE` | 上了 HTTPS 后置 `true` | 置 true 却没 HTTPS → Cookie 存不下，登录后一刷新就退出 |
 | `MAIL_LOGO_URL` | `https://example.com/logo2.png` | 邮件里 logo 位置裂图 |
+
+#### 2.1 可选：个人备案用的「单用户态」
+
+`.env` 里这三项**全设 false** 即把站点收敛成个人博客形态——不开放注册、不能新增评论、不能申请成为作者，
+用于满足个人 ICP 备案口径（个人备案不得涉及企业、团体、论坛）；不设或设 `true` = 多用户态，本地开发即如此。
+
+| 变量 | 默认 | 设为 `false` 的效果 |
+|---|---|---|
+| `SITE_REGISTER_ENABLED` | `true` | 关闭注册（发验证码接口的 register 场景一并关闭） |
+| `SITE_COMMENT_ENABLED` | `true` | 不能新增评论（历史评论照常展示） |
+| `SITE_AUTHOR_APPLY_ENABLED` | `true` | 关闭「申请成为作者」 |
+
+前端通过免登录接口 `GET /api/site/features` 读这三个值来隐藏入口，**后端还有一道拒绝**，两层都在才对。
+改完 `docker compose up -d backend frontend` 生效（环境变量在容器创建时固化）。
 
 #### 3. 启动
 
