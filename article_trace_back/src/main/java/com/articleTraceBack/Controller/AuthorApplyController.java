@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AuthorApplyService;
+import com.articleTraceBack.config.SiteFeatureProperties;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
@@ -34,14 +35,21 @@ public class AuthorApplyController {
     private static final int ROLE_MASTER = 0;
 
     private final AuthorApplyService applyService;
+    private final SiteFeatureProperties siteFeatures;
 
-    public AuthorApplyController(AuthorApplyService applyService) {
+    public AuthorApplyController(AuthorApplyService applyService, SiteFeatureProperties siteFeatures) {
         this.applyService = applyService;
+        this.siteFeatures = siteFeatures;
     }
 
     /** 提交作者申请（body 可选：{@code {"reason": "..."}}） */
     @PostMapping()
     public Result<String> submit(@RequestBody(required = false) Map<String, String> body) {
+        // 单用户态下关闭申请入口：注册关了不再有新读者，但**存量账号仍能走到这里**，
+        // 不关就是留了个后门
+        if (!siteFeatures.isAuthorApplyEnabled()) {
+            return Result.error("暂不开放作者申请！");
+        }
         Integer userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");

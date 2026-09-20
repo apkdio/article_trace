@@ -1,5 +1,7 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.config.SiteFeatureProperties;
+
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.ReaderService;
 import com.articleTraceBack.Service.UserService;
@@ -23,13 +25,16 @@ public class ReaderController {
     private final ArticleService articleService;
     private final ReaderService readerService;
     private final UserService userService;
+    private final SiteFeatureProperties siteFeatures;
     @Value("${spring.application.admin.defaultUser}")
     private String masterUserName;
 
-    public ReaderController(ArticleService articleService, ReaderService readerService, UserService userService) {
+    public ReaderController(ArticleService articleService, ReaderService readerService, UserService userService,
+                            SiteFeatureProperties siteFeatures) {
         this.articleService = articleService;
         this.readerService = readerService;
         this.userService = userService;
+        this.siteFeatures = siteFeatures;
     }
 
     @GetMapping("/getArticles")
@@ -115,6 +120,11 @@ public class ReaderController {
     @PostMapping("/addComment")
     public Result<String> addComment(@RequestBody @Validated Comment comment) {
         Map<String, Object> error = new HashMap<>();
+        // 单用户态下关闭「新增」评论；列表接口 getComments 不动，历史评论照常展示
+        if (!siteFeatures.isCommentEnabled()) {
+            error.put("error", "评论功能暂未开放！");
+            return Result.error(error);
+        }
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         if (userInfo == null) {
             error.put("error", "请登录！");

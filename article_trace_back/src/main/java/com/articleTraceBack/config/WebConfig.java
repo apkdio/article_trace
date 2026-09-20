@@ -20,6 +20,10 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(tokenCheck)
-                .excludePathPatterns(excludeUrl);
+                .excludePathPatterns(excludeUrl)
+                // 站点功能开关在登录页就要读，必须免登录。这类「结构上就该公开」的路径直接写死在这里，
+                // 不进配置——和 TokenCheck 硬编码放行 /reader/** 是同一个理由：它不随环境变化，
+                // 写进 yml 只会平白多出四处要同步的地方。
+                .excludePathPatterns("/site/features");
     }
 }

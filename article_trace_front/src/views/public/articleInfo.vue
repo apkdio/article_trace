@@ -21,6 +21,7 @@ import NotificationBell from "@/components/NotificationBell.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
 import {logout as doLogout} from "@/utils/auth.js";
 import {searchConditions} from "@/stores/searchConditions.js";
+import {getSiteFeatures} from "@/api/site.js";
 
 const props = defineProps(["id"])
 const loading = ref(true)
@@ -41,6 +42,13 @@ const topArticles = ref()
 
 const canComment = computed(() => {
   return isLogin.value && userInfoStore().nickname && userInfoStore().nickname.trim() !== ""
+})
+
+// 评论开关：线上做个人备案时会关掉「新增」，历史评论仍照常展示（列表和总数不动）
+const commentEnabled = ref(true)
+onMounted(async () => {
+  const features = await getSiteFeatures()
+  commentEnabled.value = features.commentEnabled
 })
 
 const searchCondition = ref({
@@ -266,7 +274,7 @@ const pushSearch = (type) => {
                 <span><el-icon><ChatLineRound/></el-icon> 评论交流 ({{ commentTotal }})</span>
               </div>
 
-              <div class="comment-input-area">
+              <div class="comment-input-area" v-if="commentEnabled">
                 <div v-if="!canComment" class="comment-mask">
                   <router-link v-if="!isLogin" target="_blank" :to="{name:'Login'}" class="mask-link login-type">
                     去登录
@@ -282,6 +290,8 @@ const pushSearch = (type) => {
                   <el-button type="primary" :disabled="!canComment" @click="AddComment">发表评论</el-button>
                 </div>
               </div>
+              <el-alert v-else class="comment-closed" type="info" :closable="false" show-icon
+                        title="评论功能暂未开放"/>
 
               <div class="comment-pagination" v-if="commentTotal > 0">
                 <el-pagination small background layout="prev, pager, next" :total="commentTotal"

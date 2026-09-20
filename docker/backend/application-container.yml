@@ -5,6 +5,12 @@
 # 缺失时应用启动即报错，便于尽早暴露配置问题。
 # =============================================================================
 
+# 站点功能开关：三项传 false 即单用户态（个人备案口径：不涉及企业、团体、论坛）
+site:
+  register-enabled: ${SITE_REGISTER_ENABLED:true}
+  comment-enabled: ${SITE_COMMENT_ENABLED:true}
+  author-apply-enabled: ${SITE_AUTHOR_APPLY_ENABLED:true}
+
 spring:
   servlet:
     multipart:

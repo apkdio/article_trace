@@ -13,10 +13,21 @@ import {userInfoStore} from "@/stores/userInfo.js";
 import {loginCheck} from "@/utils/loginCheck.js";
 import {resetAuthHandled} from "@/utils/session.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
+import {getSiteFeatures} from "@/api/site.js";
 
 
 let isRegister = ref(true)
 let resetPass = ref(false)
+// 注册入口由站点开关决定：线上做个人备案时会关掉，入口要一起隐藏，
+// 而不是等用户点了「注册」才吃一句报错
+const registerEnabled = ref(true)
+
+onMounted(async () => {
+  const features = await getSiteFeatures()
+  registerEnabled.value = features.registerEnabled
+  // 关闭注册时强制回到登录表单（沿原代码命名：isRegister=true 即登录态）
+  if (!features.registerEnabled) isRegister.value = true
+})
 const FormRef = ref()
 const isLoading = ref(false)
 const FormData = ref({
@@ -397,8 +408,10 @@ function clearInf() {
                 <el-link :underline="'never'" class="el-link__inner"
                          style="margin-right: 90px" @click="router.push('/')"> ← 返回首页
                 </el-link>
-                <span>新用户？</span>
-                <el-link :underline="'never'" @click="isRegister = false; clearInf()">立即注册</el-link>
+                <template v-if="registerEnabled">
+                  <span>新用户？</span>
+                  <el-link :underline="'never'" @click="isRegister = false; clearInf()">立即注册</el-link>
+                </template>
               </div>
             </el-form>
 

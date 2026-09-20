@@ -238,6 +238,10 @@ services:
       DEFAULT_USER_NICK_NAME: ${DEFAULT_USER_NICK_NAME:-测试昵称}
       # agent 可选开关：false 时全部降级，不影响主业务
       AGENT_ENABLED: ${AGENT_ENABLED:-true}
+      # 站点功能开关：三项传 false 即单用户态（个人备案口径）
+      SITE_REGISTER_ENABLED: ${SITE_REGISTER_ENABLED:-true}
+      SITE_COMMENT_ENABLED: ${SITE_COMMENT_ENABLED:-true}
+      SITE_AUTHOR_APPLY_ENABLED: ${SITE_AUTHOR_APPLY_ENABLED:-true}
       AGENT_HOST: agent
       AGENT_PORT: "50051"
     volumes:

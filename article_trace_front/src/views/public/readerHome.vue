@@ -8,8 +8,18 @@ import {
 } from '@element-plus/icons-vue'
 import {useRoute} from 'vue-router'
 import UserLayout from '@/components/UserLayout.vue'
+import {ref, onMounted} from 'vue'
+import {getSiteFeatures} from "@/api/site.js"
 
 const route = useRoute()
+
+// 「申请成为作者」入口：线上做个人备案时会关掉（注册关了不再有新读者，
+// 但存量账号仍能走到提交接口，所以这里和接口两边都要关）
+const authorApplyEnabled = ref(true)
+onMounted(async () => {
+    const features = await getSiteFeatures()
+    authorApplyEnabled.value = features.authorApplyEnabled
+})
 </script>
 
 <template>
@@ -43,7 +53,7 @@ const route = useRoute()
                     </el-icon>
                     <span>修改密码</span>
                 </el-menu-item>
-                <el-menu-item index="/reader/apply">
+                <el-menu-item index="/reader/apply" v-if="authorApplyEnabled">
                     <el-icon>
                         <Promotion/>
                     </el-icon>

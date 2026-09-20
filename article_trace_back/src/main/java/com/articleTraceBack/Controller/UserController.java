@@ -1,5 +1,7 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.config.SiteFeatureProperties;
+
 import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
@@ -40,6 +42,7 @@ public class UserController {
     private final EmailCodeService emailCodeService;
     private final CaptchaService captchaService;
     private final LoginAttemptService loginAttemptService;
+    private final SiteFeatureProperties siteFeatures;
     @Value("${spring.application.admin.defaultUser}")
     private String defaultUser;
     @Value("${Password.masterPass}")
@@ -54,12 +57,14 @@ public class UserController {
 
     public UserController(UserService userService, AvatarApplyService avatarApplyService,
                           EmailCodeService emailCodeService,
-                          CaptchaService captchaService, LoginAttemptService loginAttemptService) {
+                          CaptchaService captchaService, LoginAttemptService loginAttemptService,
+                          SiteFeatureProperties siteFeatures) {
         this.userService = userService;
         this.avatarApplyService = avatarApplyService;
         this.emailCodeService = emailCodeService;
         this.captchaService = captchaService;
         this.loginAttemptService = loginAttemptService;
+        this.siteFeatures = siteFeatures;
     }
 
     /**
@@ -105,7 +110,11 @@ public class UserController {
         } else {
             scene = EmailCodeService.SCENE_REGISTER;
         }
-        // 4. 发码（锁定中的邮箱会被 send 拒绕，这里先给出带剩余时长的提示）
+        // 4. 注册场景在单用户态下直接拒绕：注册接口关了但验证码照发，等于没关
+        if (EmailCodeService.SCENE_REGISTER.equals(scene) && !siteFeatures.isRegisterEnabled()) {
+            return Result.error("本站暂不开放注册！");
+        }
+        // 5. 发码（锁定中的邮箱会被 send 拒绕，这里先给出带剩余时长的提示）
         long lockedSeconds = emailCodeService.lockRemainingSeconds(email, scene);
         if (lockedSeconds > 0) {
             return Result.error("尝试次数过多，请 " + minutesOf(lockedSeconds) + " 分钟后再试！");
@@ -124,6 +133,10 @@ public class UserController {
     public Result<String> register(@RequestBody @Validated RegisterUserPojo user,
                                    HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
+        // 单用户态下关闭注册（个人备案要求：开放注册属于交互式服务，且邮箱注册不是实名）
+        if (!siteFeatures.isRegisterEnabled()) {
+            return Result.error("本站暂不开放注册！");
+        }
         String username = user.getUsername();
         String password = user.getPassword();
         String confirmPassword = user.getConfirmPassword();
