@@ -39,7 +39,8 @@ article_trace_back/
     │   │   ├── AgentController.java         #   检索问答/会话管理/探活
     │   │   ├── NotificationController.java  #   站内信（列表/未读数/已读/删除）
     │   │   ├── AuthorApplyController.java   #   作者申请（提交/列表/审批）
-│   │   └── AvatarApplyController.java   #   头像审核（待审状态/审核列表/审批）
+    │   │   ├── AvatarApplyController.java   #   头像审核（待审状态/审核列表/审批）
+    │   │   └── ReportController.java        #   举报（提交/站长列表/处置）
     │   ├── Service/                         # 业务层（接口 + 实现）
     │   │   ├── ArticleService.java / ArticleServiceImpl.java
     │   │   ├── CategoryService.java / CategoryServiceImpl.java
@@ -52,7 +53,8 @@ article_trace_back/
     │   │   ├── CaptchaService.java / CaptchaServiceImpl.java          # 图形验证码（人机校验）
     │   │   ├── LoginAttemptService.java / LoginAttemptServiceImpl.java # 登录失败计数与黑名单
     │   │   ├── AuthorApplyService.java / AuthorApplyServiceImpl.java
-│   │   └── AvatarApplyService.java / AvatarApplyServiceImpl.java   # 头像上传审核
+    │   │   ├── AvatarApplyService.java / AvatarApplyServiceImpl.java   # 头像上传审核
+    │   │   └── ReportService.java / ReportServiceImpl.java             # 举报（提交/查询/处置）
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   7 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -63,7 +65,8 @@ article_trace_back/
     │   │   ├── NotificationMapper.java      #   站内信（含分页/统计）
     │   │   ├── NotificationMailMapper.java  #   邮件投递记录
     │   │   ├── AuthorApplyMapper.java       #   作者申请（含联查/统计）
-│   │   ├── AvatarApplyMapper.java       #   头像审核（含联查/统计）
+    │   │   ├── AvatarApplyMapper.java       #   头像审核（含联查/统计）
+    │   │   ├── ReportMapper.java            #   举报（含联查/统计）
     │   │   └── UserMapper.java
     │   ├── pojo/                            # 实体与数据对象
     │   │   ├── Article.java                 #   文章实体
@@ -80,7 +83,8 @@ article_trace_back/
     │   │   ├── Notification.java            #   站内信
     │   │   ├── NotificationMail.java        #   邮件投递记录
     │   │   ├── AuthorApply.java             #   作者申请
-│   │   ├── AvatarApply.java             #   头像审核记录
+    │   │   ├── AvatarApply.java             #   头像审核记录
+    │   │   ├── Report.java                  #   举报记录
     │   │   └── RegisterUserPojo.java / ForgetPassPojo.java / UpdatePassPojo.java
     │   ├── Utils/                           # 工具类
     │   │   ├── AhoCorasickUtil.java         #   Aho-Corasick 敏感词匹配
@@ -439,6 +443,10 @@ notification:
     avatar-approved: inbox
     avatar-rejected: both
     avatar-remind: mail
+    report-submitted: both
+    report-handled: inbox
+    report-rejected: inbox
+    report-notice: inbox
     email-code: mail
   defaultChannel: inbox              # 未配置场景的默认渠道
   mail:
@@ -597,7 +605,7 @@ SITE_DISPLAY_NAME=文迹小站
 |---|---|---|
 | id | int | 主键 |
 | title | varchar(120) | 标题 |
-| type | varchar(20) | 类型：`system` 系统 / `apply` 作者申请相关（由 `notify` 的 scene 推导）|
+| type | varchar(20) | 类型：`system` 系统 / `apply` 作者申请 / `avatar` 头像审核 / `report` 举报（由 `notify` 的 scene 推导）|
 | sender_id | int | 发送方：`-1` 系统消息 / 用户 ID / `NULL` 发送方已注销 |
 | receiver_id | int | 接收方：用户 ID / `NULL` 接收方已注销 |
 | content | text | 正文 |
@@ -652,6 +660,47 @@ SITE_DISPLAY_NAME=文迹小站
 | retry_count | int | 已重试次数 |
 | error | varchar(500) | 失败原因 |
 | create_time / sent_time | datetime | 时间戳 |
+
+### `report` 举报表
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int | 主键 |
+| reporter_id | int | 举报人 user.id |
+| target_type | varchar(16) | `article` 文章 / `comment` 评论 / `user` 用户 |
+| target_id | int | 举报对象 id；与 `target_type` 一起确定唯一对象 |
+| reason | varchar(200) | 举报理由 |
+| status | tinyint | 0 待处理 / 1 已处置 / 2 已驳回 |
+| handle_user | int | 处置人 user.id |
+| handle_time | datetime | 处置时间 |
+| create_time | datetime | 提交时间 |
+
+> 索引：`(reporter_id, target_type, target_id)` 唯一（`uk_reporter_target`）——保证「同一人对同一对象只能举报一次」；
+> `(status, create_time)` 服务站长按状态分页；`reporter_id` 外键 `ON DELETE CASCADE`，注销时举报记录一并清理。
+>
+> `target_id` **没有外键**：它指向三张表之一，外键建不出来。对象被删后记录仍在（列表里显示「（原内容已不存在）」），
+> 举报历史不会因为删文章/删评论而凭空消失。
+
+**已部署的库要手工补一次**（`article_trace.sql` 只在新库首次部署时执行，且不报错）：
+
+```sql
+CREATE TABLE IF NOT EXISTS `report` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `reporter_id` int NOT NULL COMMENT '举报人 user.id',
+  `target_type` varchar(16) NOT NULL COMMENT '举报对象类型: article-文章 comment-评论 user-用户',
+  `target_id` int NOT NULL COMMENT '举报对象 id',
+  `reason` varchar(200) NOT NULL COMMENT '举报理由',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待处理 1-已处置 2-已驳回',
+  `handle_user` int DEFAULT NULL COMMENT '处置人 user.id',
+  `handle_time` datetime DEFAULT NULL COMMENT '处置时间',
+  `create_time` datetime NOT NULL COMMENT '提交时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_reporter_target` (`reporter_id`,`target_type`,`target_id`),
+  KEY `idx_status_time` (`status`,`create_time`),
+  KEY `fk_report_reporter` (`reporter_id`),
+  CONSTRAINT `fk_report_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='举报';
+```
 
 ## 核心接口概览
 
@@ -754,6 +803,31 @@ SITE_DISPLAY_NAME=文迹小站
 >
 > 通知场景：提交 → 站长（`avatar-submitted: both`）；通过 → 申请人（`avatar-approved: inbox`，轻量告知不发邮件）；
 > 拒绝 → 申请人（`avatar-rejected: both`，邮件走 `avatar-rejected` 模板把理由送到）。
+
+### 举报 `/report`
+
+用户对**文章 / 评论 / 用户**三种对象发起举报；`target_type` 与 `target_id` 一起确定唯一对象
+（三张表的 id 各自自增，单看 id 分不清指的是哪张表）。站长侧同样按 `/manage/**` 分段，
+受拦截器 URL 规则与 `isMaster()` 两道保护。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `POST` | `/report` | 提交举报（登录即可）。举报人取自登录态，不接受前端传入 |
+| `GET` | `/report/manage/list` | 举报列表（站长），可按 `status` 筛（0 待处理 / 1 已处置 / 2 已驳回）|
+| `GET` | `/report/manage/pendingCount` | 待处理数量（站长，菜单角标用）|
+| `PATCH` | `/report/manage/handle/{id}` | 处置（站长）：`handled=true` 认定违规，`false` 驳回举报 |
+
+**举报只记不改内容**：删评论仍走 `/reader/deleteComment`，下架文章仍走 `/article/assess`，
+站长在举报列表里点的就是这批既有的按钮。处置逻辑只有一份，也不会出现「举报中心删不掉、别处能删」这类不一致；
+代价是「认定违规」与「处理内容」是两步——**处置标记不会自动删除内容**，页面文案也照实这么写。
+
+提交时会挡三种情况：**对象不存在**（含已被删）、**举报自己**、**重复举报**（并发下由唯一索引兜底）。
+列表每条都带举报人、被举报对象的摘要；评论类举报另带 `targetParentId`（所属文章 id）——
+评论没有独立页面，站长要么跳去文章下看，要么用删评论接口，而那个接口要求 articleId。
+
+> 通知场景：提交 → 站长（`report-submitted: both`）；处置 → 举报人（`report-handled: inbox`）
+> 与被处置方（`report-notice: inbox`）；驳回 → 举报人（`report-rejected: inbox`）。
+> 站内信独立归入 `report` 类型，铃铛里可按「举报」筛选。
 
 ### 站内通知 `/notification`
 
@@ -878,6 +952,7 @@ python scripts/init_test_db.py
 | `UserDeleteCascadeTest` | 注销用户时其作者申请被一并清理 |
 | `AuthorApplyServiceTest` | 作者申请提交 / 审批 / 拒绝主流程 |
 | `AvatarApplyServiceTest` | 头像提交 / 审批主流程：待审期间 `user_pic` 不变、通过时先搬进 pic 桶、拒绝只丢待审对象、转正失败回退待审；各环节的通知也一并断言（`RustFsUtil` 已 mock）|
+| `ReportServiceTest` | 举报提交 / 处置主流程：举报自己、重复举报、对象不存在、理由不合法一律拒绝且不留记录；处置走条件更新只能成功一次；**断言内容不被本服务动过**（删评论仍归原接口），并核到双方的通知 |
 | `AvatarApplyConcurrencyTest` | 并发提交只落一条待审；并发审批只有一个成功，且 `user_pic` 与最终状态一致 |
 | `AuthorApplyRemindTaskTest` | 待审作者申请的定时邮件提醒 |
 | `AvatarApplyRemindTaskTest` | 待审头像的定时邮件提醒 |

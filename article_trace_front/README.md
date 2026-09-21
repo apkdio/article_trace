@@ -33,9 +33,10 @@ article_trace_front/
     │   ├── category.js             #   分类相关接口
     │   ├── user.js                 #   用户相关接口（含待审头像的提交）
     │   ├── agent.js                #   AI 问答 + 多会话管理 + 可用性探测
-    │   ├── notification.js         #   站内通知（列表可按 system/apply/avatar 筛选、未读数、已读、删除）
+    │   ├── notification.js         #   站内通知（列表可按 system/apply/avatar/report 筛选、未读数、已读、删除）
     │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── avatar.js               #   头像审核（查自己的待审状态 + 站长侧列表/审批）
+    │   ├── report.js               #   举报（提交 + 站长侧列表/处置）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
@@ -51,6 +52,7 @@ article_trace_front/
     │   ├── AuthorCard.vue          #   作者/站长名片
     │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
     │   ├── NotificationBell.vue    #   站内通知铃铛 + 抽屉（后台与门户页共用）
+    │   ├── ReportButton.vue        #   举报入口（按钮 + 理由弹窗，文章 / 评论 / 作者卡三处共用）
     │   └── AgentChat.vue           #   文迹 AI 聊天窗（多会话，含未启用降级）
     ├── router/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
@@ -80,7 +82,9 @@ article_trace_front/
         │   ├── UserInfo.vue        #   个人信息
         │   ├── UserLogo.vue        #   头像修改
         │   ├── UserResetPassword.vue # 修改密码
-        │   └── AccountManage.vue   #   账号管理（站长）
+        │   ├── AccountManage.vue   #   账号管理（站长）
+        │   ├── AvatarReview.vue    #   头像审核（站长）
+        │   └── ReportManage.vue    #   举报处理（站长）
         ├── article/                # 文章管理区
         │   ├── ArticleCategory.vue #   分类管理
         │   └── ArticleManage.vue   #   文章管理（撰写/编辑/审核）
@@ -97,7 +101,7 @@ article_trace_front/
 |---|---|---|
 | `/publicHome`、`/article/:id`、`/login` | 公共区 | 无需登录访问 |
 | `/reader/home`、`/reader/apply` | 读者中心 | 个人信息、头像、改密；申请成为作者 |
-| `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理 |
+| `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理；`/avatar/review` 头像审核与 `/report/manage` 举报处理仅站长可见 |
 
 ### 请求封装（utils/request.js）
 
@@ -133,7 +137,7 @@ article_trace_front/
 
 - **铃铛 + 未读角标**：挂载时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
 - **实时提醒**：每 60 秒轮询一次未读数，出现新增时轻提示（首次加载不提示，避免刚进页面就弹）；
-- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选（全部 / 系统 / 作者申请 / 头像审核）；
+- **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选（全部 / 系统 / 作者申请 / 头像审核 / 举报）；
 - **已读**：点击单条调 `PATCH /notification/read/{id}`，角标即时递减；「全部已读」调 `PATCH /notification/readAll`；
 - **删除**：单条调 `DELETE /notification/{id}`，删掉当前页最后一条时自动回退一页；
 - **展示规则**：`senderId === -1` 为系统通知，本期不做业务跳转。
@@ -143,6 +147,18 @@ article_trace_front/
 
 > **抽屉样式必须放在非 scoped 的 `<style>` 块里**：`el-drawer` 的内容会 teleport 到 `body`，
 > scoped 选择器命中不到。文件里因此有两个 style 块——铃铛用 scoped，抽屉用独立 class 限定。
+
+### 举报（ReportButton.vue）
+
+举报入口在**三处**：文章详情页的元信息栏（举报文章）、每条评论的操作区（举报评论）、侧栏作者卡底部（举报作者）。
+三处的差异只有 `targetType` 与 `targetId`，其余（理由上限、未登录跳转、自己不能举报自己）全一样，所以收在一个组件里。
+
+- **未登录**：提示「请先登录后再举报」并跳登录页——后端也会拒，但让用户先看到原因更省事；
+- **不举报自己**：调用方知道归属人时传 `ownerId`，与当前用户相等时按钮直接不渲染（后端也再挡一道）；
+- **重复举报**：由后端判定（`(举报人, 对象类型, 对象 id)` 唯一索引），前端如实显示后端返回的原因；
+- **理由**：几个常见项做成一键填入的标签，也可自己写，上限 200 字。
+
+> 作者卡通过 `actions` 插槽接收这个按钮——卡片本身仍然只负责展示，不认得「举报」这件事（与 `NotificationBell` 的插槽同一个理由）。
 
 ### 页面视图（views/）
 
@@ -157,6 +173,7 @@ article_trace_front/
 | `UserLogo.vue` | 头像提交与重置（读者端与后台端共用）。待审期间头像框打上「审核中」角标、上传与重置按钮锁住，并展示待审或上次被拒的理由。**站长自己的头像免审核**，提交即生效，提示文案也按角色区分（提交后仍会重新拉一次当前头像）|
 | `UserResetPassword.vue` | 修改密码 |
 | `AvatarReview.vue` | 头像审核（站长）：缩略图点开看原图、通过/拒绝，拒绝弹窗收理由 |
+| `ReportManage.vue` | 举报处理（站长）：按状态筛举报，「查看」跳到被举报对象、「删评论 / 下架」调各自既有的接口处置内容，「处置 / 驳回」只改举报记录。**内容处置与举报标记是两步**，页面按钮文案照这个事实写 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核。界面只有「存为草稿 / 立即发布」两个按钮，因此**已发布文章的任何编辑都会走「重新送审」（`1→2`）**，不存在「改了但不送审」的路径。命中违禁词的稿件在状态列显示红色「命中违禁词」标记、预览抽屉顶部列出命中的词；**站长保存命中稿件后会弹窗告知已转入待审**（作者侧不提示，避免拿词表试探）。标题规则允许中间空格、禁止首尾空格 |
 | `ArticleCategory.vue` | 分类增删改查 |
