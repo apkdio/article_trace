@@ -19,6 +19,7 @@ import {formatDate} from "@/utils/date.js";
 import TopArticlesList from "@/components/TopArticlesList.vue";
 import NotificationBell from "@/components/NotificationBell.vue";
 import AuthorCard from "@/components/AuthorCard.vue";
+import ReportButton from "@/components/ReportButton.vue";
 import {logout as doLogout} from "@/utils/auth.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import {getSiteFeatures} from "@/api/site.js";
@@ -265,6 +266,8 @@ const pushSearch = (type) => {
                     articleInfo.categoryName || "未分类"
                   }}
                 </el-check-tag>
+                <ReportButton target-type="article" :target-id="props.id" :owner-id="articleInfo.createUser"
+                              label="举报文章"/>
               </div>
             </div>
 
@@ -314,9 +317,12 @@ const pushSearch = (type) => {
                     </div>
                     <div class="comment-content">{{ item.content }}</div>
                   </div>
-                  <div class="comment-action"
-                       v-if="isLogin && (userInfoStore().id === item.userId || userInfoStore().type === 0 || userInfoStore().nickname === articleInfo.createUserName)">
-                    <el-button :icon="Delete" type="danger" link @click="DeleteComment(item.id)">删除</el-button>
+                  <div class="comment-action">
+                    <ReportButton target-type="comment" :target-id="item.id" :owner-id="item.userId"/>
+                    <el-button
+                        v-if="isLogin && (userInfoStore().id === item.userId || userInfoStore().type === 0 || userInfoStore().nickname === articleInfo.createUserName)"
+                        :icon="Delete" type="danger" link @click="DeleteComment(item.id)">删除
+                    </el-button>
                   </div>
                 </div>
               </div>
@@ -331,6 +337,10 @@ const pushSearch = (type) => {
             <template #role>
               <el-tag size="small" v-if="writerInfo.type === 0" type="danger" disable-transitions>站长</el-tag>
               <el-tag size="small" v-else type="warning" disable-transitions>作者</el-tag>
+            </template>
+            <template #actions>
+              <ReportButton target-type="user" :target-id="writerInfo.id" :owner-id="writerInfo.id"
+                            label="举报该作者"/>
             </template>
           </AuthorCard>
 

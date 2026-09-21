@@ -28,10 +28,12 @@ public class Notification {
     public static final String TYPE_APPLY = "apply";
     /** 类型：头像审核相关 */
     public static final String TYPE_AVATAR = "avatar";
+    /** 类型：举报相关 */
+    public static final String TYPE_REPORT = "report";
 
     private String title;
 
-    /** system-系统 / apply-作者申请 / avatar-头像审核 */
+    /** system-系统 / apply-作者申请 / avatar-头像审核 / report-举报 */
     @TableField("`type`")
     private String type;
 

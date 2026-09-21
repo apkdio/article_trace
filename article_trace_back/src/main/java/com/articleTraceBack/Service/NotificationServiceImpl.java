@@ -160,7 +160,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /** 场景 → 站内信类型：作者申请、头像审核各自归类，其余归系统 */
+    /** 场景 → 站内信类型：作者申请、头像审核、举报各自归类，其余归系统 */
     private String resolveType(String scene) {
         if (scene == null) {
             return Notification.TYPE_SYSTEM;
@@ -170,6 +170,9 @@ public class NotificationServiceImpl implements NotificationService {
         }
         if (scene.startsWith("avatar")) {
             return Notification.TYPE_AVATAR;
+        }
+        if (scene.startsWith("report")) {
+            return Notification.TYPE_REPORT;
         }
         return Notification.TYPE_SYSTEM;
     }
@@ -182,7 +185,8 @@ public class NotificationServiceImpl implements NotificationService {
         String normalized = type.trim().toLowerCase(Locale.ROOT);
         if (Notification.TYPE_SYSTEM.equals(normalized)
                 || Notification.TYPE_APPLY.equals(normalized)
-                || Notification.TYPE_AVATAR.equals(normalized)) {
+                || Notification.TYPE_AVATAR.equals(normalized)
+                || Notification.TYPE_REPORT.equals(normalized)) {
             return normalized;
         }
         return null;

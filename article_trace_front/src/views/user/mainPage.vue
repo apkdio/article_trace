@@ -8,7 +8,8 @@ import {
     Promotion,
     Tools,
     User,
-    UserFilled
+    UserFilled,
+    Warning
 } from '@element-plus/icons-vue'
 import {useRoute} from 'vue-router'
 import {userInfoStore} from "@/stores/userInfo.js";
@@ -46,6 +47,12 @@ const route = useRoute()
                     <Avatar/>
                 </el-icon>
                 <span>头像审核</span>
+            </el-menu-item>
+            <el-menu-item index="/report/manage" v-if="userInfoStore().type === 0">
+                <el-icon>
+                    <Warning/>
+                </el-icon>
+                <span>举报处理</span>
             </el-menu-item>
 
             <el-sub-menu index="/user">

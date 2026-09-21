@@ -31,6 +31,9 @@ defineProps({
                 </div>
             </div>
             <div class="writer-contact"><p>{{ contactPrefix }}{{ info.email || '未公开' }}</p></div>
+            <div class="writer-actions" v-if="$slots.actions">
+                <slot name="actions"></slot>
+            </div>
         </div>
     </div>
 </template>
@@ -99,6 +102,12 @@ defineProps({
         .writer-contact {
             font-size: 12px;
             color: #94a3b8;
+        }
+
+        .writer-actions {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f1f5f9;
         }
     }
 }

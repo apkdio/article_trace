@@ -131,7 +131,7 @@ CREATE TABLE `notification` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `title` varchar(120) NOT NULL COMMENT '标题',
   `sender_id` int DEFAULT NULL COMMENT '发送方: -1=系统消息; 正整数=用户ID; NULL=发送方已注销',
-  `type` varchar(20) NOT NULL DEFAULT 'system' COMMENT '类型: system-系统 apply-作者申请',
+  `type` varchar(20) NOT NULL DEFAULT 'system' COMMENT '类型: system-系统 apply-作者申请 avatar-头像审核 report-举报',
   `receiver_id` int DEFAULT NULL COMMENT '接收方: 用户ID; NULL=接收方已注销',
   `content` text COMMENT '正文',
   `create_time` datetime NOT NULL COMMENT '发送时间',
@@ -207,6 +207,26 @@ CREATE TABLE `avatar_apply` (
   KEY `fk_avatar_user` (`user_id`),
   CONSTRAINT `fk_avatar_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='头像审核记录';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `report` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `reporter_id` int NOT NULL COMMENT '举报人 user.id',
+  `target_type` varchar(16) NOT NULL COMMENT '举报对象类型: article-文章 comment-评论 user-用户',
+  `target_id` int NOT NULL COMMENT '举报对象 id（与 target_type 一起确定唯一对象）',
+  `reason` varchar(200) NOT NULL COMMENT '举报理由',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待处理 1-已处置 2-已驳回',
+  `handle_user` int DEFAULT NULL COMMENT '处置人 user.id',
+  `handle_time` datetime DEFAULT NULL COMMENT '处置时间',
+  `create_time` datetime NOT NULL COMMENT '提交时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_reporter_target` (`reporter_id`,`target_type`,`target_id`),
+  KEY `idx_status_time` (`status`,`create_time`),
+  KEY `fk_report_reporter` (`reporter_id`),
+  CONSTRAINT `fk_report_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='举报';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

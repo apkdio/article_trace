@@ -46,8 +46,8 @@ spring:
   tokenCheck:
     excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
     notAllowUrl:
-      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage,/avatar/manage
-      reader: /category/**,/article/**,/applyAuthor/manage,/avatar/manage
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage,/avatar/manage,/report/manage
+      reader: /category/**,/article/**,/applyAuthor/manage,/avatar/manage,/report/manage
   application:
     name: articleTraceBack
     admin:
@@ -113,6 +113,10 @@ notification:
     avatar-approved: inbox
     avatar-rejected: both
     avatar-remind: mail
+    report-submitted: both
+    report-handled: inbox
+    report-rejected: inbox
+    report-notice: inbox
     email-code: mail
   defaultChannel: inbox
   mail:
