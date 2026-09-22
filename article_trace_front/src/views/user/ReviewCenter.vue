@@ -39,6 +39,17 @@ const totalPending = computed(() =>
 
 const countOf = (key) => summary.value[key] || 0
 
+/**
+ * 后端出错时 `message` 可能是个**对象**（`GlobalExceptionHandler` 会把错误包成 `{error: '…'}`，
+ * 登录场景还会带 `{captcha, needCaptcha}`）。直接丢给 `ElMessage.error` 会渲染成一个
+ * **空白弹窗**——出错原因全丢了。这里统一取成能读的字符串。
+ */
+const errorText = (message, fallback) => {
+  if (!message) return fallback
+  if (typeof message === 'string') return message
+  return message.error || message.message || JSON.stringify(message)
+}
+
 const loadSummary = async () => {
   loading.value = true
   try {
@@ -46,10 +57,10 @@ const loadSummary = async () => {
     if (res.code === 0) {
       summary.value = res.data || summary.value
     } else {
-      ElMessage.error(res.message || '待办数获取失败！')
+      ElMessage.error(errorText(res.message, "待办数获取失败！"))
     }
   } catch (err) {
-    ElMessage.error('待办数获取失败！')
+    ElMessage.error("待办数获取失败！")
   } finally {
     loading.value = false
   }
