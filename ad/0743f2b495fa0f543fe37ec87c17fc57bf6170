@@ -1,0 +1,106 @@
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/MailRetryTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 25
+docker-compose.yml
+  s_6fe75adedcb01c::t_943850d0f6c5e1 49,161,168-169,174
+article_trace_back/src/main/java/com/articleTraceBack/Utils/JwtUtil.java
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 21,36
+article_trace_back/src/main/java/com/articleTraceBack/Utils/RustFsUtil.java
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 213-215
+  s_6fe75adedcb01c::t_419b792a2d2f40 69,91,181,260,402
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 271
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 243,254,296,444
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/NotificationCleanupTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 25
+article_trace_back/src/main/java/com/articleTraceBack/Utils/TextExtractor.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 5
+article_trace_back/src/main/java/com/articleTraceBack/Utils/FileCheckUtil.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 22
+article_trace_back/src/main/java/com/articleTraceBack/Utils/CookieUtil.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 36
+article_trace_back/src/main/java/com/articleTraceBack/Utils/TokenCheck.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 26
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReviewController.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 45
+article_trace_back/src/main/java/com/articleTraceBack/Utils/EmailUtil.java
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 91-95
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 85,374
+  s_6fe75adedcb01c::t_2b414b3607d7ef 328
+article_trace_back/src/main/java/com/articleTraceBack/pojo/Result.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 15,20,24
+article_trace_back/src/main/java/com/articleTraceBack/config/AsyncConfig.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 13
+article_trace_back/src/main/java/com/articleTraceBack/config/SiteFeatureProperties.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 28
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/SyncSensitiveWordLoader.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 33,47
+article_trace_back/src/main/java/com/articleTraceBack/Service/NotificationServiceImpl.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 199
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/AvatarApplyRemindTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 31
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/AgentSyncTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 68
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 36,54,62,76,89,100,109
+article_trace_back/src/main/java/com/articleTraceBack/Service/MailService.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 6,11
+article_trace_back/src/main/java/com/articleTraceBack/Service/EmailCodeService.java
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 24-28,32-34
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 72,235,266
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 214-216
+article_trace_back/src/main/java/com/articleTraceBack/Service/EmailCodeServiceImpl.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 140
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 56-58
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleService.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 62
+article_trace_back/src/main/java/com/articleTraceBack/Utils/RichTextCleaner.java
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 27-29
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 22,38,50
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/SyncRedisToDbTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 52
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 27
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_6fe75adedcb01c::t_26e1e3ed5c3775 44,157,175,181,227,242
+article_trace_back/src/main/java/com/articleTraceBack/config/SensitiveWordHolder.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 30
+article_trace_back/src/main/java/com/articleTraceBack/config/RedisConfig.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 25,38
+article_trace_back/src/main/java/com/articleTraceBack/pojo/Report.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 78
+article_trace_back/src/main/java/com/articleTraceBack/pojo/Article.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 65
+article_trace_back/src/main/java/com/articleTraceBack/scheduledTask/AuthorApplyRemindTask.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 31
+article_trace_back/src/main/java/com/articleTraceBack/Service/NotificationService.java
+  s_6fe75adedcb01c::t_6b2f3a73b1195f 21-26
+article_trace_back/src/main/java/com/articleTraceBack/Utils/AhoCorasickUtil.java
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 22,32,71
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BcryptUtils.java
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 12,17
+article_trace_back/src/main/java/com/articleTraceBack/Service/AvatarApplyServiceImpl.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 124
+article_trace_back/src/main/java/com/articleTraceBack/rpc/ArticleAgentClient.java
+  s_6fe75adedcb01c::t_419b792a2d2f40 45,59
+article_trace_back/src/main/java/com/articleTraceBack/Utils/ThreadLocalUtil.java
+  s_6fe75adedcb01c::t_25c68b7b5fb5ea 8,13,19
+article_trace_back/src/main/java/com/articleTraceBack/mapper/ReportMapper.java
+  s_6fe75adedcb01c::t_8ee31b2dc949bd 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.45-trip",
+  "base_commit_sha": "ad0743f2b495fa0f543fe37ec87c17fc57bf6170",
+  "prompts": {},
+  "sessions": {
+    "s_6fe75adedcb01c": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_9ry2n1ci1lmz",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
