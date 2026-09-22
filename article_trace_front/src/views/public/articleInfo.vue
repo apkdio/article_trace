@@ -252,6 +252,12 @@ const pushSearch = (type) => {
           <div class="content-card-wrapper" v-if="articleInfo">
             <div class="article-detail-header">
               <h1 class="main-title">{{ articleInfo.title }}</h1>
+              <!-- 举报单独占一行、靠右上外侧：和分类标签贴在同一行时既挤又容易点错
+                   （分类是跳转、举报是提交，两者动作性质完全不同） -->
+              <div class="header-report">
+                <ReportButton target-type="article" :target-id="props.id" :owner-id="articleInfo.createUser"
+                              label="举报文章"/>
+              </div>
               <div class="main-meta">
                 <div class="meta-left">
                   <span class="item-nickname" @click="pushSearch(1)"><el-icon><User/></el-icon> {{
@@ -266,8 +272,6 @@ const pushSearch = (type) => {
                     articleInfo.categoryName || "未分类"
                   }}
                 </el-check-tag>
-                <ReportButton target-type="article" :target-id="props.id" :owner-id="articleInfo.createUser"
-                              label="举报文章"/>
               </div>
             </div>
 
@@ -460,6 +464,14 @@ const pushSearch = (type) => {
         font-weight: 700;
         margin-bottom: 20px;
         color: #303133;
+      }
+
+      .header-report {
+        display: flex;
+        justify-content: flex-end;
+        // 与标题拉开、与下方分类再拉开：举报是低频且有后果的动作，
+        // 离「分类」这种高频跳转远一点，减少误触
+        margin: 12px 2px 14px 0;
       }
 
       .main-meta {
