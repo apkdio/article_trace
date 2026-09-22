@@ -3,7 +3,7 @@
 import {Delete, Edit, Plus, Picture, Search, User, Calendar, Timer, UserFilled} from '@element-plus/icons-vue'
 import cover from '@/assets/defaultCover.jpg'
 import {nextTick, onMounted, ref} from 'vue'
-import {getAllCategories} from "@/api/category.js";
+import {addCategory, getAllCategories} from "@/api/category.js";
 import {
   addArticleService, assessArticleService, deleteArticleService,
   getArticleWithConditions, getArticleWithConditionsMaster,
@@ -98,6 +98,53 @@ const getCategories = async () => {
   } catch (error) {
     ElMessage.error("数据获取失败！")
   }
+}
+
+/**
+ * 就地新建分类。
+ *
+ * 写文章时才发现没有合适的分类，原来只能「存草稿 → 去分类页新建 → 回来接着写」，
+ * 这里补上这一环：建完立即刷新下拉并选中它，不让用户再点一次。
+ *
+ * 命名规则与分类管理页保持一致（1-20 字符、首尾不能是空格）；重名判定在**后端**
+ * （分类名全局唯一），前端只把它的原因如实显示出来。
+ */
+const quickAddCategory = () => {
+  ElMessageBox.prompt("分类名称会直接展示给读者，1-20 个字符，首尾不能是空格。", "新建分类", {
+    confirmButtonText: "创建",
+    cancelButtonText: "取消",
+    inputPlaceholder: "例如：读书笔记",
+    inputValidator: (value) => {
+      const name = (value || "").trim()
+      if (!name) return "请输入分类名称"
+      if (name.length > 20) return "分类名称长度需在 1 到 20 个字符"
+      return true
+    },
+    center: true,
+  }).then(async ({value}) => {
+    const categoryName = value.trim()
+    try {
+      const res = await addCategory({categoryName, categoryAlias: ""})
+      if (res.code !== 0) {
+        ElMessage.error(res.message || "新建失败！")
+        return
+      }
+      // 新增接口不回传 id，刷新列表后按名字找回它并选中
+      await getCategories()
+      const created = categories.value.find((c) => c.categoryName === categoryName)
+      if (created) {
+        articleModel.value.categoryId = created.id
+        await nextTick()
+        articleModelRef.value?.validateField("categoryId")
+      }
+      ElMessage.success("分类已创建并选中")
+    } catch (error) {
+      ElMessage.error("新建失败！")
+    }
+  }).catch((action) => {
+    // 校验不通过时 action 不是 'cancel'，别误报「已取消」
+    if (action === "cancel") ElMessage.info("已取消！")
+  })
 }
 
 const onSizeChange = (size) => {
@@ -530,10 +577,13 @@ const assessArticle = async (id, state) => {
           </el-col>
           <el-col :span="8">
             <el-form-item label="文章分类" prop="categoryId">
-              <el-select placeholder="请选择" v-model="articleModel.categoryId" style="width: 100%"
-                         popper-class="category-select-dropdown">
-                <el-option v-for="c in categories" :key="c.id" :label="c.categoryName" :value="c.id"></el-option>
-              </el-select>
+              <div style="display: flex; gap: 8px; width: 100%">
+                <el-select placeholder="请选择" v-model="articleModel.categoryId" style="width: 100%"
+                           popper-class="category-select-dropdown">
+                  <el-option v-for="c in categories" :key="c.id" :label="c.categoryName" :value="c.id"></el-option>
+                </el-select>
+                <el-button :icon="Plus" @click.prevent="quickAddCategory">新建</el-button>
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
