@@ -62,7 +62,10 @@ onMounted(async () => {
                     <Avatar/>
                 </el-icon>
                 <span>审核中心</span>
-                <el-badge v-if="reviewPending > 0" :value="reviewPending" :max="99" style="margin-left: 8px"/>
+                <!-- 用普通 span 而不是 el-badge：后者的角标是绝对定位，塞进 flex 行里会「浮」在半空，
+                     这里靠 margin-left:auto 推到行右端 -->
+                <span v-if="reviewPending > 0"
+                      style="margin-left:auto;background:#f56c6c;color:#fff;border-radius:10px;padding:0 7px;font-size:12px;line-height:18px;">{{ reviewPending > 99 ? '99+' : reviewPending }}</span>
             </el-menu-item>
 
             <el-sub-menu index="/user">

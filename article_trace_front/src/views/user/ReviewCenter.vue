@@ -89,7 +89,7 @@ watch(activeType, () => {
             <span class="type-label">{{ type.label }}</span>
             <span class="type-hint">{{ type.hint }}</span>
           </div>
-          <el-badge v-if="countOf(type.key) > 0" :value="countOf(type.key)" :max="99" type="danger"/>
+          <span v-if="countOf(type.key) > 0" class="type-badge">{{ countOf(type.key) > 99 ? '99+' : countOf(type.key) }}</span>
         </div>
         <div class="type-total">合计待办 {{ totalPending }}</div>
         <el-button class="type-refresh" size="small" :icon="Refresh" @click="loadSummary">刷新计数</el-button>
@@ -155,6 +155,16 @@ watch(activeType, () => {
           font-size: 12px;
           color: #94a3b8;
         }
+      }
+
+      // 同理不用 el-badge：绝对定位的角标在 flex 行里会错位
+      .type-badge {
+        background: #f56c6c;
+        color: #fff;
+        border-radius: 10px;
+        padding: 0 7px;
+        font-size: 12px;
+        line-height: 18px;
       }
     }
 
