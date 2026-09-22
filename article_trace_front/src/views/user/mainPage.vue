@@ -1,4 +1,5 @@
 <script setup>
+import {onMounted, ref} from 'vue'
 import {
     Avatar,
     Crop,
@@ -8,14 +9,28 @@ import {
     Promotion,
     Tools,
     User,
-    UserFilled,
-    Warning
+    UserFilled
 } from '@element-plus/icons-vue'
 import {useRoute} from 'vue-router'
 import {userInfoStore} from "@/stores/userInfo.js";
+import {getReviewSummary} from "@/api/review.js";
 import UserLayout from '@/components/UserLayout.vue'
 
 const route = useRoute()
+
+// 审核中心的总待办数（菜单角标）；非站长拿不到也不算错——后端会拒，静默即可
+const reviewPending = ref(0)
+onMounted(async () => {
+    if (userInfoStore().type !== 0) return
+    try {
+        const res = await getReviewSummary()
+        if (res.code === 0) {
+            reviewPending.value = Object.values(res.data || {}).reduce((sum, n) => sum + (n || 0), 0)
+        }
+    } catch (err) {
+        // 角标拿不到不影响菜单
+    }
+})
 </script>
 
 <template>
@@ -42,17 +57,12 @@ const route = useRoute()
                 </el-icon>
                 <span>文章管理</span>
             </el-menu-item>
-            <el-menu-item index="/avatar/review" v-if="userInfoStore().type === 0">
+            <el-menu-item index="/review/center" v-if="userInfoStore().type === 0">
                 <el-icon>
                     <Avatar/>
                 </el-icon>
-                <span>头像审核</span>
-            </el-menu-item>
-            <el-menu-item index="/report/manage" v-if="userInfoStore().type === 0">
-                <el-icon>
-                    <Warning/>
-                </el-icon>
-                <span>举报处理</span>
+                <span>审核中心</span>
+                <el-badge v-if="reviewPending > 0" :value="reviewPending" :max="99" style="margin-left: 8px"/>
             </el-menu-item>
 
             <el-sub-menu index="/user">

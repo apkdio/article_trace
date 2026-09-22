@@ -10,6 +10,7 @@ import home from "@/views/user/home.vue"
 import accountManage from '@/views/user/AccountManage.vue'
 import avatarReview from '@/views/user/AvatarReview.vue'
 import reportManage from '@/views/user/ReportManage.vue'
+import reviewCenter from '@/views/user/ReviewCenter.vue'
 import publicHome from "@/views/public/publicHome.vue";
 import readerHome from "@/views/public/readerHome.vue";
 import authorApply from "@/views/public/AuthorApply.vue";
@@ -44,7 +45,8 @@ const routes = [
             {path: "/user/updatePassword", component: updateUserPassword, name: "UpdateUserPassword",meta:{noTransition:true}},
             {path: "/user/accountManage", component: accountManage, name: "AccountManage",meta:{noTransition:true}},
             {path: "/avatar/review", component: avatarReview, name: "AvatarReview",meta:{noTransition:true}},
-            {path: "/report/manage", component: reportManage, name: "ReportManage",meta:{noTransition:true}}
+            {path: "/report/manage", component: reportManage, name: "ReportManage",meta:{noTransition:true}},
+            {path: "/review/center", component: reviewCenter, name: "ReviewCenter",meta:{noTransition:true}}
         ],
     },
     {component: () => import('@/views/error.vue'), name: "ErrorPage",meta:{noTransition:true}},
