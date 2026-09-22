@@ -64,13 +64,27 @@ public class RichTextCleanerTest {
     }
 
     @Test
-    public void testDropsBase64Image() {
-        String dirty = "<p>前</p><img src=\"data:image/png;base64,AAAA\"><p>后</p>";
+    public void testKeepsRasterBase64Image() {
+        // 编辑器插入的图片就是这个形态：一刀切删掉，作者看到的就是「编辑时看得见、保存后没了」
+        String withImage = "<p>前</p><img src=\"data:image/png;base64,AAAA\"><p>后</p>";
 
-        String clean = RichTextCleaner.cleanToSafeHtml(dirty);
+        String clean = RichTextCleaner.cleanToSafeHtml(withImage);
 
-        assertFalse(clean.contains("base64"), "base64 内联图应被剔除");
-        assertTrue(clean.contains("前") && clean.contains("后"));
+        assertTrue(clean.contains("data:image/png;base64,AAAA"), "位图内联图应保留");
+        assertTrue(clean.contains("前") && clean.contains("后"), "正文其余部分不受影响");
+    }
+
+    @Test
+    public void testDropsNonRasterDataImage() {
+        // SVG 能内嵌脚本，而正文是 v-html 直渲染：放进来就是一个存储型 XSS 的口子
+        String svg = "<p>前</p><img src=\"data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=\"><p>后</p>";
+        String htmlData = "<img src=\"data:text/html;base64,PHNjcmlwdD4=\">";
+
+        String cleanSvg = RichTextCleaner.cleanToSafeHtml(svg);
+
+        assertFalse(cleanSvg.contains("svg"), "SVG 内联图应剔除");
+        assertTrue(cleanSvg.contains("前") && cleanSvg.contains("后"), "正文其余部分应保留");
+        assertFalse(RichTextCleaner.cleanToSafeHtml(htmlData).contains("text/html"), "非图片 data URI 应剔除");
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.articleTraceBack.Utils;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Entities;
 import org.jsoup.safety.Safelist;
 
@@ -12,11 +13,19 @@ import java.util.regex.Pattern;
 
 public class RichTextCleaner {
 
-    // 匹配 data:image/base64 的完整 img 标签（可选，Jsoup 可以直接删除）
+    // 匹配 data:image/base64 的完整 img 标签（纯文本提取时整段剥掉）
     private static final Pattern BASE64_IMG_PATTERN = Pattern.compile(
             "<img[^>]+src\\s*=\\s*['\"]data:image/[^;]+;base64,[^'\"]+['\"][^>]*>",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     );
+
+    /**
+     * 允许留在正文里的内联图片：**只认位图**。
+     *
+     * <p>{@code data:image/svg+xml} 能内嵌脚本，正文又是 {@code v-html} 直渲染，放进来就是存储型 XSS。</p>
+     */
+    private static final Pattern RASTER_DATA_IMAGE = Pattern.compile(
+            "^data:image/(png|jpe?g|gif|webp|bmp);base64,");
 
     /**
      * 落库/回显用的白名单。
@@ -35,7 +44,7 @@ public class RichTextCleaner {
             .addAttributes(":all", "class")
             .addAttributes("img", "alt", "width", "height")
             .addAttributes("a", "target", "rel")
-            .addProtocols("img", "src", "http", "https")
+            .addProtocols("img", "src", "http", "https", "data")
             .addProtocols("a", "href", "http", "https", "mailto");
 
     /**
@@ -52,10 +61,36 @@ public class RichTextCleaner {
         if (html == null || html.isEmpty()) {
             return "";
         }
-        // 与纯文本提取保持一致：先剃掉 base64 图，减轻解析负担
-        String cleanedHtml = BASE64_IMG_PATTERN.matcher(html).replaceAll("");
+        // 内联图片（base64）**保留**：编辑器插入的图就是这个形态，早先一刀切删掉，
+        // 结果就是「编辑时看得见、保存后没了」。正文最终落在 RustFS 对象里、库里只有对象名，
+        // 所以胖的是请求体而不是数据库；非位图的 data: 由下面那步剔掉。
         Document.OutputSettings outputSettings = new Document.OutputSettings().prettyPrint(false);
-        return Jsoup.clean(cleanedHtml, "", SAFELIST, outputSettings);
+        return dropNonRasterDataImages(Jsoup.clean(html, "", SAFELIST, outputSettings), outputSettings);
+    }
+
+    /**
+     * 把 src 是 {@code data:} 但**不是位图**的 img 删掉。
+     *
+     * <p>白名单放行 {@code data:} 是为内联图片，不是为了放行任意 data URI：
+     * {@code data:image/svg+xml}（乃至 {@code data:text/html}）能内嵌脚本，
+     * 而正文在前端是 {@code v-html} 直渲染——放进来就是一个存储型 XSS 的口子。
+     * 这里只认 png / jpeg / gif / webp / bmp 的 base64 位图。</p>
+     */
+    private static String dropNonRasterDataImages(String html, Document.OutputSettings outputSettings) {
+        if (html == null || html.isEmpty() || !html.contains("data:")) {
+            return html;
+        }
+        Document doc = Jsoup.parse(html);
+        doc.outputSettings(outputSettings);
+        boolean changed = false;
+        for (Element img : doc.select("img[src]")) {
+            String src = img.attr("src").trim().toLowerCase();
+            if (src.startsWith("data:") && !RASTER_DATA_IMAGE.matcher(src).find()) {
+                img.remove();
+                changed = true;
+            }
+        }
+        return changed ? doc.body().html() : html;
     }
 
     public static String cleanToPlainText(String html) {
