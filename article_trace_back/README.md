@@ -830,6 +830,21 @@ CREATE TABLE IF NOT EXISTS `report` (
 > 与被处置方（`report-notice: inbox`）；驳回 → 举报人（`report-rejected: inbox`）。
 > 站内信独立归入 `report` 类型，铃铛里可按「举报」筛选。
 
+### 审核中心 `/review`
+
+四种待办（文章 / 头像 / 作者申请 / 举报）的聚合计数，给前端菜单角标与审核中心页用。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/review/summary` | 四类待办数（站长）。返回固定四个键：`article` / `avatar` / `authorApply` / `report`；非站长返回「权限不足」|
+
+**只做汇总，不做任何状态变更**：列表与处置仍走各自原有的接口（`/article/manageArticles` + `/article/assess`、
+`/avatar/manage/**`、`/applyAuthor/manage/**`、`/report/manage/**`）。各类型的数据模型天然不同，
+不新建统一审核表——前端 `ReviewCenter.vue` 只负责把四个面板收在一处。
+
+> 权限两层：`/review` 在 `spring.tokenCheck.notAllowUrl` 的 writer / reader 两侧都被挡（**四份配置都要同步**），
+> Controller 里另有 `isMaster()` 兜底。
+
 ### 站内通知 `/notification`
 
 | 方法 | 路径 | 说明 |

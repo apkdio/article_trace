@@ -37,6 +37,7 @@ article_trace_front/
     │   ├── apply.js                #   作者申请（提交/查询/审批）
     │   ├── avatar.js               #   头像审核（查自己的待审状态 + 站长侧列表/审批）
     │   ├── report.js               #   举报（提交 + 站长侧列表/处置）
+    │   ├── review.js               #   审核中心（四类待办数的聚合）
     │   ├── checkPersonInfo.js      #   个人信息校验
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
@@ -84,7 +85,8 @@ article_trace_front/
         │   ├── UserResetPassword.vue # 修改密码
         │   ├── AccountManage.vue   #   账号管理（站长）
         │   ├── AvatarReview.vue    #   头像审核（站长）
-        │   └── ReportManage.vue    #   举报处理（站长）
+        │   ├── ReportManage.vue    #   举报处理（站长）
+        │   └── ReviewCenter.vue    #   审核中心（站长）：把四类审核收在一处
         ├── article/                # 文章管理区
         │   ├── ArticleCategory.vue #   分类管理
         │   └── ArticleManage.vue   #   文章管理（撰写/编辑/审核）
@@ -101,7 +103,7 @@ article_trace_front/
 |---|---|---|
 | `/publicHome`、`/article/:id`、`/login` | 公共区 | 无需登录访问 |
 | `/reader/home`、`/reader/apply` | 读者中心 | 个人信息、头像、改密；申请成为作者 |
-| `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理；`/avatar/review` 头像审核与 `/report/manage` 举报处理仅站长可见 |
+| `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理；`/review/center` 审核中心仅站长可见（`/avatar/review`、`/report/manage` 两个旧页保留路由，供直达）|
 
 ### 请求封装（utils/request.js）
 
@@ -179,6 +181,7 @@ article_trace_front/
 | `UserResetPassword.vue` | 修改密码 |
 | `AvatarReview.vue` | 头像审核（站长）：缩略图点开看原图、通过/拒绝，拒绝弹窗收理由 |
 | `ReportManage.vue` | 举报处理（站长）：按状态筛举报，「查看」跳到被举报对象、「删评论 / 下架」调各自既有的接口处置内容，「处置 / 驳回」只改举报记录。**内容处置与举报标记是两步**，页面按钮文案照这个事实写 |
+| `ReviewCenter.vue` | **审核中心（站长）**：左侧四类待办列表（带角标 + 合计，计数来自 `GET /review/summary`），右侧对应面板。四种审核原先散在三个页面，这里只做**收拢与呈现**——不新建统一审核表、不改业务逻辑。文章与申请两个面板是本轮新拆的（`components/review/`），头像与举报直接复用原有页面组件 |
 | `home.vue` | 后台数据统计（文章总数 / 待审核 / 已发布 / 驳回） |
 | `ArticleManage.vue` | 文章撰写、编辑、删除、审核。界面只有「存为草稿 / 立即发布」两个按钮，因此**已发布文章的任何编辑都会走「重新送审」（`1→2`）**，不存在「改了但不送审」的路径。命中违禁词的稿件在状态列显示红色「命中违禁词」标记、预览抽屉顶部列出命中的词；**站长保存命中稿件后会弹窗告知已转入待审**（作者侧不提示，避免拿词表试探）。标题规则允许中间空格、禁止首尾空格。**分类下拉旁有「新建」**：写文章时没有合适的分类可就地新建并自动选中，不必先存草稿再跑一趟分类页（重名由后端唯一索引拦下，前端如实显示原因）|
 | `ArticleCategory.vue` | 分类增删改查 |
