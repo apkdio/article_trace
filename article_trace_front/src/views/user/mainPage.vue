@@ -62,10 +62,11 @@ onMounted(async () => {
                     <Avatar/>
                 </el-icon>
                 <span>审核中心</span>
-                <!-- 用普通 span 而不是 el-badge：后者的角标是绝对定位，塞进 flex 行里会「浮」在半空，
-                     这里靠 margin-left:auto 推到行右端 -->
+                <!-- 用普通 span 而不是 el-badge：后者的角标是绝对定位，塞进 flex 行里会「浮」在半空。
+                     注意必须自己给 align-self + 固定高度：菜单项是 flex 容器，不加就会被拉伸到整行高（48px），
+                     红底铺满就变成一条长胶囊。 -->
                 <span v-if="reviewPending > 0"
-                      style="margin-left:auto;background:#f56c6c;color:#fff;border-radius:10px;padding:0 7px;font-size:12px;line-height:18px;">{{ reviewPending > 99 ? '99+' : reviewPending }}</span>
+                      style="margin-left:auto;align-self:center;box-sizing:border-box;min-width:18px;height:18px;text-align:center;background:#f56c6c;color:#fff;border-radius:9px;padding:0 6px;font-size:12px;line-height:18px;">{{ reviewPending > 99 ? '99+' : reviewPending }}</span>
             </el-menu-item>
 
             <el-sub-menu index="/user">

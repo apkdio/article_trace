@@ -157,12 +157,18 @@ watch(activeType, () => {
         }
       }
 
-      // 同理不用 el-badge：绝对定位的角标在 flex 行里会错位
+      // 同理不用 el-badge：绝对定位的角标在 flex 行里会错位。
+      // 尺寸照 el-badge 的度量：单位数恰好是圆，两位数自然变宽。
       .type-badge {
+        align-self: center;
+        box-sizing: border-box;
+        min-width: 18px;
+        height: 18px;
+        text-align: center;
         background: #f56c6c;
         color: #fff;
-        border-radius: 10px;
-        padding: 0 7px;
+        border-radius: 9px;
+        padding: 0 6px;
         font-size: 12px;
         line-height: 18px;
       }
