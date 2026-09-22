@@ -716,6 +716,7 @@ CREATE TABLE IF NOT EXISTS `report` (
 | POST | `/user/login` | 登录（失败 3 次后需携带图形验证码；10 次锁定 5 分钟）|
 | GET | `/user/loginCheck` | 登录态校验 |
 | GET | `/user/userInfo` | 获取个人信息 |
+| GET | `/user/nowLogo` | **只**取当前生效头像三个字段（`userPic` / `userPicSrc` / `userPicThumbSrc`），比 `userInfo` 轻；头像页提交/重置后、以及前端应用启动时回写 store 用它 |
 | PATCH | `/user/update` | 更新信息 |
 | PATCH | `/user/updateUserLogo` | 提交待审头像（进 avatar 桶并建待审记录，**不**直接改 `user_pic`；站长审批通过后才生效）|
 | PATCH | `/user/updatePass` | 修改密码 |
