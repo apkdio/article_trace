@@ -46,8 +46,8 @@ spring:
   tokenCheck:
     excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
     notAllowUrl:
-      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage,/avatar/manage,/report/manage
-      reader: /category/**,/article/**,/applyAuthor/manage,/avatar/manage,/report/manage
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage,/avatar/manage,/report/manage,/review
+      reader: /category/**,/article/**,/applyAuthor/manage,/avatar/manage,/report/manage,/review
   application:
     name: articleTraceBack
     admin:
