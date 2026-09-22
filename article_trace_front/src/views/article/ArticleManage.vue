@@ -5,7 +5,7 @@ import cover from '@/assets/defaultCover.jpg'
 import {nextTick, onMounted, ref} from 'vue'
 import {addCategory, getAllCategories} from "@/api/category.js";
 import {
-  addArticleService, assessArticleService, deleteArticleService,
+  addArticleService, deleteArticleService,
   getArticleWithConditions, getArticleWithConditionsMaster,
   updateArticleService
 } from "@/api/article.js";
@@ -251,7 +251,7 @@ const alertSensitiveHit = (data) => {
   if (!data || !data.sensitiveHit || userInfoStore().type !== 0) return
   const words = data.sensitiveWords ? `：${data.sensitiveWords}` : ''
   ElMessageBox.alert(
-      `标题或正文命中了违禁词${words}。这篇文章已转入「待审核」，可在筛选「待审核」中处理。`,
+      `标题或正文命中了违禁词${words}。这篇文章已转入「待审核」，可在「审核中心」处理。`,
       "命中违禁词",
       {confirmButtonText: "知道了", type: "warning"}
   ).catch(() => {
@@ -381,22 +381,6 @@ const deleteArticle = (id, createUser) => {
     ElMessage.info("取消删除！")
   })
 }
-const assessArticle = async (id, state) => {
-  try {
-    const result = await assessArticleService(id, state)
-    if (result.code === 0) {
-      ElMessage.success("已审核！")
-      previewDrawer.value = false
-      setTimeout(() => {
-        getArticles(conditions.value)
-      }, 100)
-    } else {
-      ElMessage.error("审核失败！")
-    }
-  } catch (err) {
-    ElMessage.error("服务器响应失败！")
-  }
-}
 </script>
 
 <template>
@@ -485,8 +469,7 @@ const assessArticle = async (id, state) => {
             </template>
           </el-table-column>
 
-          <el-table-column :label="userInfoStore().type === 0?'文章标题（点击审核）':'文章标题（点击预览）'"
-                           :width="userInfoStore().type === 0?200:360">
+          <el-table-column label="文章标题（点击预览）" width="360">
             <template #default="{row}">
               <span class="table-article-title" @click="previewDrawer=true;previewData = row">{{ row.title }}</span>
             </template>
@@ -679,16 +662,7 @@ const assessArticle = async (id, state) => {
         <div class="article-content ql-editor" v-html="previewData.content"></div>
       </div>
 
-      <template #footer v-if="userInfoStore().type === 0 && previewData.state !==0">
-        <div class="drawer-footer">
-          <el-button type="success" v-if="previewData.state !==1" @click="assessArticle(previewData.id,1)" round
-                     size="large">通过
-          </el-button>
-          <el-button type="danger" v-if="previewData.state !==3" @click="assessArticle(previewData.id,3)" round
-                     size="large">驳回
-          </el-button>
-        </div>
-      </template>
+      <!-- 审核动作已收进「审核中心」，这里只留预览 -->
     </el-drawer>
   </div>
 </template>
