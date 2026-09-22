@@ -59,7 +59,7 @@ const logout = (command) => {
                 <NotificationBell class="header-notify"/>
                 <el-dropdown placement="bottom-end" @command="logout">
                     <span class="el-dropdown__box">
-                        <el-avatar :src="userInfoStore().userPicThumbSrc === '' ? avatar : userInfoStore().userPicThumbSrc"/>
+                        <el-avatar :src="userInfoStore().userPicThumbSrc || avatar"/>
                         <el-icon class="arrow">
                             <CaretBottom/>
                         </el-icon>

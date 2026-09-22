@@ -13,13 +13,14 @@ const viewKey = computed(() => {
   return route.matched.length > 0 ? (route.matched[0].path || route.path) : route.path
 })
 
-// 顶栏、门户页与文章页的头像都读这份 store，而它是持久化到 localStorage 的：
-// 不在页面加载时回写一次，换过头像（或被站长审核通过）之后刷新页面仍是旧图，
-// 必须登出再登录才更新。
-// 后端 401 时这里静默失败即可——真正失效与否由路由与拦截器管。
+// 顶栏、门户页与文章页的头像与昵称都读这份 store，而它是持久化到 localStorage 的：
+// 不在页面加载时回写一次，换过头像（或被站长审核通过）、改过昵称之后刷新页面仍是旧值。
+// 这里拉**整份**用户信息而不是只拉头像：昵称还被用来判断「哪些文章 / 分类 / 评论是自己的」，
+// 停在旧值会让归属判断错位（例如看不到自己文章的编辑按钮）。
+// 未登录或后端 401 时静默失败即可——真正失效与否由路由与拦截器管。
 onMounted(() => {
   if (userInfoStore().username) {
-    userInfoStore().refreshUserLogo().catch(() => {
+    userInfoStore().fetchUserInfo().catch(() => {
     })
   }
 })

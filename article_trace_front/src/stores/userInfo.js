@@ -25,7 +25,9 @@ export const userInfoStore
         const rejectTotal = ref(0)
 
         function fetchUserInfo() {
-            request.get("/user/userInfo").then((result) => {
+            // 返回 Promise 才能被 await / catch：调用方（登录、改资料、应用启动）
+            // 都要等它写完 store 再取值，否则就是各写各的 setTimeout
+            return request.get("/user/userInfo").then((result) => {
                 id.value = result.data.id
                 username.value = result.data.username
                 nickname.value = result.data.nickname
