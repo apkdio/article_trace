@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {onMounted, onUnmounted, ref, watch} from 'vue'
 import {
     Avatar,
     Crop,
@@ -18,9 +18,15 @@ import UserLayout from '@/components/UserLayout.vue'
 
 const route = useRoute()
 
-// 审核中心的总待办数（菜单角标）；非站长拿不到也不算错——后端会拒，静默即可
+// 审核中心的总待办数（菜单角标）；非站长拿不到也不算错——后端会拒，静默即可。
+// 菜单这一层收不到页面内部处置动作的通知，所以：路由一变化就拉一次，页面停留时每 60 秒轮询
+// ——与站内信铃铛同一套做法（它也是 60 秒轮询未读数）。若以后要“一点就掉”，把这份计数挪进
+// pinia store，由面板的 handled 事件直接刷新。
+const REVIEW_POLL_INTERVAL_MS = 60 * 1000
 const reviewPending = ref(0)
-onMounted(async () => {
+let reviewPollTimer = null
+
+const loadReviewPending = async () => {
     if (userInfoStore().type !== 0) return
     try {
         const res = await getReviewSummary()
@@ -30,7 +36,21 @@ onMounted(async () => {
     } catch (err) {
         // 角标拿不到不影响菜单
     }
+}
+
+onMounted(() => {
+    loadReviewPending()
+    reviewPollTimer = setInterval(loadReviewPending, REVIEW_POLL_INTERVAL_MS)
 })
+
+onUnmounted(() => {
+    if (reviewPollTimer) {
+        clearInterval(reviewPollTimer)
+        reviewPollTimer = null
+    }
+})
+
+watch(() => route.path, loadReviewPending)
 </script>
 
 <template>

@@ -13,6 +13,8 @@ import {listApplies, reviewApply} from '@/api/apply.js'
 const STATUS_PENDING = 0
 
 const loading = ref(false)
+// 处置完通知外层刷新待办数
+const emit = defineEmits(['handled'])
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -60,6 +62,7 @@ const approve = (row) => {
     if (res.code === 0) {
       ElMessage.success('已通过！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(res.message || '操作失败！')
     }
@@ -81,6 +84,7 @@ const reject = (row) => {
     if (res.code === 0) {
       ElMessage.success('已拒绝！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(res.message || '操作失败！')
     }

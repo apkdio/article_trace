@@ -524,6 +524,15 @@ const pushSearch = (type) => {
         :deep(p) {
           margin-bottom: 1.5em;
         }
+
+        // 内联图片（base64）自身不带尺寸约束：不限宽会把正文容器掉变形
+        :deep(img) {
+          max-width: 100%;
+          height: auto;
+          border-radius: 4px;
+          display: block;
+          margin: 20px auto;
+        }
       }
     }
   }

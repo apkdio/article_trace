@@ -86,9 +86,9 @@ watch(activeType, () => {
       </aside>
 
       <section class="panel-area">
-        <ArticleReviewPanel v-if="activeType === 'article'" ref="panelRef"/>
+        <ArticleReviewPanel v-if="activeType === 'article'" ref="panelRef" @handled="loadSummary"/>
         <AvatarReview v-else-if="activeType === 'avatar'"/>
-        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" ref="panelRef"/>
+        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" ref="panelRef" @handled="loadSummary"/>
         <ReportManage v-else ref="panelRef"/>
       </section>
     </div>

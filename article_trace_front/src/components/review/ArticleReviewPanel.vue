@@ -15,6 +15,8 @@ const STATE_PUBLISHED = 1
 const STATE_REJECTED = 3
 
 const loading = ref(false)
+// 处置完通知外层刷新待办数（否则角标要等下一次拉取才掉）
+const emit = defineEmits(['handled'])
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -74,6 +76,7 @@ const assess = (row, state) => {
     if (res.code === 0) {
       ElMessage.success(pass ? '已通过！' : '已驳回！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(res.message || '操作失败！')
     }
@@ -185,6 +188,14 @@ defineExpose({load})
   .preview-content {
     max-height: 50vh;
     overflow: auto;
+
+    // 与文章详情页同一套约束，内联图片不撑破弹窗
+    :deep(img) {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 16px auto;
+    }
   }
 }
 </style>
