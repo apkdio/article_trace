@@ -1,7 +1,8 @@
 <script setup>
-import {computed} from 'vue'
+import {computed, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import {userInfoStore} from "@/stores/userInfo.js";
 
 const route = useRoute()
 const transitionName = computed(() => {
@@ -10,6 +11,17 @@ const transitionName = computed(() => {
 // 顶层路由作为 key：跨顶层路由切换时强制重建，子路由切换时不重建
 const viewKey = computed(() => {
   return route.matched.length > 0 ? (route.matched[0].path || route.path) : route.path
+})
+
+// 顶栏、门户页与文章页的头像都读这份 store，而它是持久化到 localStorage 的：
+// 不在页面加载时回写一次，换过头像（或被站长审核通过）之后刷新页面仍是旧图，
+// 必须登出再登录才更新。
+// 后端 401 时这里静默失败即可——真正失效与否由路由与拦截器管。
+onMounted(() => {
+  if (userInfoStore().username) {
+    userInfoStore().refreshUserLogo().catch(() => {
+    })
+  }
 })
 </script>
 <template>

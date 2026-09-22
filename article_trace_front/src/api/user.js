@@ -42,7 +42,14 @@ export const submitUserLogoService = (userLogo) => {
     formData.append('userLogo', userLogo)
     return request.patch('/user/updateUserLogo', formData)
 }
-
+/**
+ * 当前生效头像（对象名 + 原图地址 + 缩略图地址）。
+ *
+ * 比 `/user/userInfo` 轻，只用来回写头像那三个字段。
+ */
+export const getUserNowPicSrc = () => {
+    return request.get('/user/nowLogo')
+}
 export const getAllAccountsService = () => {
     return request.get('/user/accountManage')
 }

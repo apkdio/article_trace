@@ -99,7 +99,7 @@ const updateUserInfo = () => {
                   v-model="userInfo.nickname"
                   placeholder="设置一个响亮的昵称吧"
                   :prefix-icon="Postcard"
-                  maxlength="15"
+                  maxlength="20"
                   show-word-limit
               />
             </el-form-item>

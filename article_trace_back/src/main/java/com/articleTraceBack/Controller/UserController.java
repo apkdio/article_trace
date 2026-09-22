@@ -1,5 +1,6 @@
 package com.articleTraceBack.Controller;
 
+import com.articleTraceBack.Utils.*;
 import com.articleTraceBack.config.SiteFeatureProperties;
 
 import com.articleTraceBack.Service.AvatarApplyService;
@@ -7,10 +8,6 @@ import com.articleTraceBack.Service.CaptchaService;
 import com.articleTraceBack.Service.EmailCodeService;
 import com.articleTraceBack.Service.LoginAttemptService;
 import com.articleTraceBack.Service.UserService;
-import com.articleTraceBack.Utils.CookieUtil;
-import com.articleTraceBack.Utils.IPUtil;
-import com.articleTraceBack.Utils.PageUtil;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
 import org.springframework.dao.DuplicateKeyException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,10 +27,14 @@ import java.util.regex.Pattern;
 @RequestMapping("/user")
 public class UserController {
 
-    /** 注册一律为读者；成为作者走「申请-审批」流程 */
+    /**
+     * 注册一律为读者；成为作者走「申请-审批」流程
+     */
     private static final int ROLE_READER = 2;
 
-    /** 邮箱格式（宽松校验，真实可达性由验证码保证） */
+    /**
+     * 邮箱格式（宽松校验，真实可达性由验证码保证）
+     */
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
@@ -51,7 +52,9 @@ public class UserController {
     private long longTime;
     @Value("${JWT.shortTime}")
     private long shortTime;
-    /** 令牌 Cookie 是否只在 HTTPS 下发送；本地 http 调试必须为 false，否则浏览器不保存 */
+    /**
+     * 令牌 Cookie 是否只在 HTTPS 下发送；本地 http 调试必须为 false，否则浏览器不保存
+     */
     @Value("${JWT.cookieSecure:false}")
     private boolean cookieSecure;
 
@@ -257,23 +260,25 @@ public class UserController {
         return Result.error(error);
     }
 
-    /** 把验证码校验的结果码翻成给用户看的话；“次数用尽”与“锁定中”都要把等待时长说清楚 */
+    /**
+     * 把验证码校验的结果码翻成给用户看的话；“次数用尽”与“锁定中”都要把等待时长说清楚
+     */
     private String emailCodeMessage(int result, String email, String scene) {
         return switch (result) {
-            case EmailCodeService.CODE_EXHAUSTED ->
-                    "验证码错误次数过多，该验证码已作废；请 "
-                            + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
-                            + " 分钟后重新获取！";
-            case EmailCodeService.CODE_LOCKED ->
-                    "该邮箱已被暂时锁定，请 "
-                            + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
-                            + " 分钟后再试！";
+            case EmailCodeService.CODE_EXHAUSTED -> "验证码错误次数过多，该验证码已作废；请 "
+                    + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
+                    + " 分钟后重新获取！";
+            case EmailCodeService.CODE_LOCKED -> "该邮箱已被暂时锁定，请 "
+                    + minutesOf(emailCodeService.lockRemainingSeconds(email, scene))
+                    + " 分钟后再试！";
             case EmailCodeService.CODE_RATE_LIMITED -> "操作过于频繁，请稍后再试！";
             default -> "验证码错误或已过期！";
         };
     }
 
-    /** 秒数向上取整成分钟，至少算 1 分钟——“请 0 分钟后再试”比不说还糟 */
+    /**
+     * 秒数向上取整成分钟，至少算 1 分钟——“请 0 分钟后再试”比不说还糟
+     */
     private long minutesOf(long seconds) {
         return Math.max(1, (seconds + 59) / 60);
     }
@@ -363,6 +368,34 @@ public class UserController {
         }
         error.put("file", "不是一个图片文件！");
         return Result.error(error);
+    }
+
+    /**
+     * 当前生效头像的字段（对象名 + 原图地址 + 缩略图地址）。
+     *
+     * <p>只取头像这三个字段：头像页提交/重置后、应用启动时都要回写 store，
+     * 这些场景用不着把整份用户信息（含统计）都拉一遍。</p>
+     */
+    @GetMapping("/nowLogo")
+    public Result<Map<String, Object>> nowLogo() {
+        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        if (userInfo == null) {
+            return Result.error("未登录！");
+        }
+        User user = userService.findUserByName(userInfo.get("name").toString());
+        Map<String, Object> error = new HashMap<>();
+        if (user == null) {
+            error.put("error", "用户不存在!");
+            return Result.error(error);
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("userPic", user.getUserPic());
+        data.put("userPicSrc", user.getUserPicSrc());
+        // 缩略图必须是**签名后的地址**：getThumbKey 只拼出对象名（thumb_xxx），
+        // 前端拿它当 src 会请求到站点自身的路径下，必然 404 ——
+        // findUserByName 已经把带签名的那个填好了，直接用。
+        data.put("userPicThumbSrc", user.getUserPicThumbSrc());
+        return Result.success(data);
     }
 
     @PatchMapping("/updatePass")

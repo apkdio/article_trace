@@ -2,6 +2,7 @@ import {defineStore} from "pinia";
 import {ref} from "vue";
 import request from "@/utils/request.js";
 import {getAllCategories} from "@/api/category.js";
+import {getUserNowPicSrc} from "@/api/user.js";
 
 export const userInfoStore
     = defineStore("userInfo", () => {
@@ -40,6 +41,21 @@ export const userInfoStore
                 return Promise.reject(err)
             })
         }
+
+        /**
+         * 只刷新头像三个字段。
+         *
+         * 头像页提交 / 重置后、应用启动时用它：比 fetchUserInfo 轻，
+         * 也不会顺手改掉昵称 / 统计等字段——那些有自己的刷新时机。
+         */
+        async function refreshUserLogo() {
+            const result = await getUserNowPicSrc()
+            if (result.code !== 0) return
+            userPic.value = result.data.userPic
+            userPicSrc.value = result.data.userPicSrc
+            userPicThumbSrc.value = result.data.userPicThumbSrc
+        }
+
         function fetchCategories() {
             getAllCategories().then(result => {
                 categories.value = result.data.length
@@ -83,7 +99,7 @@ export const userInfoStore
         }
 
         return {
-            fetchUserInfo, clearUserInfo,
+            fetchUserInfo, refreshUserLogo, clearUserInfo,
             username, userPic, userPicSrc, userPicThumbSrc, email, nickname, lastLogin, id,
             updateTime, createTime, categories, articlesTotal, setLastLogin,
             type, allArticles, fetchArticlesCount, waitTotal,accessTotal,rejectTotal,fetchCategories

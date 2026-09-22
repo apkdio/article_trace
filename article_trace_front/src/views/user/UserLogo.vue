@@ -33,7 +33,10 @@ onMounted(() => {
   loadValue()
   loadMyApply()
 })
-const loadValue = () => {
+const loadValue = async () => {
+  // 先按后端的最新值回写 store，再取值——store 是持久化的，
+  // 只读它会一直显示上次写入的那张
+  await userInfoStore().refreshUserLogo()
   imgSrc.value = userInfoStore().userPicSrc
   imgKey.value = userInfoStore().userPic
 }
@@ -61,10 +64,7 @@ const removeUserLogo = () => {
         if (result.code === 0) {
           ElMessage.success("重置成功！")
           uploadRef.value.clearFiles()
-          await userInfoStore().fetchUserInfo()
-          setTimeout(() => {
-            loadValue()
-          }, 100)
+          await loadValue()
         } else {
           ElMessage.error("重置失败！")
         }
