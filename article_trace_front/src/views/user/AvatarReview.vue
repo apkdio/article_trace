@@ -4,6 +4,7 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {CloseBold, Picture, Refresh, Select} from '@element-plus/icons-vue'
 import {listAvatarApplies, reviewAvatarApply} from '@/api/avatar.js'
 import PageHeader from '@/components/PageHeader.vue'
+import {errorText} from '@/utils/errorText.js'
 
 /** 筛选值 → 后端 status 参数；all 传 undefined，axios 会省略该参数（即查全部） */
 const FILTER_TO_STATUS = {pending: 0, approved: 1, rejected: 2, all: undefined}
@@ -23,7 +24,7 @@ const load = async () => {
       items.value = res.data?.items || []
       total.value = res.data?.total || 0
     } else {
-      ElMessage.error(res.message || '获取失败！')
+      ElMessage.error(errorText(res.message, '获取失败！'))
     }
   } catch (err) {
     ElMessage.error('数据获取失败！')
@@ -61,7 +62,7 @@ const approve = (row) => {
       ElMessage.success('已通过！')
       await load()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
@@ -86,7 +87,7 @@ const reject = (row) => {
       ElMessage.success('已拒绝！')
       await load()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     // 校验不通过时 action 是 'cancel' 以外的值，别误报「已取消」

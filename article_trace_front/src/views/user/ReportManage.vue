@@ -5,6 +5,7 @@ import {CloseBold, Delete, Refresh, Select, View} from '@element-plus/icons-vue'
 import {handleReport, listReports} from '@/api/report.js'
 import {assessArticleService, deleteCommentService} from '@/api/article.js'
 import PageHeader from '@/components/PageHeader.vue'
+import {errorText} from '@/utils/errorText.js'
 import router from '@/router/index.js'
 
 /** 筛选值 → 后端 status 参数；all 传 undefined，axios 会省略该参数（即查全部） */
@@ -28,7 +29,7 @@ const load = async () => {
       items.value = res.data?.items || []
       total.value = res.data?.total || 0
     } else {
-      ElMessage.error(res.message || '获取失败！')
+      ElMessage.error(errorText(res.message, '获取失败！'))
     }
   } catch (err) {
     ElMessage.error('数据获取失败！')
@@ -77,7 +78,7 @@ const removeComment = (row) => {
       ElMessage.success('评论已删除！')
       await load()
     } else {
-      ElMessage.error(res.message || '删除失败！')
+      ElMessage.error(errorText(res.message, '删除失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
@@ -96,7 +97,7 @@ const takeDownArticle = (row) => {
       ElMessage.success('文章已下架！')
       await load()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
@@ -114,7 +115,7 @@ const dispose = (row) => {
       ElMessage.success('已处置！')
       await load()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
@@ -132,7 +133,7 @@ const reject = (row) => {
       ElMessage.success('已驳回！')
       await load()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
