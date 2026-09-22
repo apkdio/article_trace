@@ -9,12 +9,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * 站内信。
- *
- * <p>{@code senderId}：-1 系统消息；正整数为用户 ID；NULL 表示发送方已注销。
- * <br>{@code receiverId}：用户 ID；NULL 表示接收方已注销。</p>
- */
+/** 站内信。{@code senderId}：-1 系统消息 / 正整数为用户 ID / NULL 表示发送方已注销；{@code receiverId} 为 NULL 表示接收方已注销。 */
 @Data
 @TableName("notification")
 public class Notification {

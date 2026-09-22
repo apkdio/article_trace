@@ -37,6 +37,7 @@ public class ReaderController {
         this.siteFeatures = siteFeatures;
     }
 
+    /** 公开文章分页（分类 / 关键词 / 作者筛选，仅已发布） */
     @GetMapping("/getArticles")
     public Result<PageBean<Article>> getArticles(
             @RequestParam(defaultValue = "1") int pageNum,
@@ -66,6 +67,7 @@ public class ReaderController {
         return Result.success(allArticles);
     }
 
+    /** 公开文章详情（未发布不可见） */
     @GetMapping("/article/{id}")
     public Result<Article> getArticleById(@PathVariable int id) {
         Map<String, Object> error = new HashMap<>();
@@ -82,6 +84,7 @@ public class ReaderController {
         return Result.error(error);
     }
 
+    /** 作者信息（头像、发文数等） */
     @GetMapping("/writerInfo")
     public Result<WriterInfo> getWriterInfo(@RequestParam String nickName) {
         Map<String, Object> error = new HashMap<>();
@@ -103,6 +106,7 @@ public class ReaderController {
         return Result.success(writer);
     }
 
+    /** 站长信息 */
     @GetMapping("/masterInfo")
     public Result<WriterInfo> getMasterInfo() {
         WriterInfo writer = new WriterInfo();
@@ -119,6 +123,7 @@ public class ReaderController {
         return Result.success(writer);
     }
 
+    /** 发表评论（需登录，含敏感词与长度校验） */
     @PostMapping("/addComment")
     public Result<String> addComment(@RequestBody @Validated Comment comment) {
         Map<String, Object> error = new HashMap<>();
@@ -160,6 +165,7 @@ public class ReaderController {
         return Result.error(error);
     }
 
+    /** 删除评论（站长 / 文章作者 / 评论本人） */
     @DeleteMapping("/deleteComment")
     public Result<String> deleteComment(@RequestParam int commentId,
                                         @RequestParam int articleId) {
@@ -196,6 +202,7 @@ public class ReaderController {
         return Result.error(error);
     }
 
+    /** 文章评论分页 */
     @GetMapping("/comments")
     public Result<PageBean<Comment>> getComments(
             @RequestParam(defaultValue = "1") int pageNum,
@@ -218,6 +225,7 @@ public class ReaderController {
         return Result.success(allComments);
     }
 
+    /** 上报浏览量（登录按用户名去重，匿名按 IP+UA） */
     @PatchMapping("/article/addViews/{articleId}")
     public void addViews(@PathVariable int articleId, HttpServletRequest request) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -230,6 +238,7 @@ public class ReaderController {
         articleService.addViews(username, articleId);
     }
 
+    /** 热门文章 Top10 */
     @GetMapping("/article/hotArticles")
     public Result<List<Article>> hotArticles() {
         List<Article> articles = articleService.getViewsTop10();

@@ -62,12 +62,7 @@ public class Article {
     @TableField(exist = false)
     private String coverThumbSrc;
 
-    /**
-     * 清掉只该给审核方看的字段。
-     *
-     * <p>作者与公众的响应里不能留下“命中违禁词”的痕迹——尤其是 {@code sensitiveWords}，
-     * 那等于把词库逐条告诉作者，他便可以绕着写。面向非站长的返回必须先过一遍这里。</p>
-     */
+    /** 清掉只该给审核方看的字段（如 {@code sensitiveWords}），面向非站长的响应必须先过这里。 */
     public static void hideSensitiveDetail(List<Article> articles) {
         if (articles == null) {
             return;

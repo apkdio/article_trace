@@ -41,8 +41,7 @@ import java.util.concurrent.Executors;
 
 /**
  * 检索问答 / 会话管理 / agent 健康探活接口。
- * <p>问答采用 SSE 流式输出，把 agent 的 LLM 增量逐段转发给前端；
- * 会话历史由 agent 侧持久化，会话归属索引由 {@link AgentSessionService} 维护。</p>
+ * 问答走 SSE 流式转发；会话历史由 agent 侧持久化，归属索引由 {@link AgentSessionService} 维护。
  */
 @Slf4j
 @RestController
@@ -155,6 +154,7 @@ public class AgentController {
         return Result.success();
     }
 
+    /** agent 健康与入库统计（未启用时只回 enabled=false） */
     @GetMapping("/health")
     public Result<Map<String, Object>> health() {
         Map<String, Object> data = new HashMap<>();
@@ -172,11 +172,13 @@ public class AgentController {
         return Result.success(data);
     }
 
+    /** 关闭问答线程池 */
     @PreDestroy
     public void shutdown() {
         askExecutor.shutdownNow();
     }
 
+    /** 消费 agent 的流式响应，按 session / articles / delta 事件逐段推给前端 */
     private void streamAsk(SseEmitter emitter, AgentAskRequest req, String userId) {
         if (!agentClient.isEnabled()) {
             try {
@@ -222,6 +224,7 @@ public class AgentController {
         }
     }
 
+    /** 组装 gRPC 请求（query / sessionId / categoryId / topK） */
     private AskRequest buildRequest(AgentAskRequest req) {
         AskRequest.Builder builder = AskRequest.newBuilder().setQuery(req.getQuery());
         if (req.getSessionId() != null && !req.getSessionId().isBlank()) {
@@ -236,6 +239,7 @@ public class AgentController {
         return builder.build();
     }
 
+    /** proto 命中文章 → 前端展示对象 */
     private List<AgentMatchedArticle> toArticles(List<MatchedArticle> list) {
         List<AgentMatchedArticle> result = new ArrayList<>();
         for (MatchedArticle m : list) {

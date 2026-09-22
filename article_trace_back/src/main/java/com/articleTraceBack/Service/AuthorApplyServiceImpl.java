@@ -13,12 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 作者申请-审批实现。
- *
- * <p>通知走 {@link NotificationService}，渠道由 {@code notification.scenes} 配置决定
- * （提交 → both 通知站长；审批结果 → inbox 通知申请人）。</p>
- */
+/** 作者申请-审批实现；通知渠道由 {@code notification.scenes} 配置决定。 */
 @Slf4j
 @Service
 public class AuthorApplyServiceImpl implements AuthorApplyService {

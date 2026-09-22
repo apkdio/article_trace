@@ -22,10 +22,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 通知基础设施实现（站内信 + 邮件）。
- *
- * <p><b>调用方不感知成败</b>：全部 try-catch，失败只记日志，绝不影响主业务。</p>
- * <p>邮件渠道由 {@code MailService} 投递：落 {@code notification_mail} + 独立线程池异步发送 + 失败重试。</p>
+ * 通知基础设施实现（站内信 + 邮件）：全部 try-catch，失败只记日志，不影响主业务。
+ * 邮件经 {@code MailService} 落库 + 异步发送 + 失败重试。
  */
 @Slf4j
 @Service
@@ -198,12 +196,7 @@ public class NotificationServiceImpl implements NotificationService {
         return user == null ? null : user.getEmail();
     }
 
-    /**
-     * 投递邮件渠道：指定了模板就渲染双载体，否则发纯文本。
-     *
-     * <p>两个载体用不同的变量表——HTML 转义、纯文本不转义。若把转义后的值同时喂给 {@code .txt}，
-     * 纯文本客户端会看到 {@code &lt;b&gt;} 这类字面量。</p>
-     */
+    /** 投递邮件渠道：指定模板则渲染双载体，否则发纯文本；两个载体用不同变量表（HTML 转义、纯文本不转义）。 */
     private void sendMail(int receiverId, String title, String content,
                           String mailTemplate, Map<String, String> templateVars) {
         String toEmail = findUserEmail(receiverId);

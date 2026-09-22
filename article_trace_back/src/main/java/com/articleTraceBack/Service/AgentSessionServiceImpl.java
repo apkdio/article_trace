@@ -12,12 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-/**
- * 会话索引管理实现：Redis Set 维护「用户 ↔ 会话」归属，删除时联动 agent 侧数据。
- *
- * <p>索引故意不设 TTL —— 它指向 agent 侧持久保存的会话记录，过期会导致用户
- * 凭空看不到历史会话。因此清理只发生在显式删除（用户删会话 / 账号注销）。</p>
- */
+/** 会话索引管理实现：Redis Set 维护「用户 ↔ 会话」归属，删除时联动 agent 侧数据；索引不设 TTL（过期会让用户看不到历史会话）。 */
 @Slf4j
 @Service
 public class AgentSessionServiceImpl implements AgentSessionService {

@@ -8,13 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 登录失败计数实现（Redis）。
- *
- * <p>两个 key：`login:fail:{key}` 记失败次数，`login:block:{key}` 是黑名单标记。
- * 计数采用固定窗口——只在首次失败时设 TTL，之后的失败不续期，
- * 这样「15 分钟内不再失败」就会自然清零。</p>
- */
+/** 登录失败计数实现（Redis）：{@code login:fail:{key}} 记次数、{@code login:block:{key}} 为黑名单标记；固定窗口，仅在首次失败时设 TTL。 */
 @Slf4j
 @Service
 public class LoginAttemptServiceImpl implements LoginAttemptService {

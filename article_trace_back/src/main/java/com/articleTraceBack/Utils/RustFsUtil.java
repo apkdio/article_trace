@@ -66,6 +66,7 @@ public class RustFsUtil {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
+    /** 初始化 S3 客户端与预签名器 */
     @PostConstruct
     public void init() {
         this.s3Client = createS3Client(endpoint, accessKey, secretKey);
@@ -87,6 +88,7 @@ public class RustFsUtil {
         };
     }
 
+    /** 上传对象：json 进内容桶，image 进图片桶并生成缩略图 */
     public boolean upload(Object file, String type, String key) {
         String bucket = bucketOf(type);
         if (bucket == null) {
@@ -176,6 +178,7 @@ public class RustFsUtil {
         }
     }
 
+    /** 删除对象（图片连带删除缩略图） */
     public boolean delete(String key, String fileType) {
         if (key == null || key.isEmpty()) {
             return true;
@@ -207,14 +210,9 @@ public class RustFsUtil {
     }
 
     /**
-     * 把对象及其缩略图复制到另一种业务类型的桶（对象名不变）。
-     *
-     * <p>用于头像审核通过：待审对象在 avatar 桶，转正后要落到 pic 桶。
-     * 这样 {@code user_pic} 的读取侧（签名、重置、缩略图补齐）可以一律按 pic 桶解析，
-     * 不必去分辨这个对象来自哪个桶——对象名里并没有桶信息。</p>
-     *
-     * @return 原图复制成功为 true；缩略图可能因生成失败本就不存在，缺失不算失败
-     */
+    * 把对象及其缩略图复制到另一种业务类型的桶（对象名不变），用于头像审核通过后从 avatar 桶转到 pic 桶，使 {@code user_pic} 读取侧可一律按 pic 桶解析。
+    * @return 原图复制成功为 true；缩略图可能因生成失败本就不存在，缺失不算失败
+    */
     public boolean copyTo(String key, String fromType, String toType) {
         String from = bucketOf(fromType);
         String to = bucketOf(toType);
@@ -259,6 +257,7 @@ public class RustFsUtil {
     }
 
 
+    /** 读取内容桶中的正文 JSON */
     public String getContent(String fileKey) {
         try {
             // 完整读取并解析JSON
@@ -269,7 +268,7 @@ public class RustFsUtil {
         }
     }
 
-    // 生成图片临时访问链接
+    /** 生成图片临时访问链接（预签名 URL，缓存 3 天） */
     public String getPciUrl(String fileKey) {
         return getPciUrl(fileKey, "image");
     }
@@ -400,6 +399,7 @@ public class RustFsUtil {
                 .build();
     }
 
+    /** 从对象存储的 JSON 中取出 content 字段 */
     public static String extractFieldFromJson(S3Client s3Client, String bucket,
                                               String key) throws IOException {
 

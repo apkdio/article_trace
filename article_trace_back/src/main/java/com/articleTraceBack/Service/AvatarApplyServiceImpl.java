@@ -18,15 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 头像上传审核实现。
- *
- * <p>审批链路照 {@link AuthorApplyService} 的乐观 CAS：条件更新带 {@code status=待审}，
- * 影响行数为 0 即视为「已被他人处理」，后续动作全部不执行。</p>
- *
- * <p>通知走 {@link NotificationService}，渠道由 {@code notification.scenes} 配置决定
- * （提交 → both 通知站长；通过 → inbox 通知申请人；拒绝 → both，邮件按模板把理由送到）。</p>
- */
+/** 头像上传审核实现：审批走乐观 CAS（条件更新带 {@code status=待审}，影响行数为 0 视为已被处理）；通知渠道由 {@code notification.scenes} 决定。 */
 @Slf4j
 @Service
 public class AvatarApplyServiceImpl implements AvatarApplyService {
@@ -129,12 +121,7 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         return true;
     }
 
-    /**
-     * 把待审对象提升为生效头像：搬到 pic 桶 → 写 user_pic → 清掉旧图与待审对象。
-     *
-     * <p>审核通过走这里，站长直通（{@link #submitDirect}）也走这里。两处几乎相同的副作用
-     * 各写一遍的话，将来改搬运策略必然漏一处。</p>
-     */
+    /** 把待审对象提升为生效头像：搬到 pic 桶 → 写 user_pic → 清掉旧图与待审对象；审核通过与站长直通共用此方法。 */
     private boolean promote(int userId, String pendingPic) {
         // 待审对象在 avatar 桶，而 user_pic 的读取侧（签名、重置、缩略图补齐）一律按 pic 桶解析，
         // 所以先把它搬到 pic 桶再写 user_pic，否则头像会变成裂图。

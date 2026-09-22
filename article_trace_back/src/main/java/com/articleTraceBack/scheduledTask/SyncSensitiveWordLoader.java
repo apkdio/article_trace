@@ -13,12 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/**
- * 敏感词表热更新。
- *
- * <p>只负责「发现文件变了 → 让 holder 重载」，自己不保存任何匹配器实例——
- * 早先这里构建的新实例写进了本类字段，而业务读的是另一个 bean，导致热更新一直没生效。</p>
- */
+/** 敏感词表热更新：只负责「发现文件变化 → 让 holder 重载」，自身不保存匹配器实例。 */
 @Slf4j
 @Component
 @EnableScheduling
@@ -35,6 +30,7 @@ public class SyncSensitiveWordLoader {
         this.holder = holder;
     }
 
+    /** 启动时先加载一次词表 */
     @PostConstruct
     public void init() {
         Path path = Paths.get(wordFilePath);
@@ -48,6 +44,7 @@ public class SyncSensitiveWordLoader {
         log.info("sensitive word hot reload enabled. external file: {}", wordFilePath);
     }
 
+    /** 检测词表文件变化并重载（每 30 分钟） */
     @Scheduled(cron = "${sensitive_word.cron}")
     public void checkAndReload() {
         Path path = Paths.get(wordFilePath);

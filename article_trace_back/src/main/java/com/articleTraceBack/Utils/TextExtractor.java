@@ -2,6 +2,7 @@ package com.articleTraceBack.Utils;
 import org.jsoup.Jsoup;
 
 public class TextExtractor {
+    /** 提取纯文本摘要（去标签，超长截断） */
     public static String extractor(String html, int maxLength) {
         if (html == null || html.isEmpty() || maxLength <= 0) {
             return "";

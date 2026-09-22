@@ -19,8 +19,7 @@ public class AhoCorasickUtil {
 
     private final Node root = new Node();
 
-    // 添加一个模式串
-
+    /** 添加一个关键词（模式串） */
     public void addKeyword(String keyword) {
         Node current = root;
         for (char c : keyword.toCharArray()) {
@@ -30,8 +29,7 @@ public class AhoCorasickUtil {
         current.outputs.add(keyword);
     }
 
-    // 构建失败指针（BFS）
-
+    /** 构建自动机：BFS 建失败指针，构建后方可匹配 */
     public void build() {
         Queue<Node> queue = new LinkedList<>();
         // 初始化第一层节点，失败指针指向 root
@@ -70,8 +68,7 @@ public class AhoCorasickUtil {
         }
     }
 
-// 搜索文本中所有匹配的关键词
-
+/** 搜索文本中所有匹配的关键词，返回命中位置与词 */
     public List<Match> search(String text) {
         List<Match> matches = new ArrayList<>();
         Node current = root;

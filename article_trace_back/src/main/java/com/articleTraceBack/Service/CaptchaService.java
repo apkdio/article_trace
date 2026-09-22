@@ -2,12 +2,7 @@ package com.articleTraceBack.Service;
 
 import java.util.Map;
 
-/**
- * 图形验证码（人机校验）。
- *
- * <p>用于发送邮箱验证码前的人机校验，以及登录连续失败后的表单校验，防止被脚本刷邮件。
- * 答案存 Redis（2 分钟），**校验一次即失效**。</p>
- */
+/** 图形验证码（人机校验）：答案存 Redis 2 分钟，校验一次即失效。 */
 public interface CaptchaService {
 
     /**

@@ -5,12 +5,7 @@ import com.articleTraceBack.pojo.PageBean;
 
 import java.util.Map;
 
-/**
- * 站内通知与邮件投递基础设施。
- *
- * <p>与具体业务解耦：业务只负责发起调用，投递渠道按场景配置解析；
- * 投递成败由本服务内部处理（记日志、必要时代发/重试），不向调用方抛异常。</p>
- */
+/** 站内通知与邮件投递基础设施：业务只发起调用，渠道按场景配置解析，投递成败内部处理，不向调用方抛异常。 */
 public interface NotificationService {
 
     /**
@@ -23,15 +18,12 @@ public interface NotificationService {
     }
 
     /**
-     * 给单个用户发通知，邮件渠道可选指定模板，按「HTML + 纯文本」双载体投递。
-     *
-     * <p>需要把内容排成富文本（如拒绝理由）时用这个重载；不指定模板时邮件为纯文本单载体。</p>
-     *
-     * @param mailTemplate 模板名（不含扩展名，位于 {@code templates/email/}）；为 null 走纯文本
-     * @param templateVars 业务模板变量。**传原始值即可**——HTML 载体会由本服务转义，
-     *                     纯文本载体按原样输出（否则 {@code &amp;} 之类会在纯文本客户端里显示成字面量）。
-     *                     {@code year} 与 {@code logoUrl} 由本服务统一补齐，不必传。
-     */
+    * 给单个用户发通知，邮件渠道可指定模板并按「HTML + 纯文本」双载体投递；不指定模板时为纯文本单载体。
+    * @param mailTemplate 模板名（不含扩展名，位于 {@code templates/email/}）；为 null 走纯文本
+    * @param templateVars 业务模板变量。**传原始值即可**——HTML 载体会由本服务转义，
+    * 纯文本载体按原样输出（否则 {@code &amp;} 之类会在纯文本客户端里显示成字面量）。
+    * {@code year} 与 {@code logoUrl} 由本服务统一补齐，不必传。
+    */
     void notify(int receiverId, String scene, String title, String content,
                 String mailTemplate, Map<String, String> templateVars);
 

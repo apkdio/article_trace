@@ -16,31 +16,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 把 Redis 中累积的浏览量增量汇总进 MySQL。
- *
- * <p><b>为什么不用 {@code RENAME} 搬数据</b>：{@code RENAME} 会覆盖已存在的目标键。
- * 一旦上一轮在批量写库前失败，{@code :processing} 里就留着未消费的增量，
- * 下一轮 {@code rename} 会直接把它冲掉——这批浏览量永久丢失，且日志只留下一条 "Sync failed"。
- * 若期间没有新的浏览（原键不存在），那份残留更是永远无人处理。</p>
- *
- * <p>现在改为用 Lua 把最新增量**累加**进 {@code :processing}：既不清掉残留，也不漏掉新数据，
- * 且整个合并是原子的。只有批量写库成功后才删除 {@code :processing}——失败则原样保留，下一轮继续消费。</p>
- *
- * <p><b>投递语义是「至少一次」，不是「恰好一次」</b>：若批量写库成功、但在删除 {@code :processing}
- * 之前进程退出，下一轮会重放同一份增量，导致该批浏览量<b>多算一次</b>。
- * 这是 Redis 与 MySQL 之间无事务的固有限制，无法根除——只能接受极端情况下少量偏大。
- * 方向是刻意选的：宁可多算不可少算（少算意味着用户真实浏览被抹掉）。</p>
+ * 把 Redis 累积的浏览量增量汇总进 MySQL。用 Lua 原子累加进 {@code :processing} 而非 RENAME（后者会覆盖上一轮未消费的残留）。
+ * 投递语义为「至少一次」：极端情况下可能多算一次，宁可多算不可少算。
  */
 @Component
 @EnableScheduling
 @Slf4j
 public class SyncRedisToDbTask {
 
-    /**
-     * 把 {@code KEYS[1]} 哈希的每个字段值累加到 {@code KEYS[2]}，然后删除 {@code KEYS[1]}。
-     *
-     * <p>用 {@code HINCRBY} 而不是覆盖：目标键里可能还有上一轮未消费完的残留。</p>
-     */
+    /** 把 {@code KEYS[1]} 的每个字段累加到 {@code KEYS[2]} 后删除 {@code KEYS[1]}；用 HINCRBY 以保留目标键中上一轮的残留。 */
     private static final DefaultRedisScript<Long> MERGE_VIEWS_SCRIPT = new DefaultRedisScript<>(
             "local entries = redis.call('HGETALL', KEYS[1]) "
                     + "for i = 1, #entries, 2 do "
@@ -65,6 +49,7 @@ public class SyncRedisToDbTask {
         this.articleMapper = articleMapper;
     }
 
+    /** 把 Redis 浏览量增量汇总进 MySQL（每 10 分钟） */
     @Scheduled(cron = "${scheduler.sync.cron}")
     public void syncIncrementalViews() {
         if (!enabled) {

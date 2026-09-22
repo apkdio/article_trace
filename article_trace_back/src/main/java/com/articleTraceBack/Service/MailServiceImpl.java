@@ -14,14 +14,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 邮件投递服务实现：落库、异步投递、失败重试。
- *
- * <p><b>为什么用显式线程池而不是 @Async</b>：{@code send()} / {@code retryFailed()} 都在本类内部
- * 触发投递，而 {@code @Async} 依赖 Spring 代理，同类自调用不会异步（会退化成阻塞业务线程的同步发信），
- * 所以这里直接向线程池 {@code execute} 提交任务。</p>
- *
- * <p><b>retry_count 语义</b>：累计失败次数（首次投递失败即记 1）。重试条件为
- * {@code failed 且 retry_count ≤ maxRetry}，即默认最多「首次 + 2 次重试」共 3 次尝试。</p>
+ * 邮件投递服务实现：落库、异步投递、失败重试。用显式线程池而非 {@code @Async}（同类自调用不会异步）。
+ * {@code retry_count} 为累计失败次数，默认最多「首次 + 2 次重试」。
  */
 @Slf4j
 @Service

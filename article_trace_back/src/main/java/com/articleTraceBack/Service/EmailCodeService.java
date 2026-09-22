@@ -1,11 +1,6 @@
 package com.articleTraceBack.Service;
 
-/**
- * 邮箱验证码：生成、限流、暂存与校验。
- *
- * <p>验证码存 Redis（与 token 同库），发送走 {@link MailService} 的异步投递链路
- * （自带落库与失败重试）。</p>
- */
+/** 邮箱验证码：生成、限流、暂存与校验；发送走 {@link MailService} 的异步投递链路。 */
 public interface EmailCodeService {
 
     /** 注册场景 */
@@ -26,27 +21,17 @@ public interface EmailCodeService {
     int CODE_RATE_LIMITED = -3;
 
     /**
-     * 发送验证码。
-     *
-     * <p>同一邮箱在冷却期内重复请求会被拒绝（返回 false）；
-     * 该邮箱处于锁定中时同样拒绝——否则重新发一枚码就把失败计数与作废绕过去了。</p>
-     *
-     * @param email 收件邮箱
-     * @param scene 场景标识，见 {@link #SCENE_REGISTER} / {@link #SCENE_RESET}
-     * @return 是否已受理发送
-     */
+    * 发送验证码；同一邮箱在冷却期内或处于锁定中时拒绝发送。
+    * @param email 收件邮箱
+    * @param scene 场景标识，见 {@link #SCENE_REGISTER} / {@link #SCENE_RESET}
+    * @return 是否已受理发送
+    */
     boolean send(String email, String scene);
 
     /**
-     * 校验验证码，返回 {@link #CODE_OK} 等结果码。
-     *
-     * <p>校验成功即失效（一次性）；**输错不消费**，但会累计失败次数，达到阈值后
-     * 作废验证码并锁定该邮箱若干分钟——否则 6 位码在 5 分钟有效期内可以被撞库撞开。</p>
-     *
-     * <p>计数、作废、上锁全部在一次 Redis Lua 里完成，保证并发下的唯一性。</p>
-     *
-     * @param clientKey 请求来源指纹（IP + User-Agent），用于来源限流
-     */
+    * 校验验证码，返回 {@link #CODE_OK} 等结果码。成功即失效；输错不消费但累计失败，达阈值后作废并锁定邮箱；计数、作废、上锁在一次 Redis Lua 内完成。
+    * @param clientKey 请求来源指纹（IP + User-Agent），用于来源限流
+    */
     int verify(String email, String scene, String code, String clientKey);
 
     /** 该邮箱在当前场景下的锁定剩余秒数；未锁定返回 0 */

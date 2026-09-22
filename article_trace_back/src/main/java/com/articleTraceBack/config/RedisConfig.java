@@ -22,6 +22,7 @@ public class RedisConfig {
     private String host;
     @Value("${spring.data.redis.password}")
     private String password;
+    /** 默认库（db0）模板：登录态 */
     @Bean
     @Primary  // 标记为主要模板，注入时默认使用此模板
     public StringRedisTemplate stringRedisTemplate() {
@@ -34,6 +35,7 @@ public class RedisConfig {
         factory.afterPropertiesSet();
         return new StringRedisTemplate(factory);
     }
+    /** articleDB（db1）模板：浏览量 / agent 同步队列 / 会话索引 */
     @Bean
     public StringRedisTemplate stringRedisTemplateArticle() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();

@@ -41,6 +41,7 @@ public class ArticleController {
         this.userService = userService;
     }
 
+    /** 我的文章分页（可按分类 / 状态 / 关键词筛选） */
     @GetMapping("/list")
     public Result<PageBean<Article>> articlesList(
             @RequestParam(defaultValue = "1") int pageNum,
@@ -68,12 +69,7 @@ public class ArticleController {
         return Result.success(allArticles);
     }
 
-    /**
-     * 新增文章。封面随本次请求一起提交，不再单独上传。
-     *
-     * <p>用 multipart 而非 JSON：这样「正文 + 封面」是一次请求，不会出现封面传上去了、
-     * 文章却没提交成功所留下的孤儿对象。</p>
-     */
+    /** 新增文章；封面随本次请求以 multipart 一起提交，避免出现封面已上传、文章未保存的孤儿对象。 */
     @PostMapping("/add")
     public Result<Map<String, Object>> addArticle(@RequestPart("article") @Validated Article article,
                                                   @RequestPart(value = "cover", required = false) MultipartFile cover) {
@@ -129,6 +125,7 @@ public class ArticleController {
         return Result.error(error);
     }
 
+    /** 文章详情（作者侧，存在即返回） */
     @GetMapping("/detail/{id}")
     public Result<Article> detail(@PathVariable("id") int id) {
         Map<String, Object> error = new HashMap<>();
@@ -214,13 +211,9 @@ public class ArticleController {
     }
 
     /**
-     * 由「草稿 / 提交」意图 + 角色决定目标状态，不信任请求体里的具体数值。
-     *
-     * <p>前端仍沿用 state=0 表示「存为草稿」，1/2/3 表示「提交」：
-     * 站长直接发布（1），其他人送审（2）。</p>
-     *
-     * @return 目标状态；取值不在 {0,1,2,3} 内时返回 {@code null}（由调用方拒绝）
-     */
+    * 按「草稿 / 提交」意图与角色决定目标状态，不信任请求体里的数值：state=0 存草稿，1/2/3 为提交（站长直接发布，其余送审）。
+    * @return 目标状态；取值不在 {0,1,2,3} 内时返回 {@code null}（由调用方拒绝）
+    */
     private Integer resolveTargetState(Integer requested, int roleType) {
         if (requested == null) {
             return null;
@@ -239,12 +232,7 @@ public class ArticleController {
                 : ArticleService.STATE_PENDING;
     }
 
-    /**
-     * 落「命中违禁词」标记。
-     *
-     * <p>每次写入都要重算：作者把命中的词改掉后重投，标记必须跟着回 0，
-     * 否则这篇会永远排在待审列表最前面。</p>
-     */
+    /** 落「命中违禁词」标记；每次写入都重算，命中词改掉后标记必须回到 0，否则该文章会一直排在待审列表最前。 */
     private void applySensitiveMark(Article article, List<AhoCorasickUtil.Match> matches) {
         if (matches.isEmpty()) {
             article.setSensitiveHit(0);
@@ -275,12 +263,7 @@ public class ArticleController {
         return sb.toString();
     }
 
-    /**
-     * 保存成功后的回执：告诉前端这次落到了哪个状态。
-     *
-     * <p>命中词只回给站长——普通作者连「命中了」都不该知道，否则他会拿词表逐条试探。
-     * 前端据此只对站长弹提示。</p>
-     */
+    /** 保存成功后的回执：告知前端落到了哪个状态；命中词只回给站长，避免作者拿词表逐条试探。 */
     private Map<String, Object> savedResult(Article article, int roleType) {
         boolean hit = article.getSensitiveHit() != null && article.getSensitiveHit() == 1;
         Map<String, Object> data = new HashMap<>();
@@ -292,6 +275,7 @@ public class ArticleController {
         return data;
     }
 
+    /** 删除文章：作者本人直删，他人需站长身份 + 站长密码 */
     @DeleteMapping("/delete")
     public Result<String> deleteArticle(@RequestParam int articleId, String masterPass) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -321,6 +305,7 @@ public class ArticleController {
     }
 
 
+    /** 我的文章统计（总数 / 待审 / 已发布 / 已驳回） */
     @GetMapping("/count")
     public Result<Map<String, Object>> count() {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -337,6 +322,7 @@ public class ArticleController {
         return Result.success(count);
     }
 
+    /** 全站文章分页（站长，支持按标题或作者检索） */
     @GetMapping("/manageArticles")
     public Result<PageBean<Article>> manageArticles(
             @RequestParam(defaultValue = "1") int pageNum,
@@ -374,6 +360,7 @@ public class ArticleController {
         return Result.error(error);
     }
 
+    /** 审核文章：通过（1）或驳回（3）（站长） */
     @PatchMapping("/assess")
     public Result<String> assessArticle(@RequestParam int id, @RequestParam int state) {
         Map<String, Object> error = new HashMap<>();

@@ -19,26 +19,14 @@ public class RichTextCleaner {
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL
     );
 
-    /**
-     * 允许留在正文里的内联图片：**只认位图**。
-     *
-     * <p>{@code data:image/svg+xml} 能内嵌脚本，正文又是 {@code v-html} 直渲染，放进来就是存储型 XSS。</p>
-     */
+    /** 允许留在正文里的内联图片：只认位图（{@code data:image/svg+xml} 能内嵌脚本，而正文是 {@code v-html} 直渲染）。 */
     private static final Pattern RASTER_DATA_IMAGE = Pattern.compile(
             "^data:image/(png|jpe?g|gif|webp|bmp);(?:charset=[^;]+;)?base64,");
 
     /**
-     * 落库/回显用的白名单。
-     *
-     * <p>在 {@link Safelist#relaxed()} 基础上补两件事：</p>
-     * <ul>
-     *   <li><b>放行 class</b>——Quill 的对齐/缩进都靠 class 表达，不放行会把排版清掉；
-     *       class 本身不具备执行能力，放行是安全的</li>
-     *   <li><b>限定图片与链接的协议</b>——挡掉 {@code javascript:} 这类可执行伪协议</li>
-     * </ul>
-     *
-     * <p>脚本、事件属性（on*）、style 里的表达式等不在白名单内，一律被剔除。</p>
-     */
+    * 落库/回显用的白名单：在 {@link Safelist#relaxed()} 基础上放行 class（Quill 排版依赖它）并限定图片与链接协议。
+    * 脚本、事件属性（on*）与 style 表达式不在白名单内，一律剔除。
+    */
     private static final Safelist SAFELIST = Safelist.relaxed()
             .addTags("figure", "figcaption", "hr")
             .addAttributes(":all", "class")
@@ -47,16 +35,7 @@ public class RichTextCleaner {
             .addProtocols("img", "src", "http", "https", "data")
             .addProtocols("a", "href", "http", "https", "mailto");
 
-    /**
-     * 清洗富文本并保留 HTML 排版：按白名单剔除脚本、事件属性与危险协议。
-     *
-     * <p>正文会在前端用 {@code v-html} 直接渲染，脏 HTML 就是存储型 XSS——
-     * 这个方法是那条路径上唯一的关卡，因此保存与回显都要过一遍：
-     * 保存时保证新数据干净，回显时覆盖修复之前就已存在的历史数据。</p>
-     *
-     * <p><b>不要指望前端转义</b>：富文本要么全转义（排版全毁）、要么不转义（XSS），
-     * 没有中间态，所以清洗只能在服务端做。</p>
-     */
+    /** 按白名单清洗富文本并保留排版；正文会经 {@code v-html} 直渲染，因此保存与回显都必须调用。 */
     public static String cleanToSafeHtml(String html) {
         if (html == null || html.isEmpty()) {
             return "";
@@ -68,14 +47,7 @@ public class RichTextCleaner {
         return dropNonRasterDataImages(Jsoup.clean(html, "", SAFELIST, outputSettings), outputSettings);
     }
 
-    /**
-     * 把 src 是 {@code data:} 但**不是位图**的 img 删掉。
-     *
-     * <p>白名单放行 {@code data:} 是为内联图片，不是为了放行任意 data URI：
-     * {@code data:image/svg+xml}（乃至 {@code data:text/html}）能内嵌脚本，
-     * 而正文在前端是 {@code v-html} 直渲染——放进来就是一个存储型 XSS 的口子。
-     * 这里只认 png / jpeg / gif / webp / bmp 的 base64 位图。</p>
-     */
+    /** 删掉 src 是 {@code data:} 但非位图的 img：只认 png / jpeg / gif / webp / bmp 的 base64 位图，防止内嵌脚本。 */
     private static String dropNonRasterDataImages(String html, Document.OutputSettings outputSettings) {
         if (html == null || html.isEmpty() || !html.contains("data:")) {
             return html;
@@ -93,6 +65,7 @@ public class RichTextCleaner {
         return changed ? doc.body().html() : html;
     }
 
+    /** 清洗富文本为纯文本（去标签 / 脚本 / 图片），用于敏感词校验 */
     public static String cleanToPlainText(String html) {
         if (html == null || html.isEmpty()) {
             return "";

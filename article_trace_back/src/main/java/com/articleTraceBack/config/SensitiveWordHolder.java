@@ -16,21 +16,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 敏感词匹配器的持有者。
- *
- * <p><b>为什么需要它</b>：敏感词表支持运行时热更新，而匹配器本身是不可变对象（构建后不能改词）。
- * 所以要热更新，业务就不能直接注入一个固定的 {@code AhoCorasickUtil} bean——
- * 那等于把启动那一刻的快照焊死在业务里。这里改为持有一个 {@code volatile} 引用，
- * 业务每次通过 {@link #get()} 取当前实例，重载时整体替换引用即可。
- *
- * <p><b>此前的问题</b>：{@code SensitiveWordConfig} 建了一个 bean 注入给业务，
- * 而 {@code SyncSensitiveWordLoader} 又自行构建新实例写进自己的字段，两边不相干——
- * 定时任务每 30 分钟认真重载并打日志，业务用的却始终是启动快照，热更新形同虚设。</p>
- *
- * <p><b>替换而非修改</b>：{@code AhoCorasickUtil} 构建后不可变，所以不存在"读到半成品"的问题，
- * 正在使用旧实例的线程可以安全地把这次匹配做完。</p>
- */
+/** 敏感词匹配器的持有者：持有 {@code volatile} 引用，业务经 {@link #get()} 取当前实例；匹配器不可变，热更新时整体替换引用即可。 */
 @Slf4j
 @Component
 public class SensitiveWordHolder {
@@ -41,6 +27,7 @@ public class SensitiveWordHolder {
     /** 当前生效的匹配器；初始为空实例，避免调用方拿到 null */
     private volatile AhoCorasickUtil current = buildFrom(new ArrayList<>());
 
+    /** 启动时加载词表并构建匹配器 */
     @PostConstruct
     public void init() {
         if (reload()) {

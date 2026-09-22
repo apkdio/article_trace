@@ -11,15 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 邮件模板加载与渲染。
- *
- * <p>模板位于 {@code classpath:templates/email/}，同名模板可有 {@code .html}（富文本载体）
- * 与 {@code .txt}（纯文本兜底载体）两份，由投递层按客户端能力二选一。占位符写作
- * <code>{{key}}</code>；未提供值的占位符原样保留，便于上线前发现漏配。</p>
- *
- * <p><b>不做 HTML 转义</b>：变量直接拼进模板，本类对内容来源一无所知。
- * 要透传用户可控内容，必须由调用方先转义——{@code NotificationServiceImpl} 就是这么做的：
- * 它只对 HTML 载体转义，纯文本载体保持原样（否则客户端会看到 {@code &lt;} 之类的字面量）。</p>
+ * 邮件模板加载与渲染。模板位于 {@code classpath:templates/email/}，同名可备 {@code .html} 与 {@code .txt} 两份，占位符写作 {{key}}，未提供值的原样保留。
+ * 本类不做 HTML 转义，需要透传用户内容时由调用方先转义。
  */
 @Slf4j
 @Component

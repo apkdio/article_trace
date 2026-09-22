@@ -16,12 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/**
- * 邮箱验证码实现。
- *
- * <p>流程：冷却检查 → 生成 6 位码 → 提交异步投递 → 写入 Redis（5 分钟有效期）。
- * 校验为一次性，成功后立即删除。</p>
- */
+/** 邮箱验证码实现：冷却检查 → 生成 6 位码 → 异步投递 → 写 Redis（5 分钟）；校验一次性，成功即删。 */
 @Slf4j
 @Service
 public class EmailCodeServiceImpl implements EmailCodeService {
@@ -58,14 +53,9 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     /**
-     * 一次 Lua 完成「来源限流 → 锁定判定 → 比对 → 计数 → 作废 / 上锁」。
-     *
-     * <p>为什么整段塞进脚本：Redis 执行 Lua 是单线程串行的，脚本内部天然互斥，
-     * 所以并发下计数不会丢、验证码只会被消费一次；在 Java 里读-改-写则会两条线程同时读到
-     * 同一个计数值。顺带也没有了「INCR 与 EXPIRE 之间进程退出 → 计数永不过期」的窗口。</p>
-     *
-     * <p>返回码与 {@link EmailCodeService} 的 CODE_* 一致：1 通过 / 0 错误 / -1 用尽 / -2 锁定 / -3 来源限流。</p>
-     */
+    * 一次 Lua 完成「来源限流 → 锁定判定 → 比对 → 计数 → 作废 / 上锁」，利用 Redis 单线程串行保证并发正确性。
+    * 返回码与 {@link EmailCodeService} 的 CODE_* 一致。
+    */
     private static final DefaultRedisScript<Long> VERIFY_SCRIPT = new DefaultRedisScript<>(
             // KEYS[1] 验证码  KEYS[2] 失败计数  KEYS[3] 邮箱锁定  KEYS[4] 来源计数
             // ARGV[1] 用户输入  ARGV[2] 计数TTL  ARGV[3] 失败阈值  ARGV[4] 锁定TTL
@@ -147,12 +137,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         }
     }
 
-    /**
-     * 渲染邮件模板并提交投递。
-     *
-     * <p>两个载体同时投递：支持 HTML 的客户端渲染富文本，纯文本客户端回落到 {@code .txt}。
-     * 任一模板缺失都视为部署问题，只记日志不发信——宁可不发，也不发半成品。</p>
-     */
+    /** 渲染邮件模板并提交投递；HTML 与纯文本两载体同时投递，任一模板缺失只记日志不发信。 */
     private void renderAndSend(String email, String code) {
         Map<String, String> vars = new HashMap<>();
         vars.put("code", code);

@@ -7,16 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 通知基础设施配置（对应 application.yml 的 notification.*）。
- *
- * <ul>
- *   <li>{@code notification.scenes} —— 场景到投递渠道的映射（inbox / mail / both / none）</li>
- *   <li>{@code notification.defaultChannel} —— 未配置场景的默认渠道</li>
- *   <li>{@code notification.mail} —— 邮件渠道开关与重试参数</li>
- *   <li>{@code notification.cleanup} —— 站内信清理参数</li>
- * </ul>
- */
+/** 通知基础设施配置（对应 application.yml 的 {@code notification.*}）：场景渠道映射、默认渠道、邮件开关与重试、站内信清理。 */
 @Data
 @Component
 @ConfigurationProperties(prefix = "notification")

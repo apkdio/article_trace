@@ -240,11 +240,7 @@ public class ArticleServiceImpl implements ArticleService {
         return false;
     }
 
-    /**
-     * 上传封面对象，返回生成的对象名；校验不通过或上传失败返回 null。
-     *
-     * <p>对象名由服务端生成，客户端给的文件名只用于取扩展名（且要走白名单）。</p>
-     */
+    /** 上传封面对象并返回对象名，校验不通过或上传失败返回 null；对象名由服务端生成，客户端文件名只用于取扩展名。 */
     private String uploadCoverObject(MultipartFile cover, String username) {
         if (!FileCheckUtil.isAcceptableImage(cover)) {
             log.warn("reject cover upload: unacceptable image, user={}, name={}, contentType={}",
@@ -255,12 +251,7 @@ public class ArticleServiceImpl implements ArticleService {
         return rustFsUtil.upload(cover, "image", fileName) ? fileName : null;
     }
 
-    /**
-     * 从对象存储取正文并做白名单清洗。
-     *
-     * <p>保存时已经洗过一遍，这里是为了覆盖<b>修复之前就已存在</b>的历史数据——
-     * 它们可能含脚本，而这些正文会经 {@code v-html} 直接渲染。</p>
-     */
+    /** 从对象存储取正文并做白名单清洗，用于覆盖修复前遗留的历史数据（正文会经 {@code v-html} 直接渲染）。 */
     private String readCleanContent(String fileKey) {
         return RichTextCleaner.cleanToSafeHtml(rustFsUtil.getContent(fileKey));
     }
@@ -302,6 +293,7 @@ public class ArticleServiceImpl implements ArticleService {
         return pageBean;
     }
 
+    /** 站长后台：全站文章分页（联查分类与作者） */
     public PageBean<Article> findAllArticlesInMaster(int pageNum, int pageSize, Integer categoryId,
                                                      Integer state, Integer userId, String search, Integer searchType, String nickName) {
         PageBean<Article> pageBean = new PageBean<>();
@@ -449,13 +441,7 @@ public class ArticleServiceImpl implements ArticleService {
         return articles;
     }
 
-    /**
-     * 读热门文章缓存。
-     *
-     * <p>用 JSON 而非逗号拼接：文章标题允许含逗号，拼接格式会产生歧义、甚至越界。
-     * 缓存内容损坏（格式不符、旧格式残留）时返回 {@code null} 并清掉该键，交给调用方回源查库——
-     * 缓存问题不该让接口 500。</p>
-     */
+    /** 读热门文章缓存：用 JSON 而非逗号拼接（标题可含逗号）；缓存损坏时返回 {@code null} 并清键，由调用方回源。 */
     private List<Article> readHotArticlesCache(String cacheKey) {
         String cached = stringRedisTemplateArticle.opsForValue().get(cacheKey);
         if (cached == null) {

@@ -1,13 +1,6 @@
 package com.articleTraceBack.Service;
 
-/**
- * 登录失败计数与黑名单（按「IP + User-Agent」指纹统计，防暴力破解）。
- *
- * <p>失败达到 {@link #CAPTCHA_THRESHOLD} 次后登录必须附带图形验证码；
- * 达到 {@link #BLOCK_THRESHOLD} 次进入 {@link #BLOCK_MINUTES} 分钟黑名单。
- * 计数窗口为 {@link #WINDOW_MINUTES} 分钟（固定窗口，不随失败续期），
- * 登录成功立即清空。</p>
- */
+/** 登录失败计数与黑名单（按「IP + User-Agent」指纹统计）：达阈值需图形验证码，再达阈值进入黑名单；登录成功即清空。 */
 public interface LoginAttemptService {
 
     /** 失败达到此值后要求图形验证码 */

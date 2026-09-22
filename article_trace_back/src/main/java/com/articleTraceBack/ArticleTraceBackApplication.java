@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class ArticleTraceBackApplication {
 
+    /** 应用入口 */
     public static void main(String[] args) {
         SpringApplication.run(ArticleTraceBackApplication.class, args);
     }

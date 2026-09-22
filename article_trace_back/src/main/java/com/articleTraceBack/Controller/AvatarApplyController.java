@@ -14,16 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 头像审核接口（统一前缀 {@code /avatar}）。
- *
- * <p>提交入口不在这里——「上传自己的头像」是用户侧动作，挂在
- * {@code PATCH /user/updateUserLogo}；本控制器只放审核领域的两段：
- * 用户侧查自己的待审状态（{@code /avatar/mine}）与站长侧审批（{@code /avatar/manage/**}）。
- * 站长侧走 {@code /manage} 前缀是为了让拦截器能按 URL 统一挡掉，不必依赖每个方法各写一遍权限判断。</p>
- *
- * <p>{@link #isMaster()} 仍然保留：URL 规则只覆盖到前缀，纵深防御下多一道总是好的。</p>
- */
+/** 头像审核接口（统一前缀 {@code /avatar}）：用户侧查自己的待审状态，站长侧审批走 {@code /avatar/manage/**} 由拦截器统一拦截；提交入口在 {@code PATCH /user/updateUserLogo}。 */
 @RestController
 @RequestMapping("/avatar")
 public class AvatarApplyController {

@@ -2,13 +2,7 @@ package com.articleTraceBack.Service;
 
 import java.util.List;
 
-/**
- * 用户 ↔ agent 会话 的索引管理。
- *
- * <p>会话数据（历史 jsonl）由 agent 侧持久化，本服务只维护 Redis 中的归属索引
- * （{@code agent:session:user:{userId}} → Set&lt;sessionId&gt;}），并在用户注销等
- * 场景下联动清理 agent 侧的会话数据。</p>
- */
+/** 用户 ↔ agent 会话的索引管理：会话数据由 agent 侧持久化，本服务只维护 Redis 归属索引并联动清理。 */
 public interface AgentSessionService {
 
     /** 记录会话归属（幂等）；userId / sessionId 为空时忽略 */

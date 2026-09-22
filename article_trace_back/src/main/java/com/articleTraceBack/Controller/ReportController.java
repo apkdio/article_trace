@@ -16,15 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 举报接口（统一前缀 {@code /report}）。
- *
- * <p>提交是普通用户动作，只要登录就行；列表与处置挂在 {@code /manage} 下，
- * 与 {@code /avatar/manage/**} 一样由 {@code spring.tokenCheck.notAllowUrl} 按 URL 统一挡掉
- * 作者与读者，不必依赖每个方法各写一遍权限判断。</p>
- *
- * <p>{@link #isMaster()} 仍然保留：URL 规则只覆盖到前缀，纵深防御下多一道总是好的。</p>
- */
+/** 举报接口（统一前缀 {@code /report}）：提交只需登录，列表与处置走 {@code /manage} 由拦截器统一拦截；{@link #isMaster()} 保留作纵深防御。 */
 @RestController
 @RequestMapping("/report")
 public class ReportController {

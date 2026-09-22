@@ -21,6 +21,7 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
+    /** 新增分类（作者，名称唯一） */
     @PostMapping("/add")
     public Result<String> addCategory(@RequestBody @Validated Category category) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -44,6 +45,7 @@ public class CategoryController {
         return Result.error(error);
     }
 
+    /** 分类列表 */
     @GetMapping()
     public Result<List<Category>> findAllCategory() {
         List<Category> allCategory = categoryService.findAllCategory();
@@ -55,6 +57,7 @@ public class CategoryController {
         return Result.success(allCategory);
     }
 
+    /** 分类详情 */
     @GetMapping("/detail/{id}")
     public Result<Category> findCategoryById(@PathVariable("id") Integer id) {
         Map<String, Object> error = new HashMap<>();
@@ -66,6 +69,7 @@ public class CategoryController {
         return Result.error(error);
     }
 
+    /** 更新分类（仅创建人） */
     @PatchMapping("/update/{id}")
     public Result<String> updateCategory(@RequestBody @Validated Category category,
                                          @PathVariable("id") int id) {
@@ -101,6 +105,7 @@ public class CategoryController {
         return Result.error(error);
     }
 
+    /** 删除分类（仅创建人），关联文章的分类置空 */
     @DeleteMapping("/delete/{id}")
     public Result<String> deleteCategory(@PathVariable("id") int id) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();

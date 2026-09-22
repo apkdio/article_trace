@@ -9,11 +9,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * 作者申请（读者 → 作者）。
- *
- * <p>{@code status}：0 待审 / 1 通过 / 2 拒绝。</p>
- */
+/** 作者申请（读者 → 作者）。{@code status}：0 待审 / 1 通过 / 2 拒绝。 */
 @Data
 @TableName("author_apply")
 public class AuthorApply {

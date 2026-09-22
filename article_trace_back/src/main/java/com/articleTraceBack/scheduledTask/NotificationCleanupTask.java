@@ -7,11 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * 站内信清理任务。
- *
- * <p>每天凌晨删除超过 {@code notification.cleanup.keepDays} 天的站内信（默认 30 天，无论是否已读）。</p>
- */
+/** 站内信清理任务：每天凌晨删除超过 {@code notification.cleanup.keepDays} 天（默认 30 天）的站内信。 */
 @Slf4j
 @Component
 @EnableScheduling
@@ -26,6 +22,7 @@ public class NotificationCleanupTask {
         this.notificationService = notificationService;
     }
 
+    /** 清理过期站内信（每天凌晨） */
     @Scheduled(cron = "${notification.cleanup.cron:0 0 3 * * ?}")
     public void cleanupExpiredNotifications() {
         try {

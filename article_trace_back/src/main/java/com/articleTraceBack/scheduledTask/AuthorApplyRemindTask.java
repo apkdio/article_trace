@@ -7,12 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * 作者申请待审提醒任务。
- *
- * <p>每 12 小时检查是否有待审批的作者申请，有则向站长发送提醒（场景 {@code author-apply-remind}
- * 在配置中为 mail，即只发邮件，不产生站内信）。</p>
- */
+/** 作者申请待审提醒任务：每 12 小时检查待审申请，有则给站长发提醒（场景配置为 mail，只发邮件）。 */
 @Slf4j
 @Component
 @EnableScheduling
@@ -33,6 +28,7 @@ public class AuthorApplyRemindTask {
         this.notificationService = notificationService;
     }
 
+    /** 有待审作者申请时提醒站长（每 12 小时） */
     @Scheduled(cron = "${author-apply.remindCron:0 0 0/12 * * ?}")
     public void remindPendingApplies() {
         try {

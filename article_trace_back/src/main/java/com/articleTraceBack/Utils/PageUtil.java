@@ -1,13 +1,6 @@
 package com.articleTraceBack.Utils;
 
-/**
- * 分页参数归一化。
- *
- * <p>此前只有 {@code pageNum} 做了 {@code <= 0} 保护，{@code pageSize} 完全没校验：
- * 传 {@code -1} 会让 {@code pageTotal} 变成负数，进而算出 {@code limit x,-1} 这种非法 SQL；
- * 传 {@code 0} 则会被 {@code Math.ceil} 放大成 {@code Integer.MAX_VALUE}。
- * {@code pageSize} 过大同样危险——一次查询把整表拉进内存。这里统一收敛。</p>
- */
+/** 分页参数归一化：{@code pageNum} 与 {@code pageSize} 都收敛到合法区间，避免负数或过大值生成非法 SQL、或把整表拉进内存。 */
 public final class PageUtil {
 
     /** 未指定或非法时的默认每页条数 */

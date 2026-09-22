@@ -82,11 +82,7 @@ public class UserController {
         return Result.success(captcha);
     }
 
-    /**
-     * 发送邮箱验证码。
-     *
-     * <p>需先通过图形验证码（人机校验）；{@code scene} 默认 register，找回密码传 reset。</p>
-     */
+    /** 发送邮箱验证码；需先通过图形验证码，{@code scene} 默认 register，找回密码传 reset。 */
     @PostMapping("/email/code")
     public Result<String> sendEmailCode(@RequestBody(required = false) Map<String, String> body) {
         String email = (body == null) ? null : body.get("email");
@@ -128,10 +124,12 @@ public class UserController {
         return Result.success("验证码已发送");
     }
 
+    /** 登录态探活：能访问到即已通过鉴权 */
     @GetMapping("/loginCheck")
     public void loginCheck() {
     }
 
+    /** 注册（读者；作者走申请审批） */
     @PostMapping("/register")
     public Result<String> register(@RequestBody @Validated RegisterUserPojo user,
                                    HttpServletRequest request) {
@@ -185,6 +183,7 @@ public class UserController {
         return Result.error(error);
     }
 
+    /** 登录：校验验证码与失败次数后签发 JWT */
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody @Validated(User.login.class) User user,
                                              HttpServletRequest request,
@@ -283,6 +282,7 @@ public class UserController {
         return Math.max(1, (seconds + 59) / 60);
     }
 
+    /** 当前登录用户信息 */
     @GetMapping("/userInfo")
     public Result<Object> userInfo() {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -298,6 +298,7 @@ public class UserController {
         return Result.success(user);
     }
 
+    /** 修改昵称 / 邮箱 */
     @PatchMapping("/update")
     public Result<String> update(@RequestBody @Validated(User.update.class) User user) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -324,7 +325,7 @@ public class UserController {
         return Result.error(error);
     }
 
-    // 使用Param形式传递
+    /** 上传头像（multipart 表单参数，进入审核队列，通过后生效） */
     @PatchMapping("/updateUserLogo")
     public Result<String> updateUserLogo(@RequestParam("userLogo") MultipartFile userLogo) {
         Map<String, Object> error = new HashMap<>();
@@ -370,12 +371,7 @@ public class UserController {
         return Result.error(error);
     }
 
-    /**
-     * 当前生效头像的字段（对象名 + 原图地址 + 缩略图地址）。
-     *
-     * <p>只取头像这三个字段：头像页提交/重置后、应用启动时都要回写 store，
-     * 这些场景用不着把整份用户信息（含统计）都拉一遍。</p>
-     */
+    /** 返回当前生效头像的三个字段：对象名、原图地址、缩略图地址。 */
     @GetMapping("/nowLogo")
     public Result<Map<String, Object>> nowLogo() {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -398,6 +394,7 @@ public class UserController {
         return Result.success(data);
     }
 
+    /** 修改密码（校验原密码，成功后强制重新登录） */
     @PatchMapping("/updatePass")
     public Result<String> updatePass(@RequestBody @Validated UpdatePassPojo passInfo) {
         Map<String, Object> error = new HashMap<>();
@@ -428,6 +425,7 @@ public class UserController {
         return Result.error(error);
     }
 
+    /** 忘记密码：凭重置码设置新密码 */
     @PostMapping("/forgetPass")
     public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo,
                                      HttpServletRequest request) {
@@ -465,6 +463,7 @@ public class UserController {
         return Result.success();
     }
 
+    /** 退出登录：清 Cookie 与 Redis 中的令牌 */
     @PostMapping("/logout")
     public void logout(HttpServletResponse response) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
@@ -474,6 +473,7 @@ public class UserController {
         CookieUtil.clearToken(response, cookieSecure);
     }
 
+    /** 重置为默认头像 */
     @DeleteMapping("/removeUserLogo")
     public Result<String> removeUserLogo() {
         Map<String, Object> error = new HashMap<>();
@@ -495,6 +495,7 @@ public class UserController {
         return Result.error(error);
     }
 
+    /** 账号分页（站长） */
     @GetMapping("/accountManage")
     public Result<PageBean<User>> accountManage(
             @RequestParam(defaultValue = "1") int pageNum,
@@ -523,6 +524,7 @@ public class UserController {
         return Result.error(error);
     }
 
+    /** 变更用户身份（站长，需站长密码） */
     @PatchMapping("/changeType")
     public Result<String> changeType(@RequestParam int userId,
                                      @RequestParam int type, String masterPass) {
@@ -567,6 +569,7 @@ public class UserController {
         return Result.error(error);
     }
 
+    /** 删除账号（站长，需站长密码） */
     @DeleteMapping("/delete")
     public Result<String> deleteUser(@RequestParam int userId, @RequestParam String masterPass) {
         Map<String, Object> error = new HashMap<>();

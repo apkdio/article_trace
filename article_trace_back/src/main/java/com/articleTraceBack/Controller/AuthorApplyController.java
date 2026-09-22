@@ -17,16 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 作者申请接口（统一前缀 {@code /applyAuthor}）。
- *
- * <p>按使用者分两段路径：用户侧直接挂在 {@code /applyAuthor} 下，站长侧统一走
- * {@code /applyAuthor/manage/**}。这样分开是为了让「站长专属」在 URL 层面就能识别——
- * 拦截器可以把 {@code /applyAuthor/manage} 加进 {@code notAllowUrl} 统一挡掉，
- * 而不必依赖每个方法各自记得写权限判断。</p>
- *
- * <p>{@link #isMaster()} 仍然保留：URL 规则只覆盖到前缀，纵深防御下多一道总是好的。</p>
- */
+/** 作者申请接口（统一前缀 {@code /applyAuthor}）。站长侧统一走 {@code /applyAuthor/manage/**}，便于拦截器按 URL 整体拦截；{@link #isMaster()} 保留作纵深防御。 */
 @RestController
 @RequestMapping("/applyAuthor")
 public class AuthorApplyController {

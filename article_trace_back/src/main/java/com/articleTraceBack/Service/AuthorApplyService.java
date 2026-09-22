@@ -3,12 +3,7 @@ package com.articleTraceBack.Service;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
 
-/**
- * 作者申请-审批。
- *
- * <p>审批通过时把申请人提升为作者（type=1）并强制其重新登录；
- * 提交与审批结果均通过 {@link NotificationService} 发送通知。</p>
- */
+/** 作者申请-审批：通过后把申请人提升为作者（type=1）并强制重新登录；提交与审批结果均发通知。 */
 public interface AuthorApplyService {
 
     /** 提交申请；已有待审申请时返回 false */

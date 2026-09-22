@@ -18,15 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 举报实现。
- *
- * <p>处置走 {@link AuthorApplyService} 那套乐观 CAS：条件更新带 {@code status=待处理}，
- * 影响行数不为 1 即视为「已被处理」，通知也一并不发——否则同一个举报会被通知两次。</p>
- *
- * <p>本类**不碰被举报的内容**。删评论、下架文章仍走各自原有的接口，站长在举报列表里
- * 点的就是那批按钮；举报记录只负责「谁报了谁、报了没有」。</p>
- */
+/** 举报实现：处置走乐观 CAS（影响行数不为 1 视为已被处理，不再发通知）；本类不碰被举报内容。 */
 @Slf4j
 @Service
 public class ReportServiceImpl implements ReportService {

@@ -9,12 +9,12 @@ import org.springframework.stereotype.Component;
 // BCrypt加密
 public class BcryptUtils {
 
-    // 加密密码
+    /** 加密密码（BCrypt） */
     public static String encodePass(String rawPassword) {
         return BCrypt.hashpw(rawPassword, BCrypt.gensalt());
     }
 
-    // 验证密码
+    /** 校验密码：明文与哈希比对 */
     public static boolean checkPass(String rawPassword, String hashedPassword) {
         try {
             return BCrypt.checkpw(rawPassword, hashedPassword);

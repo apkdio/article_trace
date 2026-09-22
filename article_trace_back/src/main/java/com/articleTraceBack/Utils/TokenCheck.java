@@ -23,6 +23,7 @@ public class TokenCheck implements AsyncHandlerInterceptor {
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate stringRedisTemplate;
 
+    /** 合并写手与读者的 URL 拦截规则 */
     @PostConstruct
     public void init() {
         // 去重合并

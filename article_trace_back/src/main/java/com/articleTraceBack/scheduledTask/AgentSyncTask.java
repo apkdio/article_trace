@@ -26,17 +26,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 知识库定时同步任务。
- *
- * <p>增量同步（每 5 分钟）：业务侧（ArticleServiceImpl）在文章增删改、审核时只往
- * Redis 写入待处理的文章 id，本任务批量读取并统一推送到 article_trace_agent，成功
- * 后清空 Redis，失败则保留下次重试。目的是把「每篇一次」的推送合并为「每批一次」，
- * 避免频繁的 BM25 索引重建与知识库 IO。</p>
- *
- * <p>全量对账（每天凌晨 1 点）：兜底机制——若 Redis 丢失或增量同步漏推，定时把全部
- * 已发布文章重新推送一遍（agent 侧按 article.id 幂等覆盖，重复推送无害）。</p>
- *
- * <p>所有批量推送均按 batchSize 分批，避免单次 RPC 体量过大。</p>
+ * 知识库定时同步任务：每 5 分钟读 Redis 待处理 id 批量推送到 agent（成功后清空，失败保留重试）。
+ * 每天凌晨 1 点全量对账兜底（agent 侧按 article.id 幂等覆盖，重复推送无害）。
  */
 @Slf4j
 @Component
@@ -74,6 +65,7 @@ public class AgentSyncTask {
         this.stringRedisTemplateArticle = stringRedisTemplateArticle;
     }
 
+    /** 增量同步：批量读取 Redis 待处理 id 推送给 agent（每 5 分钟） */
     @Scheduled(cron = "${rpc.agent.sync.cron:0 */5 * * * ?}")
     public void syncPendingUpdates() {
         if (!agentEnabled || !enabled) {

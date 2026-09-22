@@ -5,13 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * 上传文件的基础校验。
- *
- * <p>此前封面与头像各有一套判断，且都有漏洞：只匹配 contentType 就直接放行、不再看扩展名，
- * 而 contentType 是客户端可伪造的——文件名写成 {@code x.jsp} 配 {@code image/png} 照样能过，
- * 最终以 .jsp 作为对象名存进存储。这里统一为「两者都要满足」，两个上传接口共用同一份判断。</p>
- */
+/** 上传文件的基础校验：MIME 与扩展名必须同时满足。contentType 可被客户端伪造，只查其一会让 {@code x.jsp} 配 {@code image/png} 蒙混过关。 */
 public final class FileCheckUtil {
 
     /** 允许的图片扩展名（小写，含点） */
@@ -25,11 +19,7 @@ public final class FileCheckUtil {
     private FileCheckUtil() {
     }
 
-    /**
-     * 是否为可接受的图片文件：**MIME 与扩展名都要通过**。
-     *
-     * <p>只查其一都不够——MIME 可伪造，扩展名决定最终落库的对象名。</p>
-     */
+    /** 是否为可接受的图片文件：MIME 与扩展名都要通过（MIME 可伪造，扩展名决定最终对象名）。 */
     public static boolean isAcceptableImage(MultipartFile file) {
         return file != null && hasImageContentType(file) && hasImageExtension(file);
     }

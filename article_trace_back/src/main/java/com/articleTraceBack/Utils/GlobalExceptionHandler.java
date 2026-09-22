@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 // 全局异常处理器
 public class GlobalExceptionHandler {
-    // 参数校验异常
+    /** 参数校验失败（@Validated）：取第一条字段错误 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<String> handleMethodArgumentNotValidException
             (MethodArgumentNotValidException ex) {
@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
         bindingResult.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
         return Result.error(errors);
     }
-    // @Validated 参数校验异常简化捕获
+    /** 方法级参数校验失败（@Validated 简化捕获） */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public Result<Map<String, Object>> handleHandlerMethodValidation(
             HandlerMethodValidationException ex) {
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // RequestParams 参数缺失异常
+    /** 缺少必填请求参数（RequestParam 缺失） */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public Result<Map<String, Object>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // 请求体格式异常
+    /** 请求 Content-Type 不支持或请求体格式异常 */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public Result<Map<String, Object>> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // 请求体内部内容校验（Json格式、数据类型、必须参数等）
+    /** 请求体无法解析（JSON 格式 / 数据类型 / 必填项校验失败） */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Result<Map<String, Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -86,7 +86,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // 唯一约束冲突（并发写入撞上 uk_* 时由数据库兜底抛出）
+    /** 唯一键冲突（并发写入撞唯一索引时由数据库兜底） */
     @ExceptionHandler(DuplicateKeyException.class)
     public Result<Map<String, Object>> handleDuplicateKeyException(DuplicateKeyException ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -97,7 +97,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // 其他数据完整性异常（外键不存在、字段超长、非空约束等）
+    /** 其他数据完整性异常（外键不存在、字段超长、非空约束等） */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public Result<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -106,7 +106,7 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    // 兜底：任何未预期的异常都返回统一结构，避免把堆栈和内部细节直接甩给调用方
+    /** 兜底：未预期异常统一返回，避免把堆栈与内部细节抛给调用方 */
     @ExceptionHandler(Exception.class)
     public Result<Map<String, Object>> handleUnexpectedException(Exception ex) {
         Map<String, Object> errors = new HashMap<>();
@@ -114,6 +114,7 @@ public class GlobalExceptionHandler {
         errors.put("error", "服务器处理请求时出错，请稍后重试");
         return Result.error(errors);
     }
+    /** 参数类型不匹配（如路径变量非数字） */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public Result<Map<String, Object>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
         Map<String, Object> errors = new HashMap<>();

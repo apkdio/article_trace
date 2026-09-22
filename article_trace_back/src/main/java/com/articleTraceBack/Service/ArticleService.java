@@ -59,11 +59,7 @@ public interface ArticleService {
 
     boolean updateState(int id, int state);
 
-    /**
-     * 判断某角色能否把文章状态从 {@code from} 流转到 {@code to}。
-     *
-     * <p>站长可跳过审核直接发布自己的草稿，因此该判断必须带角色维度。</p>
-     */
+    /** 判断某角色能否把文章状态从 {@code from} 流转到 {@code to}（站长可跳过审核直接发布，判断需带角色维度）。 */
     boolean canTransfer(int from, int to, int roleType);
 
     void addViews(String username, int articleId);

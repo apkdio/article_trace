@@ -10,17 +10,8 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 举报记录。
- *
- * <p>举报对象是三种表之一，所以 {@code targetType + targetId} 必须成对使用——
- * 三张表的 id 各自自增，单看 id 分不清指的是文章还是评论。</p>
- *
- * <p>{@code status} 只有三档：0 待处理 / 1 已处置 / 2 已驳回。**不设「受理中」**——
- * 举报的处理动作只有「看完了，确实违规」与「看完了，不违规」两种，
- * 中间态没有对应的动作，加上去只会让站长多点一次按钮。</p>
- *
- * <p>处置本身**不在这里做**：站长点「删除该评论」走的是 {@code /reader/deleteComment}、
- * 「下架该文章」走的是 {@code /article/assess}，本记录只负责记「谁报了谁、报了没有」。</p>
+ * 举报记录。{@code targetType + targetId} 必须成对使用（三张表 id 各自自增）。
+ * {@code status} 只有 0 待处理 / 1 已处置 / 2 已驳回，不设中间态；处置动作仍走各自原有接口。
  */
 @Data
 @TableName("report")
@@ -84,12 +75,7 @@ public class Report {
     @TableField(exist = false)
     private String targetSummary;
 
-    /**
-     * 联查展示：被举报对象的父级 id（目前只有评论用得上——它所属的文章 id）。
-     *
-     * <p>评论没有自己的页面，站长处置时要么跳到文章下看，要么复用
-     * {@code /reader/deleteComment} 删掉，而那个接口要求 articleId，所以这里带出来。</p>
-     */
+    /** 联查展示：被举报对象的父级 id（目前仅评论使用，即所属文章 id），供站长处置时复用 {@code /reader/deleteComment}。 */
     @TableField(exist = false)
     private Integer targetParentId;
 }

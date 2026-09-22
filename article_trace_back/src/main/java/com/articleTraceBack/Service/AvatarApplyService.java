@@ -4,12 +4,7 @@ import com.articleTraceBack.pojo.AvatarApply;
 import com.articleTraceBack.pojo.PageBean;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 头像上传审核。
- *
- * <p>用户提交的头像先进 avatar 桶等待审核，通过才写入 {@code user.user_pic}。
- * 用户侧在待审期间仍显示旧头像。</p>
- */
+/** 头像上传审核：待审头像存 avatar 桶，通过后才写入 {@code user.user_pic}，待审期间用户侧仍显示旧头像。 */
 public interface AvatarApplyService {
 
     /** 提交待审头像；已有待审记录或对象上传失败时返回 false */

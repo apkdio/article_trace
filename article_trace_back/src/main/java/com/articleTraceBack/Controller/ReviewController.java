@@ -14,15 +14,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 审核中心的聚合计数（T19 第二期第一刀）。
- *
- * <p>只做汇总：四种待办的数量从这里一次取走，给菜单角标和左侧类型列表用。
- * **列表与处置仍走各自原有的接口**（`/article/manageArticles`、`/avatar/manage/list`、
- * `/applyAuthor/manage/list`、`/report/manage/list`）——各类型的数据模型天然不同，
- * 不新建统一审核表，这里也不做任何状态变更。</p>
- *
- * <p>⚠️ 待办：`/review` 还没加进 `spring.tokenCheck.notAllowUrl`（四份配置），
- * 目前靠下面的 {@link #isMaster()} 保护。前端页面落地时一并补上。</p>
+ * 审核中心的聚合计数：四种待办数量一次取走，供菜单角标与类型列表使用。
+ * 只做汇总，不作状态变更；列表与处置仍走各自原有接口。
  */
 @RestController
 @RequestMapping("/review")
@@ -49,12 +42,7 @@ public class ReviewController {
         this.reportService = reportService;
     }
 
-    /**
-     * 各类型待办数（站长）。
-     *
-     * <p>返回固定四个键：{@code article} / {@code avatar} / {@code authorApply} / {@code report}，
-     * 前端直接按类型取用，不必判断某个键存不存在。</p>
-     */
+    /** 各类型待办数（站长）。固定返回 {@code article} / {@code avatar} / {@code authorApply} / {@code report} 四个键。 */
     @GetMapping("/summary")
     public Result<Map<String, Integer>> summary() {
         if (!isMaster()) {

@@ -9,12 +9,7 @@ import java.util.List;
 
 public interface ReportMapper extends BaseMapper<Report> {
 
-    /**
-     * 举报分页（联查举报人与处置人）；status 为 null 时查全部。
-     *
-     * <p>被举报对象**不在这里联查**：它是三张表之一，用 join 得写成三段 union，
-     * 而列表一页只有十条，摘要交给 service 逐条取更直白。</p>
-     */
+    /** 举报分页（联查举报人与处置人），status 为 null 时查全部；被举报对象不在 SQL 里联查，由 service 逐条取。 */
     @Select("<script>"
             + "select r.*, u.username as reporterUsername, u.nickname as reporterNickname, "
             + "h.username as handleUsername "

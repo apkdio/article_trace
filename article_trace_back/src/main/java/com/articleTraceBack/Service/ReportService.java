@@ -3,13 +3,7 @@ package com.articleTraceBack.Service;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Report;
 
-/**
- * 举报：提交、查询、处置。
- *
- * <p>只做「发现」这一环——把「谁报了谁、理由是什么、处理了没有」记录下来。
- * 对违规内容的实际动作（下架文章 / 删除评论）仍由各自原有的接口承担，
- * 站长在举报列表里点的是同一批按钮，不另造一套处置逻辑。</p>
- */
+/** 举报：提交、查询、处置。只记录「谁报了谁、理由、处理结果」，对违规内容的实际动作仍走各自原有接口。 */
 public interface ReportService {
 
     /**

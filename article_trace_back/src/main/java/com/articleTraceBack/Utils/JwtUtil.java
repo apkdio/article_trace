@@ -18,7 +18,7 @@ public class JwtUtil {
     @Value("${JWT.shortTime}")
     private int shortTime;
 
-    //接收业务数据,生成token并返回
+    /** 接收业务数据并生成 token 返回（按 type 决定有效期） */
     public String genToken(Map<String, Object> claims, int type) {
         // type=1（记住我）用 longTime（72 小时），否则用 shortTime（24 小时）
         long expireTime;
@@ -33,7 +33,7 @@ public class JwtUtil {
                 .sign(Algorithm.HMAC256(secret_KEY));
     }
 
-    //接收token,验证token,并返回业务数据
+    /** 校验 token 并返回其中的业务数据；无效抛异常 */
     public Map<String, Object> parseToken(String token) {
         return JWT.require(Algorithm.HMAC256(secret_KEY))
                 .build()

@@ -15,10 +15,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * article_trace_agent 的 gRPC 客户端封装。
- * 对应契约 proto/article_agent.proto 中的 ArticleAgentService。
- * 所有方法均做容错：RPC 失败只记录日志并返回失败态，不向上抛异常，
- * 保证 agent 服务不可用时不影响主业务。
+ * article_trace_agent 的 gRPC 客户端封装（对应 proto/article_agent.proto）。
+ * 所有方法容错：失败只记日志并返回失败态，不影响主业务。
  */
 @Slf4j
 @Component
@@ -44,6 +42,7 @@ public class ArticleAgentClient {
         return enabled;
     }
 
+    /** 建立 gRPC channel 与 stub（agent 未启用则跳过） */
     @PostConstruct
     public void init() {
         if (!enabled) {
@@ -57,6 +56,7 @@ public class ArticleAgentClient {
         log.info("ArticleAgentClient initialized: {}:{}", host, port);
     }
 
+    /** 关闭 gRPC channel */
     @PreDestroy
     public void shutdown() {
         if (channel != null && !channel.isShutdown()) {

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 public class IPUtil {
+    /** 取客户端真实 IP（兼容反向代理） */
     public static String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

@@ -15,11 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 站内信接口。
- *
- * <p>接收方一律取登录态，不接受前端传 userId，避免越权读取他人消息。</p>
- */
+/** 站内信接口。接收方一律取登录态，不接受前端传 userId，避免越权读取他人消息。 */
 @RestController
 @RequestMapping("/notification")
 public class NotificationController {

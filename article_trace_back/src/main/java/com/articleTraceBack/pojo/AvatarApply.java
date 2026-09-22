@@ -9,12 +9,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * 头像审核记录。
- *
- * <p>{@code status}：0 待审 / 1 通过 / 2 拒绝。待审头像存 avatar 桶，
- * 通过之前不写进 {@code user.user_pic}，所以用户侧一直显示旧头像。</p>
- */
+/** 头像审核记录。{@code status}：0 待审 / 1 通过 / 2 拒绝；待审头像存 avatar 桶，通过前不写 {@code user.user_pic}。 */
 @Data
 @TableName("avatar_apply")
 public class AvatarApply {

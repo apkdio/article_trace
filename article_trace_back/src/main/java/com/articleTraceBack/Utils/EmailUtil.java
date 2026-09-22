@@ -9,11 +9,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
- * 邮件发送工具（基于 Spring JavaMailSender / SMTP）。
- *
- * <p>注册、找回密码的邮箱验证码，以及站内信的邮件投递，都经由本类发送。</p>
- *
- * <p>发送失败只记录日志并返回 {@code false}，不向上抛异常，避免影响调用方主流程。</p>
+ * 邮件发送工具（Spring JavaMailSender / SMTP）：验证码与站内信邮件均经此发送。
+ * 发送失败只记日志并返回 {@code false}，不影响调用方主流程。
  */
 @Slf4j
 @Component
@@ -91,15 +88,11 @@ public class EmailUtil {
     }
 
     /**
-     * 发送同时含纯文本与 HTML 两种载体的邮件（{@code multipart/alternative}）。
-     *
-     * <p>两个部分都放进同一封邮件，由客户端按自身能力择一显示：支持 HTML 的渲染富文本，
-     * 纯文本客户端回落到 {@code text}。这也是「HTML 效果 + 纯文本兜底」的落点。</p>
-     *
-     * @param text 纯文本载体（兜底）
-     * @param html HTML 载体
-     * @return 是否发送成功
-     */
+    * 发送同时含纯文本与 HTML 两载体的邮件（{@code multipart/alternative}），由客户端择一显示。
+    * @param text 纯文本载体（兜底）
+    * @param html HTML 载体
+    * @return 是否发送成功
+    */
     public boolean sendMultipart(String to, String subject, String text, String html) {
         if (isBlank(to)) {
             log.warn("sendMultipart skipped: empty receiver");
