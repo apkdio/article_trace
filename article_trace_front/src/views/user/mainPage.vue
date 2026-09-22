@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, onUnmounted, ref, watch} from 'vue'
+import {computed, onMounted} from 'vue'
 import {
     Avatar,
     Crop,
@@ -13,44 +13,19 @@ import {
 } from '@element-plus/icons-vue'
 import {useRoute} from 'vue-router'
 import {userInfoStore} from "@/stores/userInfo.js";
-import {getReviewSummary} from "@/api/review.js";
+import {reviewSummaryStore} from "@/stores/reviewSummary.js";
 import UserLayout from '@/components/UserLayout.vue'
 
 const route = useRoute()
 
-// 审核中心的总待办数（菜单角标）；非站长拿不到也不算错——后端会拒，静默即可。
-// 菜单这一层收不到页面内部处置动作的通知，所以：路由一变化就拉一次，页面停留时每 60 秒轮询
-// ——与站内信铃铛同一套做法（它也是 60 秒轮询未读数）。若以后要“一点就掉”，把这份计数挪进
-// pinia store，由面板的 handled 事件直接刷新。
-const REVIEW_POLL_INTERVAL_MS = 60 * 1000
-const reviewPending = ref(0)
-let reviewPollTimer = null
-
-const loadReviewPending = async () => {
-    if (userInfoStore().type !== 0) return
-    try {
-        const res = await getReviewSummary()
-        if (res.code === 0) {
-            reviewPending.value = Object.values(res.data || {}).reduce((sum, n) => sum + (n || 0), 0)
-        }
-    } catch (err) {
-        // 角标拿不到不影响菜单
-    }
-}
+// 审核中心待办数：与审核中心页共用一份 store，页面里处置完会刷新它，
+// 菜单角标因此能「当场掉」，不必轮询。非站长拿不到也不算错——后端会拒。
+const reviewSummary = reviewSummaryStore()
+const reviewPending = computed(() => reviewSummary.total())
 
 onMounted(() => {
-    loadReviewPending()
-    reviewPollTimer = setInterval(loadReviewPending, REVIEW_POLL_INTERVAL_MS)
+    if (userInfoStore().type === 0) reviewSummary.refresh()
 })
-
-onUnmounted(() => {
-    if (reviewPollTimer) {
-        clearInterval(reviewPollTimer)
-        reviewPollTimer = null
-    }
-})
-
-watch(() => route.path, loadReviewPending)
 </script>
 
 <template>

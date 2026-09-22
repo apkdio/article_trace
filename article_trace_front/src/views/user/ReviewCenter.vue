@@ -1,9 +1,7 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue'
-import {ElMessage} from 'element-plus'
 import {Bell, Picture, Refresh, UserFilled, Warning} from '@element-plus/icons-vue'
-import {getReviewSummary} from '@/api/review.js'
-import {errorText} from '@/utils/errorText.js'
+import {reviewSummaryStore} from '@/stores/reviewSummary.js'
 import PageHeader from '@/components/PageHeader.vue'
 import ArticleReviewPanel from '@/components/review/ArticleReviewPanel.vue'
 import AuthorApplyPanel from '@/components/review/AuthorApplyPanel.vue'
@@ -23,7 +21,8 @@ import ReportManage from '@/views/user/ReportManage.vue'
  */
 const loading = ref(false)
 const activeType = ref('article')
-const summary = ref({article: 0, avatar: 0, authorApply: 0, report: 0})
+// 与侧边菜单角标**共用一份**计数：面板处置完 emit('handled') 刷新它，两处同时掉
+const reviewSummary = reviewSummaryStore()
 
 const TYPES = [
   {key: 'article', label: '文章审核', hint: '送达的稿件，通过后立即对外发布', icon: Bell},
@@ -32,25 +31,15 @@ const TYPES = [
   {key: 'report', label: '举报处理', hint: '举报只记「谁报了谁」，内容处置走各自的按钮', icon: Warning}
 ]
 
-// 面板实例：处置完当前面板后能顺手刷新一下左侧计数
-const panelRef = ref()
+const totalPending = computed(() => reviewSummary.total())
 
-const totalPending = computed(() =>
-    Object.values(summary.value).reduce((sum, n) => sum + (n || 0), 0))
+const countOf = (key) => reviewSummary.counts[key] || 0
 
-const countOf = (key) => summary.value[key] || 0
-
+/** 拉一次计数。面板处置完也调它，所以菜单角标与左侧列表同时更新 */
 const loadSummary = async () => {
   loading.value = true
   try {
-    const res = await getReviewSummary()
-    if (res.code === 0) {
-      summary.value = res.data || summary.value
-    } else {
-      ElMessage.error(errorText(res.message, "待办数获取失败！"))
-    }
-  } catch (err) {
-    ElMessage.error("待办数获取失败！")
+    await reviewSummary.refresh()
   } finally {
     loading.value = false
   }
@@ -86,10 +75,10 @@ watch(activeType, () => {
       </aside>
 
       <section class="panel-area">
-        <ArticleReviewPanel v-if="activeType === 'article'" ref="panelRef" @handled="loadSummary"/>
-        <AvatarReview v-else-if="activeType === 'avatar'"/>
-        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" ref="panelRef" @handled="loadSummary"/>
-        <ReportManage v-else ref="panelRef"/>
+        <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
+        <AvatarReview v-else-if="activeType === 'avatar'" @handled="loadSummary"/>
+        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
+        <ReportManage v-else @handled="loadSummary"/>
       </section>
     </div>
   </div>

@@ -15,6 +15,8 @@ const FILTER_TO_STATUS = {pending: 0, handled: 1, rejected: 2, all: undefined}
 const TARGET_LABEL = {article: '文章', comment: '评论', user: '用户'}
 
 const loading = ref(false)
+// 处置完通知外层刷新待办数（菜单角标与左侧列表共用一份计数）
+const emit = defineEmits(['handled'])
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -77,6 +79,7 @@ const removeComment = (row) => {
     if (res.code === 0) {
       ElMessage.success('评论已删除！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '删除失败！'))
     }
@@ -96,6 +99,7 @@ const takeDownArticle = (row) => {
     if (res.code === 0) {
       ElMessage.success('文章已下架！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '操作失败！'))
     }
@@ -114,6 +118,7 @@ const dispose = (row) => {
     if (res.code === 0) {
       ElMessage.success('已处置！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '操作失败！'))
     }
@@ -132,6 +137,7 @@ const reject = (row) => {
     if (res.code === 0) {
       ElMessage.success('已驳回！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '操作失败！'))
     }

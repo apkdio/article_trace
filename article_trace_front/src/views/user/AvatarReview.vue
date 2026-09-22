@@ -10,6 +10,8 @@ import {errorText} from '@/utils/errorText.js'
 const FILTER_TO_STATUS = {pending: 0, approved: 1, rejected: 2, all: undefined}
 
 const loading = ref(false)
+// 处置完通知外层刷新待办数（菜单角标与左侧列表共用一份计数）
+const emit = defineEmits(['handled'])
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -61,6 +63,7 @@ const approve = (row) => {
     if (res.code === 0) {
       ElMessage.success('已通过！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '操作失败！'))
     }
@@ -86,6 +89,7 @@ const reject = (row) => {
     if (res.code === 0) {
       ElMessage.success('已拒绝！')
       await load()
+      emit('handled')
     } else {
       ElMessage.error(errorText(res.message, '操作失败！'))
     }
