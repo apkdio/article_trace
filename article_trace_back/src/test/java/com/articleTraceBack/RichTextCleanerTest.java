@@ -67,11 +67,14 @@ public class RichTextCleanerTest {
     public void testKeepsRasterBase64Image() {
         // 编辑器插入的图片就是这个形态：一刀切删掉，作者看到的就是「编辑时看得见、保存后没了」
         String withImage = "<p>前</p><img src=\"data:image/png;base64,AAAA\"><p>后</p>";
+        // 有些编辑器会多带一段 charset，不能因此就当成不认识的 data: 删掉
+        String withCharset = "<img src=\"data:image/jpeg;charset=utf-8;base64,BBBB\">";
 
         String clean = RichTextCleaner.cleanToSafeHtml(withImage);
 
         assertTrue(clean.contains("data:image/png;base64,AAAA"), "位图内联图应保留");
         assertTrue(clean.contains("前") && clean.contains("后"), "正文其余部分不受影响");
+        assertTrue(RichTextCleaner.cleanToSafeHtml(withCharset).contains("BBBB"), "带 charset 段的位图也应保留");
     }
 
     @Test

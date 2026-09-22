@@ -25,7 +25,7 @@ public class RichTextCleaner {
      * <p>{@code data:image/svg+xml} 能内嵌脚本，正文又是 {@code v-html} 直渲染，放进来就是存储型 XSS。</p>
      */
     private static final Pattern RASTER_DATA_IMAGE = Pattern.compile(
-            "^data:image/(png|jpe?g|gif|webp|bmp);base64,");
+            "^data:image/(png|jpe?g|gif|webp|bmp);(?:charset=[^;]+;)?base64,");
 
     /**
      * 落库/回显用的白名单。
