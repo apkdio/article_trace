@@ -12,6 +12,8 @@ const FILTER_TO_STATUS = {pending: 0, approved: 1, rejected: 2, all: undefined}
 const loading = ref(false)
 // 处置完通知外层刷新待办数（菜单角标与左侧列表共用一份计数）
 const emit = defineEmits(['handled'])
+// 嵌在审核中心子面板里时不要自己的标题（否则子面板被压得没空间）
+defineProps({embedded: {type: Boolean, default: false}})
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -102,7 +104,7 @@ const reject = (row) => {
 
 <template>
   <div class="avatar-review-container">
-    <PageHeader title="头像审核" subtitle="审核用户提交的新头像，通过后立即生效"/>
+    <PageHeader v-if="!embedded" title="头像审核" subtitle="审核用户提交的新头像，通过后立即生效"/>
 
     <div class="toolbar">
       <el-radio-group v-model="filter" @change="onFilterChange">

@@ -17,6 +17,8 @@ const TARGET_LABEL = {article: '文章', comment: '评论', user: '用户'}
 const loading = ref(false)
 // 处置完通知外层刷新待办数（菜单角标与左侧列表共用一份计数）
 const emit = defineEmits(['handled'])
+// 嵌在审核中心子面板里时不要自己的标题（否则子面板被压得没空间）
+defineProps({embedded: {type: Boolean, default: false}})
 const items = ref([])
 const total = ref(0)
 const pageNum = ref(1)
@@ -149,7 +151,7 @@ const reject = (row) => {
 
 <template>
   <div class="report-manage-container">
-    <PageHeader title="举报处理" subtitle="处理用户提交的举报。内容本身的处置走原有按钮，本页只记「谁报了谁、处理了没有」"/>
+    <PageHeader v-if="!embedded" title="举报处理" subtitle="处理用户提交的举报。内容本身的处置走原有按钮，本页只记「谁报了谁、处理了没有」"/>
 
     <div class="toolbar">
       <el-radio-group v-model="filter" @change="onFilterChange">

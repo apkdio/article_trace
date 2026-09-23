@@ -75,10 +75,14 @@ watch(activeType, () => {
       </aside>
 
       <section class="panel-area">
-        <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
-        <AvatarReview v-else-if="activeType === 'avatar'" @handled="loadSummary"/>
-        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
-        <ReportManage v-else @handled="loadSummary"/>
+        <!-- 四个面板用同一套过渡：之前有的自带淡入、有的直出，切换时观感不一致。
+             注意四个组件都得是单根节点（目前都是），否则 transition 会报错。 -->
+        <transition name="panel-fade" mode="out-in">
+          <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
+          <AvatarReview v-else-if="activeType === 'avatar'" :embedded="true" @handled="loadSummary"/>
+          <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
+          <ReportManage v-else :embedded="true" @handled="loadSummary"/>
+        </transition>
       </section>
     </div>
   </div>
@@ -171,6 +175,17 @@ watch(activeType, () => {
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  // 切换四个子面板的统一过渡（外层的 page-slide-right 只管顶层路由）
+  .panel-fade-enter-active,
+  .panel-fade-leave-active {
+    transition: opacity 0.18s ease;
+  }
+
+  .panel-fade-enter-from,
+  .panel-fade-leave-to {
+    opacity: 0;
   }
 }
 </style>
