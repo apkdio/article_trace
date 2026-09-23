@@ -379,6 +379,11 @@ public class ArticleServiceImpl implements ArticleService {
         updateWrapper.eq("id", id)
                 .eq("state", raw.getState())   // 条件更新：状态被并发改动过就失败
                 .set("state", state);
+        if (state == STATE_PUBLISHED) {
+            // 审核完毕的文章不再挂「命中违禁词」标记：当初已判无伤、或那个词早已从词表移除，
+            // 再当敏感稿排在待审列表前面毫无意义。命中的词留在 sensitive_words 里，排查与调词表时还要看。
+            updateWrapper.set("sensitive_hit", 0);
+        }
         boolean updated = articleMapper.update(null, updateWrapper) == 1;
         if (updated) {
             // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除

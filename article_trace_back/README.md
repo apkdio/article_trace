@@ -1010,6 +1010,7 @@ python scripts/init_test_db.py
 | `ProfileGuardTest` | 昵称/个签规则：格式类直接拒、内容类进待审，含插空格/全角/emoji 的绕写 |
 | `ProfileNicknameUpdateTest` | 昵称修改链路：正常改名立即生效 + 7 天锁定期；内容命中落待审且保留旧值；格式类不进队列 |
 | `ProfileApplyReviewTest` | 昵称审核：通过写回并起锁定期、拒绝只记理由、重复处理被 CAS 挡住 |
+| `ArticleSensitiveFlagTest` | 审核通过（2→1）后清掉「命中违禁词」标记，命中词仍保留 |
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。

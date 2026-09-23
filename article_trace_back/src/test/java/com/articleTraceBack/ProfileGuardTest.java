@@ -68,6 +68,8 @@ public class ProfileGuardTest {
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname("a").kind(), "长度不足");
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname("超".repeat(21)).kind(), "超过 20 字");
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname(" 张三").kind(), "首尾空格");
+        assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname("张三，李四").kind(),
+                "昵称不放行标点：它更像标识而不是句子");
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname("张😀三").kind(), "emoji 不在白名单");
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkNickname("微信:13812345678").kind(),
                 "冒号不在白名单：格式类先判，不给无效输入排审核队列");
@@ -106,6 +108,8 @@ public class ProfileGuardTest {
         assertPass(guard.checkSignature(""), "清空个签合法");
         assertPass(guard.checkSignature("   "), "全空白等同清空");
         assertPass(guard.checkSignature("爱写代码的人"), "正常个签");
+        assertPass(guard.checkSignature("记录想法，留下痕迹。"), "个签里的中文标点必须放行");
+        assertPass(guard.checkSignature("写点东西——顺手记下！"), "破折号与其它标点");
         assertPass(guard.checkSignature("官方客服的小号"), "个签不查冒充——这是正常表达");
         assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkSignature("长".repeat(31)).kind(), "个签上限 30");
     }

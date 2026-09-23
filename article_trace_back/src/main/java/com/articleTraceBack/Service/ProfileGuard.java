@@ -54,7 +54,7 @@ public class ProfileGuard {
     /** 昵称：长度与字符集是格式类，联系方式 / 冒充 / 违禁词是内容类 */
     public Verdict checkNickname(String nickname) {
         String raw = nickname == null ? "" : nickname;
-        Verdict format = checkFormat(raw, NICKNAME_MIN, NICKNAME_MAX);
+        Verdict format = checkFormat(raw, NICKNAME_MIN, NICKNAME_MAX, false);
         return format.pass() ? checkContent(raw, true) : format;
     }
 
@@ -64,11 +64,11 @@ public class ProfileGuard {
         if (raw.isBlank()) {
             return PASS;
         }
-        Verdict format = checkFormat(raw, 1, SIGNATURE_MAX);
+        Verdict format = checkFormat(raw, 1, SIGNATURE_MAX, true);
         return format.pass() ? checkContent(raw, false) : format;
     }
 
-    private Verdict checkFormat(String raw, int min, int max) {
+    private Verdict checkFormat(String raw, int min, int max, boolean sentence) {
         if (!raw.equals(raw.strip())) {
             return new Verdict(Verdict.Kind.FORMAT, "首尾不能有空格");
         }
@@ -97,7 +97,17 @@ public class ProfileGuard {
             if (Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN) {
                 continue;
             }
-            return new Verdict(Verdict.Kind.FORMAT, "只能使用中文、字母、数字、下划线、连字符、中点与空格");
+            // 个签是句子，标点必须放行——不放行的话「记录想法，留下痕迹」这种正常写法都存不进去。
+            // 放行标点不影响拦联系方式：那种写法天然带 @ / : / www，由 CONTENT 规则兜底。
+            if (sentence && (c >= 32 && c < 128
+                    || (c >= '\u3000' && c <= '\u303F')
+                    || (c >= '\uFF01' && c <= '\uFF5E')
+                    || c == '\u2014' || c == '\u2018' || c == '\u2019' || c == '\u201C' || c == '\u201D' || c == '\u2026')) {
+                continue;
+            }
+            return new Verdict(Verdict.Kind.FORMAT, sentence
+                    ? "只能使用中文、字母、数字与常用标点"
+                    : "只能使用中文、字母、数字、下划线、连字符、中点与空格");
         }
         return PASS;
     }
