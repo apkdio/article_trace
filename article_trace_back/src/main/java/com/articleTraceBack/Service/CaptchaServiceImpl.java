@@ -4,9 +4,11 @@ import com.wf.captcha.SpecCaptcha;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +30,13 @@ public class CaptchaServiceImpl implements CaptchaService {
     private static final int WIDTH = 130;
     private static final int HEIGHT = 44;
     private static final int LENGTH = 4;
+
+    /** 自增与设过期放在一个 Lua：分两条命令时进程若在中间退出，计数会永不过期、该指纹被永久限流。 */
+    private static final DefaultRedisScript<Long> RATE_SCRIPT = new DefaultRedisScript<>(
+            "local count = redis.call('INCR', KEYS[1]) "
+                    + "if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end "
+                    + "return count",
+            Long.class);
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -62,12 +71,9 @@ public class CaptchaServiceImpl implements CaptchaService {
         }
         try {
             String key = String.format(KEY_RATE, clientKey);
-            Long count = stringRedisTemplate.opsForValue().increment(key);
+            Long count = stringRedisTemplate.execute(RATE_SCRIPT, List.of(key), "60");
             if (count == null) {
                 return true;
-            }
-            if (count == 1) {
-                stringRedisTemplate.expire(key, 1, TimeUnit.MINUTES);
             }
             return count <= RATE_LIMIT_PER_MINUTE;
         } catch (Exception e) {

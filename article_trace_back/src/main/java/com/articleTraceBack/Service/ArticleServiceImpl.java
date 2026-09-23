@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -374,6 +375,13 @@ public class ArticleServiceImpl implements ArticleService {
         return updated;
     }
 
+    /** 入库/删除标记的换边合成一条：分两条命令时退出会让同一 id 同时挂在两个集合，或两边都不在。 */
+    private static final DefaultRedisScript<Long> MARK_SWAP_SCRIPT = new DefaultRedisScript<>(
+            "redis.call('SADD', KEYS[1], ARGV[1]) "
+                    + "redis.call('SREM', KEYS[2], ARGV[1]) "
+                    + "return 1",
+            Long.class);
+
     /**
      * 标记文章待入库/更新到 agent 知识库（幂等，写入 Redis Set，由定时任务批量处理）。
      */
@@ -383,9 +391,9 @@ public class ArticleServiceImpl implements ArticleService {
         }
         String id = String.valueOf(articleId);
         try {
-            stringRedisTemplateArticle.opsForSet().add(AGENT_INGEST_KEY, id);
-            // 后到操作覆盖先到操作：移除该 id 的待删除标记
-            stringRedisTemplateArticle.opsForSet().remove(AGENT_DELETE_KEY, id);
+            // 后到操作覆盖先到操作：加一边、去另一边在同一个 Lua 里完成
+            stringRedisTemplateArticle.execute(MARK_SWAP_SCRIPT,
+                    List.of(AGENT_INGEST_KEY, AGENT_DELETE_KEY), id);
         } catch (Exception e) {
             log.warn("mark ingest pending failed: articleId={}", articleId, e);
         }
@@ -400,9 +408,9 @@ public class ArticleServiceImpl implements ArticleService {
         }
         String id = String.valueOf(articleId);
         try {
-            stringRedisTemplateArticle.opsForSet().add(AGENT_DELETE_KEY, id);
-            // 后到操作覆盖先到操作：移除该 id 的待入库标记
-            stringRedisTemplateArticle.opsForSet().remove(AGENT_INGEST_KEY, id);
+            // 后到操作覆盖先到操作：加一边、去另一边在同一个 Lua 里完成
+            stringRedisTemplateArticle.execute(MARK_SWAP_SCRIPT,
+                    List.of(AGENT_DELETE_KEY, AGENT_INGEST_KEY), id);
         } catch (Exception e) {
             log.warn("mark delete pending failed: articleId={}", articleId, e);
         }
