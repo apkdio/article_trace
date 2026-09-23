@@ -128,6 +128,8 @@ notification:
   cleanup:
     cron: "0 0 3 * * ?"
     keepDays: 30
+profile:
+  impersonation-words: 站长,管理员,管理員,官方,客服,认证
 rpc:
   agent:
     enabled: false           # ★ 默认不依赖 agent；需要联调的用例自行 assumeTrue 跳过

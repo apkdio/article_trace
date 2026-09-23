@@ -13,6 +13,9 @@ site:
   display-name: ${SITE_DISPLAY_NAME:文迹}
   logo-enabled: ${SITE_LOGO_ENABLED:true}
 
+profile:
+  impersonation-words: ${PROFILE_IMPERSONATION_WORDS:站长,管理员,管理員,官方,客服,认证}
+
 spring:
   servlet:
     multipart:

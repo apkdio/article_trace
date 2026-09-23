@@ -7,6 +7,11 @@ site:
   display-name: 文迹              # 站点显示名（浏览器标题与页脚）；线上填备案的网站名称
   logo-enabled: true              # 站内是否展示 logo（首页/详情页页头）；线上做备案时通常置 false
 
+profile:
+  # 昵称 / 个签里禁止出现的冒充站方身份的词，逗号分隔。只拦「像官方口径」的词，
+  # 不是违禁词表（违禁词在 sensitive_word 那份外部文件里）；站名另由 site.display-name 兜底
+  impersonation-words: 站长,管理员,管理員,官方,客服,认证
+
 spring:
   servlet:
     multipart:

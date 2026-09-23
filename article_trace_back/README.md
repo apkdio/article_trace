@@ -525,7 +525,7 @@ notification:
 | `site.author-apply-enabled` | `true` | 提交作者申请 |
 | `site.logo-enabled` | `true` | 首页 / 详情页页头的 logo（线上通常关掉：logo 上是「文迹」，与备案名同现容易被认为不一致）|
 | `site.display-name` | `文迹` | 浏览器标题与页脚版权行用的站名（线上填备案的网站名称）|
-| `profile.impersonation-words` | `站长,管理员,管理員,官方,客服,认证` | 昵称 / 个签里禁止出现的冒充词，逗号分隔；站名另由 `site.display-name` 兜底。**没有配到 .env**：这组词是通用称谓，线上要改的是站名（已由 `SITE_DISPLAY_NAME` 驱动），不值得为它再开一条四份配置同步的链路 |
+| `profile.impersonation-words` | `站长,管理员,管理員,官方,客服,认证` | 昵称 / 个签里禁止出现的冒充词，逗号分隔；站名另由 `site.display-name` 兜底。线上可用 `PROFILE_IMPERSONATION_WORDS` 覆盖，通常不必动 |
 
 **默认全开 = 本地开发的多用户态**；线上由 `.env` 注入 `false` 切换，**代码不分叉**：
 

@@ -52,7 +52,7 @@ onMounted(async () => {
   const features = await getSiteFeatures()
   siteName.value = features.displayName
   logoEnabled.value = features.logoEnabled
-  document.title = `${siteName.value} - 让每一份文章都有迹可循`
+  document.title = `${siteName.value} - 在这里，每一份文章都有价值！`
   try {
     await loginCheckPublic()
   } catch (e) {
