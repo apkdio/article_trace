@@ -9,6 +9,9 @@ public final class RedisKeys {
     /** 浏览量 Top10 热门文章缓存（ArticleServiceImpl 写入，SyncRedisToDbTask 同步后失效） */
     public static final String ARTICLE_HOT_TOP10 = "article:hot:top10";
 
-    /** 昵称改名锁定期（后接 userId）：成功改名或审核通过后 7 天内不能再改 */
+    /** 昵称改名锁定期（后接 userId）：成功改名或审核通过后多少天内不能再改 */
     public static final String PROFILE_NICKNAME_LOCK = "profile:nickname:lock:";
+
+    /** 上面那把锁的有效期（天）；改名与审核通过两处都要写，放这里才有单一来源 */
+    public static final int PROFILE_NICKNAME_LOCK_DAYS = 7;
 }

@@ -36,8 +36,6 @@ public class UserServiceImpl implements UserService {
     private static final String NICKNAME_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
     private static final int NICKNAME_SUFFIX_LEN = 6;
     private static final SecureRandom NICKNAME_RANDOM = new SecureRandom();
-    /** 改名锁定期：成功改名后多少天内不能再改 */
-    private static final int NICKNAME_LOCK_DAYS = 7;
 
     @Value("${JWT.longTime}")
     private long longTime;
@@ -207,7 +205,7 @@ public class UserServiceImpl implements UserService {
         if (!update(user, 0)) {
             return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "修改失败！请重试！", "error");
         }
-        stringRedisTemplate.opsForValue().set(lockKey, "1", NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
+        stringRedisTemplate.opsForValue().set(lockKey, "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
         // 此前若留着一条待审，它一旦被批准就会覆盖掉刚改好的名字
         profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_NICKNAME);
         return new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null);

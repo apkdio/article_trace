@@ -3,6 +3,7 @@ package com.articleTraceBack.Controller;
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.Service.AvatarApplyService;
+import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.ReportService;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Result;
@@ -31,18 +32,21 @@ public class ReviewController {
     private final AvatarApplyService avatarApplyService;
     private final AuthorApplyService authorApplyService;
     private final ReportService reportService;
+    private final ProfileApplyService profileApplyService;
 
     public ReviewController(ArticleService articleService,
                             AvatarApplyService avatarApplyService,
                             AuthorApplyService authorApplyService,
-                            ReportService reportService) {
+                            ReportService reportService,
+                            ProfileApplyService profileApplyService) {
         this.articleService = articleService;
         this.avatarApplyService = avatarApplyService;
         this.authorApplyService = authorApplyService;
         this.reportService = reportService;
+        this.profileApplyService = profileApplyService;
     }
 
-    /** 各类型待办数（站长）。固定返回 {@code article} / {@code avatar} / {@code authorApply} / {@code report} 四个键。 */
+    /** 各类型待办数（站长）。固定返回 {@code article} / {@code avatar} / {@code authorApply} / {@code report} / {@code profile} 五个键。 */
     @GetMapping("/summary")
     public Result<Map<String, Integer>> summary() {
         if (!isMaster()) {
@@ -55,6 +59,7 @@ public class ReviewController {
         data.put("avatar", avatarApplyService.pendingCount());
         data.put("authorApply", authorApplyService.pendingCount());
         data.put("report", reportService.pendingCount());
+        data.put("profile", profileApplyService.pendingCount());
         return Result.success(data);
     }
 

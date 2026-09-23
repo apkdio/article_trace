@@ -1,22 +1,36 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.PageUtil;
+import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ProfileApplyMapper;
+import com.articleTraceBack.mapper.UserMapper;
+import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.ProfileApply;
+import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class ProfileApplyServiceImpl implements ProfileApplyService {
 
     private final ProfileApplyMapper profileApplyMapper;
+    private final UserMapper userMapper;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    public ProfileApplyServiceImpl(ProfileApplyMapper profileApplyMapper) {
+    public ProfileApplyServiceImpl(ProfileApplyMapper profileApplyMapper, UserMapper userMapper,
+                                   StringRedisTemplate stringRedisTemplate) {
         this.profileApplyMapper = profileApplyMapper;
+        this.userMapper = userMapper;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -42,5 +56,57 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
                 .eq("user_id", userId)
                 .eq("type", type)
                 .eq("status", ProfileApply.STATUS_PENDING));
+    }
+
+    @Override
+    public PageBean<ProfileApply> list(Integer status, int pageNum, int pageSize) {
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
+        PageBean<ProfileApply> pageBean = new PageBean<>();
+        int total = profileApplyMapper.countByStatus(status);
+        pageBean.setTotal(total);
+        pageBean.setItems(total == 0
+                ? List.of()
+                : profileApplyMapper.selectPageWithUser(status, (pageNum - 1) * pageSize, pageSize));
+        return pageBean;
+    }
+
+    @Override
+    public int pendingCount() {
+        return profileApplyMapper.countByStatus(ProfileApply.STATUS_PENDING);
+    }
+
+    @Override
+    public boolean review(int applyId, boolean pass, String rejectReason, Integer reviewerId) {
+        ProfileApply apply = profileApplyMapper.selectById(applyId);
+        // 目前只有昵称会被提交；个签要等 T20 把 user.signature 建出来
+        if (apply == null || apply.getType() == null || apply.getType() != ProfileApply.TYPE_NICKNAME) {
+            return false;
+        }
+        UpdateWrapper<ProfileApply> cas = new UpdateWrapper<>();
+        cas.eq("id", applyId).eq("status", ProfileApply.STATUS_PENDING)
+                .set("status", pass ? ProfileApply.STATUS_APPROVED : ProfileApply.STATUS_REJECTED)
+                .set("review_user", reviewerId)
+                .set("review_time", LocalDateTime.now());
+        if (!pass) {
+            cas.set("reject_reason", rejectReason);
+        }
+        if (profileApplyMapper.update(null, cas) != 1) {
+            return false;
+        }
+        if (!pass) {
+            log.info("profile apply rejected: applyId={}, userId={}", applyId, apply.getUserId());
+            return true;
+        }
+        // 通过：写回昵称并起锁定期。用户若在此期间正常改名成功过，待审行已被 cancelPending 删掉，
+        // 上面的 CAS 取不到行、不会覆盖他后来的新名字。
+        User user = new User();
+        user.setNickname(apply.getPendingValue());
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.update(user, new UpdateWrapper<User>().eq("id", apply.getUserId()));
+        stringRedisTemplate.opsForValue().set(RedisKeys.PROFILE_NICKNAME_LOCK + apply.getUserId(),
+                "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
+        log.info("profile apply approved: applyId={}, userId={}", applyId, apply.getUserId());
+        return true;
     }
 }
