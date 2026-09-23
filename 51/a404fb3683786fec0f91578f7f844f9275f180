@@ -1,0 +1,27 @@
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_7d161ea052f12d 10-14
+docker/backend/application-container.yml
+  s_ab74ea15e793d1::t_19ebef217f7ec7 16-18
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_de4f008576d333 528
+.env.example
+  s_ab74ea15e793d1::t_23a929ac3c78a4 111-112
+article_trace_back/src/test/resources/application.yml
+  s_ab74ea15e793d1::t_af9f9c79e7f8e9 131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.45-trip",
+  "base_commit_sha": "51a404fb3683786fec0f91578f7f844f9275f180",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
