@@ -88,10 +88,11 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
     @Override
     public boolean review(int applyId, boolean pass, String rejectReason, Integer reviewerId) {
         ProfileApply apply = profileApplyMapper.selectById(applyId);
-        // 目前只有昵称会被提交；个签要等 T20 把 user.signature 建出来
-        if (apply == null || apply.getType() == null || apply.getType() != ProfileApply.TYPE_NICKNAME) {
+        // 只处理昵称与个签两类；个签目前没有提交入口以外的用法
+        if (apply == null || apply.getType() == null || apply.getType() > ProfileApply.TYPE_SIGNATURE) {
             return false;
         }
+        String item = apply.getType() == ProfileApply.TYPE_SIGNATURE ? "个签" : "昵称";
         UpdateWrapper<ProfileApply> cas = new UpdateWrapper<>();
         cas.eq("id", applyId).eq("status", ProfileApply.STATUS_PENDING)
                 .set("status", pass ? ProfileApply.STATUS_APPROVED : ProfileApply.STATUS_REJECTED)
@@ -106,24 +107,28 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
         if (!pass) {
             // 理由要送到用户手上，所以场景配成站内信 + 邮件
             String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
-            notificationService.notify(apply.getUserId(), SCENE_REJECTED, "昵称审核未通过",
-                    "你提交的昵称未通过审核。原因：" + reason,
+            notificationService.notify(apply.getUserId(), SCENE_REJECTED, item + "审核未通过",
+                    "你提交的" + item + "未通过审核。原因：" + reason,
                     TEMPLATE_REJECTED,
-                    Map.of("reason", reason, "nickname", nicknameOf(apply.getUserId())));
+                    Map.of("reason", reason, "item", item, "nickname", nicknameOf(apply.getUserId())));
             log.info("profile apply rejected: applyId={}, userId={}", applyId, apply.getUserId());
             return true;
         }
-        // 通过：写回昵称并起锁定期。用户若在此期间正常改名成功过，待审行已被 cancelPending 删掉，
-        // 上面的 CAS 取不到行、不会覆盖他后来的新名字。
+        // 通过：写回待审值并起锁定期（昵称与个签同一个锁）。用户若在此期间正常改过，
+        // 待审行已被 cancelPending 删掉，上面的 CAS 取不到行、不会覆盖他后来改的值。
         User user = new User();
-        user.setNickname(apply.getPendingValue());
         user.setUpdateTime(LocalDateTime.now());
+        if (apply.getType() == ProfileApply.TYPE_SIGNATURE) {
+            user.setSignature(apply.getPendingValue());
+        } else {
+            user.setNickname(apply.getPendingValue());
+        }
         userMapper.update(user, new UpdateWrapper<User>().eq("id", apply.getUserId()));
         stringRedisTemplate.opsForValue().set(RedisKeys.PROFILE_NICKNAME_LOCK + apply.getUserId(),
                 "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
         // 通过是「已生效」的轻量告知，场景配成仅站内信
-        notificationService.notify(apply.getUserId(), SCENE_APPROVED, "昵称审核已通过",
-                "你的新昵称已通过审核，现在已经在使用了。");
+        notificationService.notify(apply.getUserId(), SCENE_APPROVED, item + "审核已通过",
+                "你的新" + item + "已通过审核，现在已经在使用了。");
         log.info("profile apply approved: applyId={}, userId={}", applyId, apply.getUserId());
         return true;
     }

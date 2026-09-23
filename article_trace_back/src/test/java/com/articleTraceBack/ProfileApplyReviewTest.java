@@ -59,7 +59,7 @@ public class ProfileApplyReviewTest {
         stringRedisTemplate.delete(RedisKeys.PROFILE_NICKNAME_LOCK + userId);
         User edit = editOf(userId);
         edit.setNickname(nickname);
-        assertEquals(UserService.ProfileUpdateResult.Kind.PENDING, userService.updateNickname(edit).kind());
+        assertEquals(UserService.ProfileUpdateResult.Kind.PENDING, userService.updateProfile(edit).kind());
         ProfileApply pending = profileApplyMapper.selectOne(new QueryWrapper<ProfileApply>()
                 .eq("user_id", userId)
                 .eq("type", ProfileApply.TYPE_NICKNAME)

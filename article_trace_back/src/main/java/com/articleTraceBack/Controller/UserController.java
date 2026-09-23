@@ -310,7 +310,7 @@ public class UserController {
         if (Objects.equals(name, username)
                 && Objects.equals(id, tokenUid)) {
             try {
-                UserService.ProfileUpdateResult result = userService.updateNickname(user);
+                UserService.ProfileUpdateResult result = userService.updateProfile(user);
                 if (result.kind() == UserService.ProfileUpdateResult.Kind.UPDATED) {
                     return Result.success();
                 }

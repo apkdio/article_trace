@@ -20,6 +20,8 @@ defineProps({
             <div class="writer-nick">{{ info.nickName || defaultName }}
                 <p class="author-username">@{{ info.username }}</p>
             </div>
+            <!-- 个签：只有作者与站长有，没填就不占位 -->
+            <p class="writer-signature" v-if="info.signature">{{ info.signature }}</p>
             <div class="writer-stats-grid">
                 <div class="stat-item"><span class="val">{{ info.publishCount || 0 }}</span><span
                     class="lab">发布文章</span></div>
@@ -74,6 +76,14 @@ defineProps({
                 color: #94a3b8;
                 margin-top: 5px;
             }
+        }
+
+        .writer-signature {
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.5;
+            word-break: break-all;
         }
 
         .writer-stats-grid {

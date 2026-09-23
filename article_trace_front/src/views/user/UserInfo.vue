@@ -12,6 +12,9 @@ const userInfo = ref({
   username: '',
   nickname: '',
   email: '',
+  // 个签只开放给作者与站长（type: 0 站长 / 1 作者 / 2 读者）
+  type: 2,
+  signature: '',
 })
 
 const rules = {
@@ -114,6 +117,18 @@ const updateUserInfo = () => {
                   v-model="userInfo.email"
                   placeholder="请输入邮箱地址"
                   :prefix-icon="Message"
+              />
+            </el-form-item>
+
+            <el-form-item label="个性签名" prop="signature" :error="errorList.signature"
+                          v-if="userInfo.type !== 2">
+              <el-input
+                  v-model="userInfo.signature"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="一句自我介绍一下（可选，最长 30 字）"
+                  maxlength="30"
+                  show-word-limit
               />
             </el-form-item>
 

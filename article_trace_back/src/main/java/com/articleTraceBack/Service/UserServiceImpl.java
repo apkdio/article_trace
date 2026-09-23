@@ -36,6 +36,8 @@ public class UserServiceImpl implements UserService {
     private static final String NICKNAME_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
     private static final int NICKNAME_SUFFIX_LEN = 6;
     private static final SecureRandom NICKNAME_RANDOM = new SecureRandom();
+    /** 用户类型：读者（个签只开放给作者与站长） */
+    private static final int ROLE_READER = 2;
 
     @Value("${JWT.longTime}")
     private long longTime;
@@ -117,6 +119,8 @@ public class UserServiceImpl implements UserService {
         if (type == 0) {
             newUser.setNickname(user.getNickname());
             newUser.setEmail(user.getEmail());
+            // 个签与昵称、邮箱同属「基本资料」；读者没有个签，传 null 时 MyBatis 会跳过该列
+            newUser.setSignature(user.getSignature());
         } else if (type == 1) {
             String encodePass = BcryptUtils.encodePass(user.getPassword());
             newUser.setPassword(encodePass);
@@ -172,12 +176,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ProfileUpdateResult updateNickname(User user) {
+    public ProfileUpdateResult updateProfile(User user) {
         User current = userMapper.selectById(user.getId());
         if (current == null) {
             return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "用户不存在", "nickname");
         }
-        if (Objects.equals(current.getNickname(), user.getNickname())) {
+        // 个签只开放给作者与站长：读者提交的直接丢弃，不写库、不进待审
+        boolean nicknameChanged = !Objects.equals(current.getNickname(), user.getNickname());
+        boolean signatureAllowed = current.getType() != ROLE_READER;
+        if (!signatureAllowed) {
+            user.setSignature(null);
+        }
+        boolean signatureChanged = signatureAllowed && !Objects.equals(current.getSignature(), user.getSignature());
+        if (!nicknameChanged && !signatureChanged) {
             // 只改了邮箱（或什么都没改）：不碰规则、不碰锁定期，走原来的路径
             return update(user, 0)
                     ? new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null)
@@ -185,29 +196,49 @@ public class UserServiceImpl implements UserService {
         }
         String lockKey = RedisKeys.PROFILE_NICKNAME_LOCK + user.getId();
         if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(lockKey))) {
-            return new ProfileUpdateResult(ProfileUpdateResult.Kind.LOCKED, "昵称 7 天内只能改一次", "nickname");
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.LOCKED, "昵称与个签 7 天内只能改一次", "nickname");
         }
-        ProfileGuard.Verdict verdict = profileGuard.checkNickname(user.getNickname());
-        if (verdict.kind() == ProfileGuard.Verdict.Kind.FORMAT) {
-            // 无效输入：直接拒，不给待审队列添垃圾
-            return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, verdict.reason(), "nickname");
+        // 逐字段判定：格式类整单直接拒；内容类保留旧值、落待审，另一个字段照常生效
+        StringBuilder pendingNote = new StringBuilder();
+        if (nicknameChanged) {
+            ProfileGuard.Verdict verdict = profileGuard.checkNickname(user.getNickname());
+            if (verdict.kind() == ProfileGuard.Verdict.Kind.FORMAT) {
+                return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, verdict.reason(), "nickname");
+            }
+            if (verdict.kind() == ProfileGuard.Verdict.Kind.CONTENT) {
+                String awaiting = user.getNickname();
+                user.setNickname(current.getNickname());
+                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_NICKNAME, awaiting)
+                        ? "昵称已提交审核，通过后自动生效"
+                        : "昵称已有一条待审申请，请等审核结果");
+            }
         }
-        if (verdict.kind() == ProfileGuard.Verdict.Kind.CONTENT) {
-            // 内容类：保留旧值、落待审；本次提交里的邮箱照常写，别让用户白改一次
-            String awaiting = user.getNickname();
-            user.setNickname(current.getNickname());
-            update(user, 0);
-            boolean submitted = profileApplyService.submit(user.getId(), ProfileApply.TYPE_NICKNAME, awaiting);
-            return new ProfileUpdateResult(ProfileUpdateResult.Kind.PENDING,
-                    submitted ? "昵称已提交审核，通过后自动生效" : "昵称已有一条待审申请，请等审核结果",
-                    "nickname");
+        if (signatureChanged) {
+            ProfileGuard.Verdict verdict = profileGuard.checkSignature(user.getSignature());
+            if (verdict.kind() == ProfileGuard.Verdict.Kind.FORMAT) {
+                return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, verdict.reason(), "signature");
+            }
+            if (verdict.kind() == ProfileGuard.Verdict.Kind.CONTENT) {
+                String awaiting = user.getSignature();
+                user.setSignature(current.getSignature());
+                if (pendingNote.length() > 0) {
+                    pendingNote.append("；");
+                }
+                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_SIGNATURE, awaiting)
+                        ? "个签已提交审核，通过后自动生效"
+                        : "个签已有一条待审申请，请等审核结果");
+            }
         }
         if (!update(user, 0)) {
             return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "修改失败！请重试！", "error");
         }
+        if (pendingNote.length() > 0) {
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.PENDING, pendingNote.toString(), "pending");
+        }
         stringRedisTemplate.opsForValue().set(lockKey, "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
-        // 此前若留着一条待审，它一旦被批准就会覆盖掉刚改好的名字
+        // 此前若留着待审，它一旦被批准就会覆盖掉刚改好的值
         profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_NICKNAME);
+        profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_SIGNATURE);
         return new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null);
     }
 

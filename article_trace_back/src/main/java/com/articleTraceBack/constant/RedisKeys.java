@@ -10,6 +10,7 @@ public final class RedisKeys {
     public static final String ARTICLE_HOT_TOP10 = "article:hot:top10";
 
     /** 昵称改名锁定期（后接 userId）：成功改名或审核通过后多少天内不能再改 */
+    /** 昵称与个签共用一个锁定期；键名沿用 nickname 是历史原因 */
     public static final String PROFILE_NICKNAME_LOCK = "profile:nickname:lock:";
 
     /** 上面那把锁的有效期（天）；改名与审核通过两处都要写，放这里才有单一来源 */

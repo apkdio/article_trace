@@ -101,6 +101,7 @@ public class ReaderController {
         writer.setWriterPicThumbSrc(user.getUserPicThumbSrc());
         writer.setPublishCount(publishCount);
         writer.setNickName(user.getNickname());
+        writer.setSignature(user.getSignature());
         writer.setEmail(user.getEmail());
         writer.setUsername(user.getUsername());
         return Result.success(writer);
@@ -118,6 +119,7 @@ public class ReaderController {
         writer.setWriterPicThumbSrc(user.getUserPicThumbSrc());
         writer.setPublishCount(publishCount);
         writer.setNickName(user.getNickname());
+        writer.setSignature(user.getSignature());
         writer.setEmail(user.getEmail());
         writer.setUsername(user.getUsername());
         return Result.success(writer);

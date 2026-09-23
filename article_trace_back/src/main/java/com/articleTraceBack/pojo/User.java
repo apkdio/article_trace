@@ -40,6 +40,9 @@ public class User {
     @Email(message = "不是一个邮箱格式！", groups = update.class)
     private String email; // 邮箱
 
+    /** 个性签名：只有作者与站长有（读者不开放），内容校验见 ProfileGuard.checkSignature */
+    private String signature;
+
     @TableField("user_pic")
     private String userPic; // 头像
 

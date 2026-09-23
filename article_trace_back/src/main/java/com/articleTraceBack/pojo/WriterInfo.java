@@ -8,6 +8,8 @@ public class WriterInfo {
     private int id;
     private String username;
     private String nickName;
+    /** 个性签名：只有作者与站长有 */
+    private String signature;
     private String email;
     private int publishCount;
     private int type;

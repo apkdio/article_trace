@@ -113,6 +113,7 @@ CREATE TABLE `user` (
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   `last_login` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `signature` varchar(60) DEFAULT NULL COMMENT '个性签名（仅作者与站长）',
   `type` int NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),

@@ -28,10 +28,10 @@ public interface UserService {
     }
 
     /**
-     * 按内容规则修改昵称：格式类直接拒、内容类落待审（保留旧值）、通过则立即生效并起 7 天锁定期。
-     * 同一次提交里的邮箱照常写入——用户改昵称顺带改邮箱时，不该因为昵称要审核就整单丢掉。
+     * 按内容规则修改个人资料（昵称与个签）：格式类直接拒、内容类落待审（保留旧值）、全部通过则生效并起 7 天锁定期。
+     * 两者共用一个锁定期；个签只开放给作者与站长，读者提交会被忽略。同一次提交里的邮箱照常写入。
      */
-    ProfileUpdateResult updateNickname(User user);
+    ProfileUpdateResult updateProfile(User user);
 
     boolean isValidFile(MultipartFile file);
 

@@ -17,10 +17,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 昵称修改链路：正常改名立即生效并起 7 天锁定期；命中内容规则落待审且保留旧值；格式类直接拒、不进队列。
+ * 个人资料修改链路：昵称与个签的规则判定、7 天锁定期、内容命中落待审、读者不开放个签。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = "notification.mail.enabled=false")
@@ -49,6 +50,8 @@ public class ProfileNicknameUpdateTest {
         edit.setId(userId);
         edit.setUsername(current.getUsername());
         edit.setEmail(current.getEmail());
+        edit.setNickname(current.getNickname());
+        edit.setSignature(current.getSignature());
         return edit;
     }
 
@@ -59,7 +62,7 @@ public class ProfileNicknameUpdateTest {
 
         User edit = editOf(userId);
         edit.setNickname("zz新名字");
-        assertEquals(UserService.ProfileUpdateResult.Kind.UPDATED, userService.updateNickname(edit).kind());
+        assertEquals(UserService.ProfileUpdateResult.Kind.UPDATED, userService.updateProfile(edit).kind());
         assertEquals("zz新名字", userMapper.selectById(userId).getNickname(), "正常昵称应当立即生效");
 
         Long ttl = stringRedisTemplate.getExpire(RedisKeys.PROFILE_NICKNAME_LOCK + userId, TimeUnit.SECONDS);
@@ -68,7 +71,7 @@ public class ProfileNicknameUpdateTest {
 
         User again = editOf(userId);
         again.setNickname("zz另一个名字");
-        assertEquals(UserService.ProfileUpdateResult.Kind.LOCKED, userService.updateNickname(again).kind(),
+        assertEquals(UserService.ProfileUpdateResult.Kind.LOCKED, userService.updateProfile(again).kind(),
                 "7 天内再改应当被锁定期挡住");
         assertEquals("zz新名字", userMapper.selectById(userId).getNickname(), "被挡住时库里不能变");
     }
@@ -81,7 +84,7 @@ public class ProfileNicknameUpdateTest {
 
         User edit = editOf(userId);
         edit.setNickname("微信abc123");
-        assertEquals(UserService.ProfileUpdateResult.Kind.PENDING, userService.updateNickname(edit).kind());
+        assertEquals(UserService.ProfileUpdateResult.Kind.PENDING, userService.updateProfile(edit).kind());
 
         assertEquals(before, userMapper.selectById(userId).getNickname(), "待审期间必须保留旧值");
         ProfileApply pending = profileApplyMapper.selectOne(new QueryWrapper<ProfileApply>()
@@ -99,9 +102,46 @@ public class ProfileNicknameUpdateTest {
 
         User edit = editOf(userId);
         edit.setNickname("a");
-        assertEquals(UserService.ProfileUpdateResult.Kind.REJECTED, userService.updateNickname(edit).kind());
+        assertEquals(UserService.ProfileUpdateResult.Kind.REJECTED, userService.updateProfile(edit).kind());
         assertEquals(before, userMapper.selectById(userId).getNickname(), "被拒时库里不能变");
         assertEquals(0, profileApplyMapper.selectCount(new QueryWrapper<ProfileApply>()
                 .eq("user_id", userId)), "格式类不该留待审记录");
+    }
+
+    @Test
+    public void signatureFollowsTheSameRulesAndLock() {
+        int userId = fixtures.ensureUser(1);
+        stringRedisTemplate.delete(RedisKeys.PROFILE_NICKNAME_LOCK + userId);
+
+        User edit = editOf(userId);
+        edit.setSignature("爱写代码的人");
+        assertEquals(UserService.ProfileUpdateResult.Kind.UPDATED, userService.updateProfile(edit).kind());
+        assertEquals("爱写代码的人", userMapper.selectById(userId).getSignature(), "正常个签应当立即生效");
+        Long ttl = stringRedisTemplate.getExpire(RedisKeys.PROFILE_NICKNAME_LOCK + userId, TimeUnit.SECONDS);
+        assertNotNull(ttl);
+        assertTrue(ttl > 0, "改个签同样起锁定期（与昵称共用一个）");
+
+        stringRedisTemplate.delete(RedisKeys.PROFILE_NICKNAME_LOCK + userId);
+        User second = editOf(userId);
+        second.setSignature("微信abc123");
+        assertEquals(UserService.ProfileUpdateResult.Kind.PENDING, userService.updateProfile(second).kind());
+        assertEquals("爱写代码的人", userMapper.selectById(userId).getSignature(), "命中时保留旧个签");
+        ProfileApply pending = profileApplyMapper.selectOne(new QueryWrapper<ProfileApply>()
+                .eq("user_id", userId)
+                .eq("type", ProfileApply.TYPE_SIGNATURE)
+                .eq("status", ProfileApply.STATUS_PENDING));
+        assertNotNull(pending, "应当按个签类型落待审");
+    }
+
+    @Test
+    public void readerSignatureIsIgnored() {
+        int userId = fixtures.ensureUser(2);
+        stringRedisTemplate.delete(RedisKeys.PROFILE_NICKNAME_LOCK + userId);
+
+        User edit = editOf(userId);
+        edit.setSignature("读者不该有个签");
+        assertEquals(UserService.ProfileUpdateResult.Kind.UPDATED, userService.updateProfile(edit).kind(),
+                "读者只改个签时视为「什么都没改」，走原路径成功");
+        assertNull(userMapper.selectById(userId).getSignature(), "读者的个签不该写库");
     }
 }
