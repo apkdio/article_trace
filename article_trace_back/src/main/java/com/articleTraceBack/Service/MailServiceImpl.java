@@ -5,6 +5,7 @@ import com.articleTraceBack.config.NotificationProperties;
 import com.articleTraceBack.mapper.NotificationMailMapper;
 import com.articleTraceBack.pojo.NotificationMail;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -22,6 +23,7 @@ import java.util.List;
 public class MailServiceImpl implements MailService {
 
     public static final String STATUS_PENDING = "pending";
+    public static final String STATUS_SENDING = "sending";
     public static final String STATUS_SENT = "sent";
     public static final String STATUS_FAILED = "failed";
 
@@ -70,10 +72,18 @@ public class MailServiceImpl implements MailService {
             wrapper.eq("status", STATUS_FAILED)
                     .le("retry_count", maxRetry);
             List<NotificationMail> list = mailMapper.selectList(wrapper);
+            int claimed = 0;
             for (NotificationMail mail : list) {
-                submit(mail.getId());
+                // 条件更新把这条领走：重叠的两次扫描里只有一次能把 failed 改成 sending，
+                // 否则同一封信会被投递两遍。
+                UpdateWrapper<NotificationMail> claim = new UpdateWrapper<>();
+                claim.eq("id", mail.getId()).eq("status", STATUS_FAILED).set("status", STATUS_SENDING);
+                if (mailMapper.update(null, claim) == 1) {
+                    claimed++;
+                    submit(mail.getId());
+                }
             }
-            return list.size();
+            return claimed;
         } catch (Exception e) {
             log.error("retry failed mails error", e);
             return 0;
@@ -97,20 +107,25 @@ public class MailServiceImpl implements MailService {
             boolean ok = (html == null || html.isBlank())
                     ? emailUtil.sendText(mail.getToEmail(), mail.getSubject(), mail.getContent())
                     : emailUtil.sendMultipart(mail.getToEmail(), mail.getSubject(), mail.getContent(), html);
+            UpdateWrapper<NotificationMail> write = new UpdateWrapper<>();
+            write.eq("id", mailId).in("status", STATUS_PENDING, STATUS_SENDING);
             if (ok) {
-                mail.setStatus(STATUS_SENT);
-                mail.setSentTime(LocalDateTime.now());
-                mail.setError(null);
+                write.set("status", STATUS_SENT).set("sent_time", LocalDateTime.now()).set("error", null);
             } else {
                 int failures = (mail.getRetryCount() == null ? 0 : mail.getRetryCount()) + 1;
-                mail.setStatus(STATUS_FAILED);
-                mail.setRetryCount(failures);
-                mail.setError("send failed, see server log");
+                write.set("status", STATUS_FAILED).set("error", "send failed, see server log")
+                        .setSql("retry_count = retry_count + 1");
                 log.warn("mail delivery failed: id={}, to={}, failures={}", mailId, mail.getToEmail(), failures);
             }
-            mailMapper.updateById(mail);
+            mailMapper.update(null, write);
         } catch (Exception e) {
             log.error("deliver mail error: id={}", mailId, e);
+            // 领取时已置 sending，异常不回写就会永久卡在 sending、再也不会被重试
+            UpdateWrapper<NotificationMail> back = new UpdateWrapper<>();
+            back.eq("id", mailId).eq("status", STATUS_SENDING)
+                    .set("status", STATUS_FAILED).set("error", "deliver error, see server log")
+                    .setSql("retry_count = retry_count + 1");
+            mailMapper.update(null, back);
         }
     }
 }

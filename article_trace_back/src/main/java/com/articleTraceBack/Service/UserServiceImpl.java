@@ -132,14 +132,35 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean checkPass(String oriPass, String username, String checkColumn) {
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("username", username).select(checkColumn);
-        // 用户不存在（或并发注销）时 selectObjs 为空，不能直接 getFirst 取
-        List<Object> values = userMapper.selectObjs(queryWrapper);
-        if (values == null || values.isEmpty() || values.getFirst() == null) {
+        String stored = selectColumn(username, checkColumn);
+        return stored != null && BcryptUtils.checkPass(oriPass, stored);
+    }
+
+    @Override
+    public boolean updatePass(String username, String newPass, String oriPass) {
+        // 把当前哈希写进 WHERE：两人同时改密时，后写者更新 0 行，
+        // 而不是静默覆盖先写者的新密码（原先两端都返回成功）。
+        String current = selectColumn(username, "password");
+        if (current == null || !BcryptUtils.checkPass(oriPass, current)) {
             return false;
         }
-        return BcryptUtils.checkPass(oriPass, (String) values.getFirst());
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("username", username)
+                .eq("password", current)
+                .set("password", BcryptUtils.encodePass(newPass))
+                .set("update_time", LocalDateTime.now());
+        return userMapper.update(null, updateWrapper) == 1;
+    }
+
+    /** 取单列字符串；用户不存在（或并发注销）时 selectObjs 为空，不能直接 getFirst 取 */
+    private String selectColumn(String username, String column) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("username", username).select(column);
+        List<Object> values = userMapper.selectObjs(queryWrapper);
+        if (values == null || values.isEmpty() || values.getFirst() == null) {
+            return null;
+        }
+        return (String) values.getFirst();
     }
 
     @Override

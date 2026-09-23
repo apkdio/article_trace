@@ -400,28 +400,20 @@ public class UserController {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         String username = userInfo.get("name").toString();
-        String oriPass = passInfo.getOriPass();
         String newPass = passInfo.getNewPass();
         String confirmPass = passInfo.getConfirmPass();
-        if (userService.checkPass(oriPass, username, "password")) {
-            if (newPass.equals(confirmPass)) {
-                User user = new User();
-                user.setUsername(username);
-                user.setPassword(newPass);
-                if (userService.update(user, 1)) {
-                    if (userService.deleteRedisToken(username)) {
-                        return Result.success();
-                    }
-                    error.put("Redis", "缓存删除失败！");
-                    return Result.error(error);
-                }
-                error.put("error", "修改失败！请重试！");
-                return Result.error(error);
-            }
+        if (!newPass.equals(confirmPass)) {
             error.put("confirmPass", "两次密码不一致！");
             return Result.error(error);
         }
-        error.put("oriPass", "原密码不正确");
+        if (userService.updatePass(username, newPass, passInfo.getOriPass())) {
+            if (userService.deleteRedisToken(username)) {
+                return Result.success();
+            }
+            error.put("Redis", "缓存删除失败！");
+            return Result.error(error);
+        }
+        error.put("oriPass", "原密码不正确，或已在其它设备改过，请重新登录后重试");
         return Result.error(error);
     }
 

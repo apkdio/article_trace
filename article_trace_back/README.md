@@ -392,7 +392,8 @@ notify(...) → mailService.send(to, subject, content)      # 先落库 notifica
                                                           # 四参重载可带 contentHtml（双载体）
             → MailServiceImpl.submit() → mailExecutor.execute(deliver)  # 显式提交线程池（非 @Async）
             → EmailUtil 发信 → 回写 status=sent / failed(失败次数+1)
-MailRetryTask（每 10 分钟）→ 重投 status=failed 且失败次数 ≤ maxRetry 的记录
+MailRetryTask（每 10 分钟）→ 先条件更新把记录领成 sending（failed → sending，避免重叠扫描重复投递）
+                            → 再重投领到手的记录（失败次数 ≤ maxRetry）
 ```
 
 - **落库先行**：即使异步任务被丢弃，记录仍在库里，重试任务能补 → 不丢邮件
@@ -657,7 +658,7 @@ SITE_DISPLAY_NAME=文迹小站
 | subject | varchar(200) | 主题 |
 | content | text | 纯文本正文（兜底载体）|
 | content_html | mediumtext | HTML 正文；为 `NULL` 时只发纯文本 |
-| status | varchar(16) | pending / sent / failed |
+| status | varchar(16) | pending / sending / sent / failed（sending = 已被重试任务领取）|
 | retry_count | int | 已重试次数 |
 | error | varchar(500) | 失败原因 |
 | create_time / sent_time | datetime | 时间戳 |
@@ -979,6 +980,8 @@ python scripts/init_test_db.py
 | `EmailTemplateUtilTest` | 邮件模板渲染：双载体、占位符替换与缺值保留 |
 | `NotificationMailTemplateTest` | 带模板的通知：HTML 载体转义、纯文本载体原样、模板缺失退回纯文本、avatar 类型归类 |
 | `EmailUtilTest` · `MailServiceTest` | 发信链路与邮件投递重试（需 `-Dmail.to=` 才真发）|
+| `PasswordChangeCasTest` | 两人同时改密：条件更新保证只有一个生效 |
+| `TextNormalizerTest` | 违禁词匹配前的归一化（插空格 / 全角 / 零宽字符的绕过写法）|
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。

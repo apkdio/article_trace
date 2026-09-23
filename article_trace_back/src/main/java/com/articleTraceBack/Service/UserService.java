@@ -19,6 +19,9 @@ public interface UserService {
 
     boolean checkPass(String oriPass, String username, String checkColumn);
 
+    /** 校验原密码并改密；原密码已变（并发改密）时返回 false，不覆盖先写者的新密码 */
+    boolean updatePass(String username, String newPass, String oriPass);
+
     boolean isValidFile(MultipartFile file);
 
     /**
