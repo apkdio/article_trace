@@ -648,6 +648,15 @@ SITE_DISPLAY_NAME=文迹小站
 | pending_flag | tinyint | **生成列**：`IF(status = 0, 1, NULL)`，仅为承载唯一约束 |
 
 > 索引：`(user_id, pending_flag)` 唯一（`uk_pending`），与 `author_apply` 同款，保证「每个用户最多一条待审」。
+
+### `profile_apply` 昵称/个签审核记录表
+
+和 `avatar_apply` 同款（`status` 0/1/2 + `reject_reason` + `review_user/time` + 生成列 `pending_flag`），两处不同：
+
+- `type`：1 昵称 / 2 个签——昵称与个签可以**各自**有一条待审，所以唯一索引是 `uk_pending(user_id, type, pending_flag)`；
+- `pending_value`：待审的文本（代替头像那张表的 `pending_pic` 对象名）。
+
+**待审期间不锁人**：`user.nickname` 仍是旧值，用户始终有名字；审核通过才写回并起 7 天改名锁定期（Redis `profile:nickname:lock:{userId}`）。
 > 外键 `fk_avatar_user` 指向 `user.id`，`ON DELETE CASCADE`——用户注销时自动清理，不留悬挂记录。
 
 ### `notification_mail` 邮件投递记录表
@@ -985,6 +994,7 @@ python scripts/init_test_db.py
 | `TextNormalizerTest` | 违禁词匹配前的归一化（插空格 / 全角 / 零宽字符的绕过写法）|
 | `CaptchaRateLimitTest` | 拉图限流：计数键必带过期（INCR 与 EXPIRE 同在一个 Lua）|
 | `ProfileGuardTest` | 昵称/个签规则：格式类直接拒、内容类进待审，含插空格/全角/emoji 的绕写 |
+| `ProfileNicknameUpdateTest` | 昵称修改链路：正常改名立即生效 + 7 天锁定期；内容命中落待审且保留旧值；格式类不进队列 |
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。
