@@ -31,7 +31,6 @@ spring:
       timeout: 1500
       password: ${REDIS_PASSWORD}
       viewKey: "article:view"
-      infoKey: "article:info"
       lettuce:
         shutdown-timeout: 100ms
         pool:

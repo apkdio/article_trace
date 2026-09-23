@@ -31,7 +31,6 @@ spring:
           refresh:
             adaptive: false
       viewKey: "article:view"
-      infoKey: "article:info"
       password: ${REDIS_PASSWORD} # redis密码，无则删除该行
   mail:
     host: ${MAIL_HOST:smtp.qq.com}    # SMTP 服务器
