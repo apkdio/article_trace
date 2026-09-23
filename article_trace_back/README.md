@@ -733,6 +733,10 @@ CREATE TABLE IF NOT EXISTS `report` (
 | PATCH | `/user/update` | 更新信息 |
 | PATCH | `/user/updateUserLogo` | 提交待审头像（进 avatar 桶并建待审记录，**不**直接改 `user_pic`；站长审批通过后才生效）|
 | PATCH | `/user/updatePass` | 修改密码 |
+| PATCH | `/user/update` | 修改昵称 / 邮箱；昵称走内容规则（格式类直接拒、内容类落待审、成功起 7 天锁定期）|
+| GET | `/profile/manage/list` | 昵称 / 个签审核列表（站长）|
+| GET | `/profile/manage/pendingCount` | 待审数量（站长，审核中心角标）|
+| PATCH | `/profile/manage/review/{id}` | 审批昵称 / 个签（站长；通过写回并起锁定期，拒绝需给理由）|
 | POST | `/user/forgetPass` | 忘记密码 |
 | GET | `/user/logout` | 登出 |
 | GET | `/user/accountManage` | 账号分页（站长） |
@@ -996,6 +1000,7 @@ python scripts/init_test_db.py
 | `CaptchaRateLimitTest` | 拉图限流：计数键必带过期（INCR 与 EXPIRE 同在一个 Lua）|
 | `ProfileGuardTest` | 昵称/个签规则：格式类直接拒、内容类进待审，含插空格/全角/emoji 的绕写 |
 | `ProfileNicknameUpdateTest` | 昵称修改链路：正常改名立即生效 + 7 天锁定期；内容命中落待审且保留旧值；格式类不进队列 |
+| `ProfileApplyReviewTest` | 昵称审核：通过写回并起锁定期、拒绝只记理由、重复处理被 CAS 挡住 |
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。
