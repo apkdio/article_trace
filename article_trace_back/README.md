@@ -565,6 +565,7 @@ SITE_DISPLAY_NAME=文迹小站
 | email | varchar(128) | 邮箱（NOT NULL，唯一）|
 | user_pic | varchar(128) | 头像文件名 |
 | create_time / update_time / last_login | datetime | 时间戳 |
+| signature | varchar(60) | 个性签名（**仅作者与站长**；与昵称共用规则层、待审表与 7 天锁定期，见审核中心）|
 | type | int | 0 站长 / 1 作者 / 2 读者 |
 
 > 索引：`username` 唯一（`username`）；`email` 唯一（`uk_email`）。
@@ -616,7 +617,7 @@ SITE_DISPLAY_NAME=文迹小站
 |---|---|---|
 | id | int | 主键 |
 | title | varchar(120) | 标题 |
-| type | varchar(20) | 类型：`system` 系统 / `apply` 作者申请 / `avatar` 头像审核 / `report` 举报（由 `notify` 的 scene 推导）|
+| type | varchar(20) | 类型：`system` 系统 / `audit` 审核（头像、作者申请、资料）/ `report` 举报（由 `notify` 的 scene 推导；合并前的 `apply` / `avatar` 会被映射到 `audit`）|
 | sender_id | int | 发送方：`-1` 系统消息 / 用户 ID / `NULL` 发送方已注销 |
 | receiver_id | int | 接收方：用户 ID / `NULL` 接收方已注销 |
 | content | text | 正文 |
