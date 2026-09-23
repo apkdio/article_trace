@@ -1,7 +1,8 @@
 <script setup>
 import {onMounted, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {CloseBold, Select, View} from '@element-plus/icons-vue'
+import {CloseBold, Select} from '@element-plus/icons-vue'
+import {errorText} from '@/utils/errorText.js'
 import {assessArticleService, getArticleWithConditionsMaster} from '@/api/article.js'
 
 /**
@@ -39,9 +40,12 @@ const load = async () => {
     } else {
       items.value = []
       total.value = 0
+      // 后端出错时 message 可能是对象（GlobalExceptionHandler 包成 {error:…}）；
+      // 以前这里静默清空，页面看上去只是“没有待审”，排查时无从下手
+      ElMessage.error(errorText(res.message, '待审列表加载失败！'))
     }
   } catch (err) {
-    ElMessage.error('数据获取失败！')
+    ElMessage.error('待审列表加载失败！')
   } finally {
     loading.value = false
   }
@@ -114,9 +118,10 @@ defineExpose({load})
       <el-table-column prop="updateTime" label="最后修改" width="170">
         <template #default="{ row }">{{ row.updateTime || row.createTime }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <!-- 只留「通过 / 驳回」：预览走标题那一下（标题本来就是可点的），
+           三个按钮在 200px 里放不下，「驳回」会被挤到第二行 -->
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" :icon="View" @click="openPreview(row)">预览</el-button>
           <el-button type="success" size="small" :icon="Select" @click="assess(row, STATE_PUBLISHED)">通过</el-button>
           <el-button type="danger" size="small" :icon="CloseBold" @click="assess(row, STATE_REJECTED)">驳回</el-button>
         </template>

@@ -206,7 +206,8 @@ const reject = (row) => {
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="290" fixed="right">
+      <!-- 4 个按钮（查看 + 删评论/下架 + 处置 + 驳回）在 290px 里会换行，放宽到 340 -->
+      <el-table-column label="操作" width="340" fixed="right">
         <template #default="{ row }">
           <template v-if="row.status === 0">
             <el-button size="small" :icon="View" @click="openTarget(row)">查看</el-button>
