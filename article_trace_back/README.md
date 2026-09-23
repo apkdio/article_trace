@@ -984,6 +984,7 @@ python scripts/init_test_db.py
 | `PasswordChangeCasTest` | 两人同时改密：条件更新保证只有一个生效 |
 | `TextNormalizerTest` | 违禁词匹配前的归一化（插空格 / 全角 / 零宽字符的绕过写法）|
 | `CaptchaRateLimitTest` | 拉图限流：计数键必带过期（INCR 与 EXPIRE 同在一个 Lua）|
+| `ProfileGuardTest` | 昵称/个签规则：格式类直接拒、内容类进待审，含插空格/全角/emoji 的绕写 |
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。
