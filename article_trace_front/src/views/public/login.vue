@@ -374,7 +374,7 @@ function clearInf() {
 
             <!--登录-->
             <el-form ref="FormRef" size="large" v-else-if="isRegister && !resetPass" :model="FormData"
-                     :rules="FormDataRules">
+                     :rules="FormDataRules" @keyup.enter="login">
 
               <h1 class="gradient-title">欢迎回来</h1>
               <el-form-item prop="username" :error="errorsList.username">

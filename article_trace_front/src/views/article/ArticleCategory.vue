@@ -124,7 +124,7 @@ const handleClose = (done) => {
 
     <div v-loading="isLoading" element-loading-text="正在为您加载文章类型列表...">
       <template v-if="!isLoading">
-        <el-row :gutter="20" class="stat-section">
+        <el-row :gutter="20" class="stat-section" style="margin-bottom: 16px">
           <el-col :span="6">
             <StatCard label="全站分类" :value="categories.length" color="indigo">
               <template #icon><el-icon><Collection/></el-icon></template>

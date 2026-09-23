@@ -138,11 +138,8 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "and (#{searchType} is null " +
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} = 1 and u.nickname like concat('%',#{search},'%')))" +
-            "order by " +
-            "case " +
-            "when a.update_time is not null then a.update_time " +
-            "else a.create_time " +
-            "end desc " +
+            // 首页列表按发布时间倒序：站长编辑老文章不该把它顶到最前面（那是「最近改动」而不是「最近发布」）
+            "order by a.create_time desc " +
             "limit #{offset},#{pageSize}")
     List<Article> findAllArticlesInPublic(int pageNum, int pageSize, Integer categoryId, Integer state, int offset, String search, Integer searchType, String nickName);
 

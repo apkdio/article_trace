@@ -160,7 +160,7 @@ const changeUserType = (id, type) => {
     <PageHeader title="站内账号管理" subtitle="监控系统用户活跃度，管理权限与账户安全"/>
 
     <template v-if="!isLoading">
-      <el-row :gutter="20" class="stat-section">
+      <el-row :gutter="20" class="stat-section" style="margin-bottom: 16px">
         <el-col :span="6">
           <StatCard label="总注册用户" :value="total" color="purple">
             <template #icon><el-icon><User/></el-icon></template>
