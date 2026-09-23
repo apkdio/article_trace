@@ -75,9 +75,9 @@ public class NotificationServiceTest {
         assertEquals(2, all.getTotal(), "不传 type 应查全部");
 
         PageBean<Notification> applies = notificationService.listByReceiver(
-                TEST_USER_ID, Notification.TYPE_APPLY, 1, 10);
-        assertEquals(1, applies.getTotal(), "type=apply 应只返回申请相关");
-        assertEquals(Notification.TYPE_APPLY, applies.getItems().get(0).getType(), "类型应落为 apply");
+                TEST_USER_ID, Notification.TYPE_AUDIT, 1, 10);
+        assertEquals(1, applies.getTotal(), "type=audit 应只返回审核相关");
+        assertEquals(Notification.TYPE_AUDIT, applies.getItems().get(0).getType(), "类型应落为 audit");
 
         // 非法 type 退化为查全部，而不是报错或查空
         assertEquals(2, notificationService.listByReceiver(TEST_USER_ID, "not-a-type", 1, 10).getTotal(),

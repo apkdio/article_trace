@@ -20,7 +20,7 @@ const notifyPage = ref(1)
 const notifyPageSize = ref(10)
 const unread = ref(0)
 const notifyLoading = ref(false)
-// 类型筛选：all / system / apply / avatar / report
+// 类型筛选：all / system / audit / report
 const notifyType = ref('all')
 
 // 实时提醒：定时轮询未读数，出现新增时轻提示（首次加载不提示）
@@ -148,8 +148,7 @@ defineExpose({openNotify, unread})
             <el-radio-group v-model="notifyType" size="small" @change="switchType">
                 <el-radio-button value="all">全部</el-radio-button>
                 <el-radio-button value="system">系统</el-radio-button>
-                <el-radio-button value="apply">作者申请</el-radio-button>
-                <el-radio-button value="avatar">头像审核</el-radio-button>
+                <el-radio-button value="audit">审核</el-radio-button>
                 <el-radio-button value="report">举报</el-radio-button>
             </el-radio-group>
             <el-button size="small" text type="primary" :disabled="unread === 0" @click="readAll">

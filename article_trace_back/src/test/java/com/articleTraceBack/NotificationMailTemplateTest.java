@@ -127,7 +127,7 @@ public class NotificationMailTemplateTest {
         nw.eq("receiver_id", testUserId);
         Notification saved = notificationMapper.selectOne(nw);
         assertTrue(saved != null, "站内信应已入库");
-        assertTrue(Notification.TYPE_AVATAR.equals(saved.getType()),
-                "avatar-* 场景应归入 avatar 类型，实际=" + saved.getType());
+        assertTrue(Notification.TYPE_AUDIT.equals(saved.getType()),
+                "avatar-* 场景应归入审核类型，实际=" + saved.getType());
     }
 }

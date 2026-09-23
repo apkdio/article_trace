@@ -37,8 +37,8 @@ public interface NotificationService {
     /**
      * 我的站内信分页（按发送时间倒序）。
      *
-     * @param type 类型筛选，见 {@link Notification#TYPE_SYSTEM} / {@link Notification#TYPE_APPLY}
-     *             / {@link Notification#TYPE_AVATAR}；null 查全部
+     * @param type 类型筛选，见 {@link Notification#TYPE_SYSTEM} / {@link Notification#TYPE_AUDIT}
+     *             / {@link Notification#TYPE_REPORT}；null 查全部
      */
     PageBean<Notification> listByReceiver(int receiverId, String type, int pageNum, int pageSize);
 

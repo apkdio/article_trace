@@ -158,16 +158,13 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    /** 场景 → 站内信类型：作者申请、头像审核、举报各自归类，其余归系统 */
+    /** 场景 → 站内信类型：头像、作者申请、资料均属审核类，举报单独一类，其余归系统 */
     private String resolveType(String scene) {
         if (scene == null) {
             return Notification.TYPE_SYSTEM;
         }
-        if (scene.startsWith("author-apply")) {
-            return Notification.TYPE_APPLY;
-        }
-        if (scene.startsWith("avatar")) {
-            return Notification.TYPE_AVATAR;
+        if (scene.startsWith("author-apply") || scene.startsWith("avatar") || scene.startsWith("profile")) {
+            return Notification.TYPE_AUDIT;
         }
         if (scene.startsWith("report")) {
             return Notification.TYPE_REPORT;
@@ -181,9 +178,12 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
         }
         String normalized = type.trim().toLowerCase(Locale.ROOT);
+        // apply / avatar 是合并前的旧类型，一并归到 audit，旧记录仍能按「审核」筛出来
+        if ("apply".equals(normalized) || "avatar".equals(normalized)) {
+            return Notification.TYPE_AUDIT;
+        }
         if (Notification.TYPE_SYSTEM.equals(normalized)
-                || Notification.TYPE_APPLY.equals(normalized)
-                || Notification.TYPE_AVATAR.equals(normalized)
+                || Notification.TYPE_AUDIT.equals(normalized)
                 || Notification.TYPE_REPORT.equals(normalized)) {
             return normalized;
         }

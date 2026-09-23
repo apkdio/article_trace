@@ -135,7 +135,7 @@ public class AvatarApplyServiceTest {
 
         // 提交后站长收到待审通知，且独立归入 avatar 类型（前端可按类型筛）
         QueryWrapper<Notification> masterNw = new QueryWrapper<>();
-        masterNw.eq("type", Notification.TYPE_AVATAR).like("content", testUsername);
+        masterNw.eq("type", Notification.TYPE_AUDIT).like("content", testUsername);
         assertTrue(notificationMapper.selectCount(masterNw) >= 1, "提交后站长应收到待审通知");
 
         // 通过：先把待审对象搬到 pic 桶，再换 user_pic，最后清理旧头像与 avatar 桶那份
@@ -207,7 +207,7 @@ public class AvatarApplyServiceTest {
         List<Notification> rejected = notificationMapper.selectList(nw);
         assertEquals(1, rejected.size(), "拒绝应产生一条站内信");
         assertTrue(rejected.get(0).getContent().contains("图片不清晰"), "站内信应带上拒绝理由");
-        assertEquals(Notification.TYPE_AVATAR, rejected.get(0).getType(), "应归入 avatar 类型");
+        assertEquals(Notification.TYPE_AUDIT, rejected.get(0).getType(), "应归入审核类型");
 
         // 被拒后可重新提交；再提交时旧记录不再占着待审位
         assertTrue(avatarApplyService.submit(testUserId, png()), "被拒后应允许重新提交");

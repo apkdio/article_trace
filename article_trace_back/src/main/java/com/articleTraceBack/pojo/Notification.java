@@ -19,16 +19,14 @@ public class Notification {
 
     /** 类型：系统消息 */
     public static final String TYPE_SYSTEM = "system";
-    /** 类型：作者申请相关 */
-    public static final String TYPE_APPLY = "apply";
-    /** 类型：头像审核相关 */
-    public static final String TYPE_AVATAR = "avatar";
+    /** 类型：审核类——头像 / 作者申请 / 资料（昵称、个签）都归这里 */
+    public static final String TYPE_AUDIT = "audit";
     /** 类型：举报相关 */
     public static final String TYPE_REPORT = "report";
 
     private String title;
 
-    /** system-系统 / apply-作者申请 / avatar-头像审核 / report-举报 */
+    /** system-系统 / audit-审核 / report-举报 */
     @TableField("`type`")
     private String type;
 

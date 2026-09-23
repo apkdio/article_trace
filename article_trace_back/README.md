@@ -378,7 +378,7 @@ flowchart LR
 | `notify(receiverId, scene, title, content)` | 给单个用户发通知（站内 + 可选邮件）|
 | `notify(…, mailTemplate, templateVars)` | 同上，但邮件按模板渲染双载体；业务变量传**原始值**，转义由本服务做 |
 | `notifyRole(roleType, scene, title, content)` | 发给某角色全部用户（逐人一条）|
-| `listByReceiver(receiverId, type, pageNum, pageSize)` | 分页查询，`type` 可选 `system` / `apply` / `avatar`（null 查全部）|
+| `listByReceiver(receiverId, type, pageNum, pageSize)` | 分页查询，`type` 可选 `system` / `audit`（审核：头像 / 作者申请 / 资料）/ `report`（null 查全部）；合并前的 `apply` / `avatar` 会被映射到 `audit` |
 | `unreadCount(receiverId)` | 未读数 |
 | `markRead(receiverId, id)` / `markAllRead(receiverId)` | 标记已读 |
 | `delete(receiverId, id)` | 删除单条（以「id + receiver_id」双条件限定，删不到别人的）|
@@ -454,6 +454,11 @@ notification:
     report-notice: inbox
     email-code: mail
   defaultChannel: inbox              # 未配置场景的默认渠道
+
+> **类型合并（2026-09-23）**：站内信类型由 `system / apply / avatar / report` 合并为 `system / audit / report`
+> ——头像、作者申请、资料（昵称、个签）都归 `audit`，铃铛里筛「审核」一次看完。
+> 老库执行一次：`UPDATE notification SET type='audit' WHERE type IN ('apply','avatar');`
+> （代码侧 `apply` / `avatar` 也会被映射到 `audit`，漏迁移也不会筛不到，但新库里不该再有旧值。）
   mail:
     enabled: true                    # 邮件渠道总开关（false 时 mail/both 降级为仅站内）
     maxRetry: 2                      # 最多重发次数
