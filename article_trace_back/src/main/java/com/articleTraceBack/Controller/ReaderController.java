@@ -181,7 +181,9 @@ public class ReaderController {
                 return Result.error(error);
             }
         } else if (type == 1) {
-            if (userId == articleService.findArticleByIdWithEntity(articleId).getCreateUser()) {
+            // 文章可能已被并发删除，取不到就当「作者这一路」不成立，继续往下走评论人判定
+            Article article = articleService.findArticleByIdWithEntity(articleId);
+            if (article != null && userId == article.getCreateUser()) {
                 boolean result = readerService.deleteComment(commentId);
                 if (result) return Result.success();
                 else {
@@ -190,7 +192,13 @@ public class ReaderController {
                 }
             }
         }
-        if (userId == readerService.findCommentById(commentId).getUserId()) {
+        // 评论已被删除（重复点删除）时没有归属可判，直接当作删除失败
+        Comment comment = readerService.findCommentById(commentId);
+        if (comment == null) {
+            error.put("error", "评论不存在或已被删除！");
+            return Result.error(error);
+        }
+        if (userId == comment.getUserId()) {
             boolean result = readerService.deleteComment(commentId);
             if (result) return Result.success();
             else {
