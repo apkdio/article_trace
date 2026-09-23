@@ -8,16 +8,8 @@ import AuthorApplyPanel from '@/components/review/AuthorApplyPanel.vue'
 import AvatarReview from '@/views/user/AvatarReview.vue'
 import ReportManage from '@/views/user/ReportManage.vue'
 
-/**
- * 审核中心（T19 第二期）。
- *
- * 四类审核原先散在三个页面：文章审在「文章管理页」里筛「待审核」、头像审有独立页、
- * 作者申请藏在「账号管理页」里，举报（第一期）又有自己的页。站长要满站找待办。
- * 这里只做**收拢与呈现**——不新建统一审核表、不改任何业务逻辑：
- *
- * - 待办数来自 `/review/summary`（给菜单角标与左侧计数用）
- * - 列表与处置全部沿用各类型原有的接口与组件：文章面板与申请面板是本目录新拆的，
- *   头像与举报直接复用原有页面组件（它们的代码本来就自成一体，不必复制一份）
+/*
+ * 审核中心
  */
 const loading = ref(false)
 const activeType = ref('article')
@@ -55,7 +47,7 @@ watch(activeType, () => {
 
 <template>
   <div class="review-center-container">
-    <PageHeader title="审核中心" subtitle="四种待办收在一处：文章 / 头像 / 作者申请 / 举报"/>
+    <PageHeader title="审核中心" subtitle="集成站内的所有审核模块"/>
 
     <div class="review-body">
       <aside class="type-list" v-loading="loading">
@@ -75,14 +67,12 @@ watch(activeType, () => {
       </aside>
 
       <section class="panel-area">
-        <!-- 四个面板用同一套过渡：之前有的自带淡入、有的直出，切换时观感不一致。
-             注意四个组件都得是单根节点（目前都是），否则 transition 会报错。 -->
-        <transition name="panel-fade" mode="out-in">
-          <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
-          <AvatarReview v-else-if="activeType === 'avatar'" :embedded="true" @handled="loadSummary"/>
-          <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
-          <ReportManage v-else :embedded="true" @handled="loadSummary"/>
-        </transition>
+        <!-- 四个面板的过渡交给 .panel-area > * 的 CSS 入场动画（见下）：
+             用 <transition mode="out-in"> 包 v-if 链时，leave 会卡住、新旧面板同时留在 DOM 里 -->
+        <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
+        <AvatarReview v-else-if="activeType === 'avatar'" :embedded="true" @handled="loadSummary"/>
+        <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
+        <ReportManage v-else :embedded="true" @handled="loadSummary"/>
       </section>
     </div>
   </div>
@@ -177,15 +167,22 @@ watch(activeType, () => {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
   }
 
-  // 切换四个子面板的统一过渡（外层的 page-slide-right 只管顶层路由）
-  .panel-fade-enter-active,
-  .panel-fade-leave-active {
-    transition: opacity 0.18s ease;
+  // 四个子面板统一的入场过渡。刻意不用 <transition>：
+  // 它在 v-if 链上会卡住 leave，导致新旧面板同时留在 DOM 里（已踩过）；
+  // 而 CSS 动画只作用于刚挂载的那个元素，切换时必定是一份。
+  .panel-area > * {
+    animation: panel-fade-in 0.18s ease;
   }
 
-  .panel-fade-enter-from,
-  .panel-fade-leave-to {
-    opacity: 0;
+  @keyframes panel-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }
 </style>
