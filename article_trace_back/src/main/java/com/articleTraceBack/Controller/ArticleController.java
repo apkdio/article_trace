@@ -343,12 +343,10 @@ public class ArticleController {
         if (master != null && master.getType() == 0) {
             Integer userId = master.getId();
             int totalArticles = articleService.findAllArticlesCountInMaster(categoryId, state, userId, search, searchType, null);
+            // 没有数据**不是错误**：返回空页让前端照常渲染空表即可。
+            // 以前这里返回 code=1「无数据！」，审核中心就会为一个空列表弹红色错误框。
             int pageTotal = (int) Math.ceil(totalArticles * 1.0 / pageSize);
-            if (pageTotal == 0) {
-                error.put("error", "无数据！");
-                return Result.error(error);
-            }
-            if (pageNum > pageTotal) {
+            if (pageTotal > 0 && pageNum > pageTotal) {
                 pageNum = pageTotal;
             }
             PageBean<Article> allArticles = articleService.findAllArticlesInMaster(pageNum,
