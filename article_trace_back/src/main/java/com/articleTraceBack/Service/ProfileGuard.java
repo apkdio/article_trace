@@ -4,17 +4,15 @@ import com.articleTraceBack.Utils.TextNormalizer;
 import com.articleTraceBack.config.SensitiveWordHolder;
 import com.articleTraceBack.config.SiteFeatureProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * 昵称 / 个签的内容规则。两类结果分开：**格式类**（长度、字符集）是无效输入，直接拒；
- * **内容类**（联系方式、冒充、违禁词）交给上层落待审——它们「像不像引流 / 冒充」需要人判断。
- *
- * <p>违禁词直接依赖 {@link SensitiveWordHolder}（同一份热更新词表），不经 {@code ArticleService}，
- * 免得用户资料模块平白依赖文章模块。匹配前先过 {@link TextNormalizer}，`微 信`、`ＱＱ` 这类绕写同样命中。</p>
+ * 昵称 / 个签的内容规则：格式类是无效输入，直接拒；内容类落待审，交人工判断。
+ * 违禁词直接依赖 {@link SensitiveWordHolder}（同一份热更新词表），不经 {@code ArticleService}。
  */
 @Slf4j
 @Component
@@ -34,14 +32,11 @@ public class ProfileGuard {
     private static final int NICKNAME_MAX = 20;
     private static final int SIGNATURE_MAX = 30;
 
-    /** 冒充站方身份的词；站名本身另从 {@code site.display-name} 取，不写死 */
-    private static final List<String> IMPERSONATION_WORDS = List.of(
-            "站长", "管理员", "管理員", "官方", "客服", "认证", "文迹");
+    /** 冒充站方身份的词，逗号分隔；站名另从 {@code site.display-name} 取。放配置里，改词不必重新发版 */
+    @Value("${profile.impersonation-words:站长,管理员,管理員,官方,客服,认证}")
+    private String impersonationWords;
 
-    /**
-     * 联系方式。匹配的是**归一化后**的文本，所以 `V：`、`微 信`、`ＱＱ` 都会还原成同一种写法。
-     * 关键词单独出现也算命中（`微信abc123` 就没有「数字紧跟」这个特征），误判代价只是多进一次人工。
-     */
+    /** 联系方式正则。匹配归一化后的文本，关键词单独出现也算命中；误判的代价只是多进一次人工 */
     private static final List<Pattern> CONTACTS = List.of(
             Pattern.compile("1[3-9]\\d-?\\d{4}-?\\d{4}"),
             Pattern.compile("[\\w.+-]+@[\\w-]+\\.[a-z]{2,}"),
@@ -63,7 +58,7 @@ public class ProfileGuard {
         return format.pass() ? checkContent(raw, true) : format;
     }
 
-    /** 个签：与昵称同一套规则，但上限不同、不查冒充（个签里出现「客服」属正常表达）；清空视为合法 */
+    /** 个签：与昵称同一套规则，但长度上限不同、不查冒充；清空视为合法 */
     public Verdict checkSignature(String signature) {
         String raw = signature == null ? "" : signature;
         if (raw.isBlank()) {
@@ -80,10 +75,8 @@ public class ProfileGuard {
         if (raw.length() < min || raw.length() > max) {
             return new Verdict(Verdict.Kind.FORMAT, "长度需为 " + min + "-" + max + " 个字符");
         }
-        // 字符集看**原文**：归一化会把零宽字符抹掉，若在归一化后的文本上判断，
-        // 「张&#8203;三」就会被当成正常的「张三」放过去。
-        // 全角字母数字（ＦＦ１０-ＦＦ１９ / ＦＦ２１-ＦＦ３Ａ / ＦＦ４１-ＦＦ５Ａ）放行：
-        // 它们与半角同形，是中文输入法下的正常产物、也是绕写手法——交给归一化后再判内容。
+        // 字符集看原文：归一化会抹掉零宽字符，在归一化结果上判断等于放行。
+        // 全角字母数字与半角同形，放行后交给归一化再判内容。
         for (int i = 0; i < raw.length(); i++) {
             char c = raw.charAt(i);
             if (c == ' ' || c == '\u3000' || c == '_' || c == '-' || c == '.' || c == '·') {
@@ -114,7 +107,7 @@ public class ProfileGuard {
         List<String> hit = sensitiveWordHolder.get().search(normalized).stream()
                 .map(m -> m.keyword).distinct().toList();
         if (!hit.isEmpty()) {
-            // 命中的词只记日志给站长，不回给作者——告诉他词表长什么样，等于教他怎么绕
+            // 命中的词只记日志给站长，不回给作者，否则等于把词表告诉他
             log.info("profile blocked by sensitive word: hits={}", hit);
             return new Verdict(Verdict.Kind.CONTENT, "包含不允许的词汇");
         }
@@ -130,8 +123,9 @@ public class ProfileGuard {
     }
 
     private boolean containsImpersonation(String normalized) {
-        for (String word : IMPERSONATION_WORDS) {
-            if (normalized.contains(word)) {
+        for (String word : impersonationWords.split(",")) {
+            String trimmed = word.trim();
+            if (!trimmed.isEmpty() && normalized.contains(trimmed)) {
                 return true;
             }
         }
