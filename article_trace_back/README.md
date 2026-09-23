@@ -125,7 +125,7 @@ article_trace_back/
         ├── application.yml                  # 实际配置（含密钥，已 gitignore）
         ├── application_templete.yml         # 配置模板（${} 占位符）
         ├── sensitive_words.txt              # 内置敏感词库
-        └── templates/email/                 # 邮件模板（email-code、avatar-rejected，各含 .html + .txt 两份）
+        └── templates/email/                 # 邮件模板（email-code、avatar-rejected、profile-rejected，各含 .html + .txt 两份）
 ```
 
 ## 项目细节实现
@@ -446,6 +446,8 @@ notification:
     avatar-approved: inbox
     avatar-rejected: both
     avatar-remind: mail
+    profile-approved: inbox
+    profile-rejected: both
     report-submitted: both
     report-handled: inbox
     report-rejected: inbox
@@ -849,7 +851,8 @@ CREATE TABLE IF NOT EXISTS `report` (
 
 ### 审核中心 `/review`
 
-四种待办（文章 / 头像 / 作者申请 / 举报）的聚合计数，给前端菜单角标与审核中心页用。
+五种待办（文章 / 头像 / 作者申请 / 资料审核 / 举报）的聚合计数，给前端菜单角标与审核中心页用。
+资料审核这一类命中内容规则的昵称才会进（见「审核中心 · 资料审核」与 `profile_apply` 表），计数键为 `profile`。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|

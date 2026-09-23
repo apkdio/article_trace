@@ -314,8 +314,14 @@ public class UserController {
                 if (result.kind() == UserService.ProfileUpdateResult.Kind.UPDATED) {
                     return Result.success();
                 }
-                // 待审 / 被拒 / 锁定期内：都用一个字符串 message 回，前端直接展示 res.message
-                return Result.error(result.reason());
+                if (result.kind() == UserService.ProfileUpdateResult.Kind.PENDING) {
+                    // 待审不是失败：前端按 message.pending 走 info 提示，别弹红字
+                    error.put("pending", result.reason());
+                    return Result.error(error);
+                }
+                // 被拒 / 锁定期内：挂在昵称字段上，前端就地显示在输入框下方
+                error.put("nickname", result.reason());
+                return Result.error(error);
             } catch (DuplicateKeyException e) {
                 // 并发下由唯一索引兜底：昵称可重复，只有邮箱有唯一约束
                 error.put("email", "邮箱已被使用！");

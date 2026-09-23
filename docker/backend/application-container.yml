@@ -132,6 +132,8 @@ notification:
     avatar-approved: inbox
     avatar-rejected: both
     avatar-remind: mail
+    profile-approved: inbox
+    profile-rejected: both
     report-submitted: both
     report-handled: inbox
     report-rejected: inbox

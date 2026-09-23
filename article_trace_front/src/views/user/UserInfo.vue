@@ -61,6 +61,11 @@ const updateUserInfo = () => {
           ElMessage.success("修改成功！")
           await freshUserInfo()
         }
+        else if(result.code === 1 && ('pending' in result.message)){
+          // 待审不是失败：提示语由后端给，用 info 而不是报错红字
+          ElMessage.info(result.message.pending)
+          await freshUserInfo()
+        }
         else if(result.code === 1 && ('nickname' in result.message)){
           errorList.value = result.message
         }
