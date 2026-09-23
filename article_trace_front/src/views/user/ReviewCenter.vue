@@ -1,10 +1,11 @@
 <script setup>
 import {computed, onMounted, ref, watch} from 'vue'
-import {Bell, Picture, Refresh, UserFilled, Warning} from '@element-plus/icons-vue'
+import {Bell, EditPen, Picture, Refresh, UserFilled, Warning} from '@element-plus/icons-vue'
 import {reviewSummaryStore} from '@/stores/reviewSummary.js'
 import PageHeader from '@/components/PageHeader.vue'
 import ArticleReviewPanel from '@/components/review/ArticleReviewPanel.vue'
 import AuthorApplyPanel from '@/components/review/AuthorApplyPanel.vue'
+import ProfileReviewPanel from '@/components/review/ProfileReviewPanel.vue'
 import AvatarReview from '@/views/user/AvatarReview.vue'
 import ReportManage from '@/views/user/ReportManage.vue'
 
@@ -20,6 +21,7 @@ const TYPES = [
   {key: 'article', label: '文章审核', hint: '送达的稿件，通过后立即对外发布', icon: Bell},
   {key: 'avatar', label: '头像审核', hint: '通过后立即对用户生效', icon: Picture},
   {key: 'authorApply', label: '作者申请', hint: '通过后对方立即获得发文权限', icon: UserFilled},
+  {key: 'profile', label: '资料审核', hint: '昵称命中内容规则才会进这里，通过后写回用户', icon: EditPen},
   {key: 'report', label: '举报处理', hint: '举报只记「谁报了谁」，内容处置走各自的按钮', icon: Warning}
 ]
 
@@ -72,6 +74,7 @@ watch(activeType, () => {
         <ArticleReviewPanel v-if="activeType === 'article'" @handled="loadSummary"/>
         <AvatarReview v-else-if="activeType === 'avatar'" :embedded="true" @handled="loadSummary"/>
         <AuthorApplyPanel v-else-if="activeType === 'authorApply'" @handled="loadSummary"/>
+        <ProfileReviewPanel v-else-if="activeType === 'profile'" @handled="loadSummary"/>
         <ReportManage v-else :embedded="true" @handled="loadSummary"/>
       </section>
     </div>
