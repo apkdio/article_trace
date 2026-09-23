@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
+import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
@@ -12,6 +13,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -210,5 +216,76 @@ public class CoverAndLogoConsistencyTest {
         String cover = articleMapper.selectById(id).getCoverImg();
         assertTrue(cover == null || cover.isEmpty(),
                 "封面被拒后不应写入任何指向，实际：" + cover);
+    }
+
+    @Test
+    public void coverOnArticleWithoutCoverDoesNotFail() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-补封面-" + System.nanoTime(), null);
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-补封面-" + System.nanoTime());
+        edit.setContent("正文内容");
+        edit.setState(ArticleService.STATE_DRAFT);
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("first.png"), USERNAME),
+                "原本 cover_img 为 NULL 的文章补封面不应报错");
+        assertNotNull(articleMapper.selectById(id).getCoverImg());
+    }
+
+    @Test
+    public void concurrentEditOnlyOneWins() throws Exception {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-并发编辑-" + System.nanoTime(), "");
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        String title = "zz-test-并发编辑标题-" + System.nanoTime();
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(2);
+        AtomicInteger ok = new AtomicInteger();
+        AtomicInteger conflict = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        for (int i = 0; i < 2; i++) {
+            String body = "正文内容-" + i;
+            pool.execute(() -> {
+                Article edit = new Article();
+                edit.setId(id);
+                edit.setCreateUser(userId);
+                edit.setTitle(title);
+                edit.setContent(body);
+                edit.setState(ArticleService.STATE_DRAFT);
+                try {
+                    start.await();
+                    if (articleService.articleAddOrUpdate(edit, 1, null, USERNAME)) {
+                        ok.incrementAndGet();
+                    }
+                } catch (ArticleConcurrentEditException e) {
+                    conflict.incrementAndGet();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        assertTrue(done.await(15, TimeUnit.SECONDS), "并发编辑未在 15 秒内结束");
+        pool.shutdown();
+
+        // 两个提交要么成功、要么拿到明确冲突：不允许「静默返回 false」或 500 这种第三种结局。
+        // 注：冲突分支本身无法在此确定性地触发——两线程若一前一后读到的是新 content，
+        // 串行化后两次都成功是正确行为，强行断言冲突反而会偶发失败。
+        assertEquals(2, ok.get() + conflict.get(), "每个提交要么成功、要么收到冲突");
+        assertTrue(ok.get() >= 1, "至少要有一个成功");
+        String stored = articleMapper.selectById(id).getContent();
+        assertNotNull(stored, "库里必须仍指向一个正文对象");
+        assertTrue(stored.endsWith(".json"));
     }
 }

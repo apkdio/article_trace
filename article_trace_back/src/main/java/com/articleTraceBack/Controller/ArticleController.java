@@ -4,6 +4,7 @@ import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.CategoryService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
@@ -198,6 +199,9 @@ public class ArticleController {
                     if (articleService.articleAddOrUpdate(article, 1, cover, username)) {
                         return Result.success(savedResult(article, roleType));
                     }
+                } catch (ArticleConcurrentEditException e) {
+                    error.put("error", e.getMessage());
+                    return Result.error(error);
                 } catch (DuplicateKeyException e) {
                     error.put("title", "你已写过同名文章！");
                     return Result.error(error);

@@ -1,6 +1,7 @@
 package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.config.SensitiveWordHolder;
@@ -75,7 +76,9 @@ public class ArticleServiceImpl implements ArticleService {
         Map<String, Object> content = new HashMap<>();
         content.put("content", article.getContent());
         long timeStamp = System.currentTimeMillis();
-        String fileName = timeStamp + "-" + article.getCreateUser() + ".json";
+        // 同一毫秒内的两次保存不能撞同一个对象名，否则后完成的那次清理会删掉对方正在引用的正文
+        String fileName = timeStamp + "-" + article.getCreateUser() + "-"
+                + UUID.randomUUID().toString().substring(0, 8) + ".json";
 
         Article rawArticle = (type == 0) ? null : articleMapper.selectById(article.getId());
         // 旧对象名：要等写库成功后才删它们
@@ -123,7 +126,19 @@ public class ArticleServiceImpl implements ArticleService {
         // 若先删了旧文件，DB 会指向一个已不存在的对象，正文永久变空且不可逆。
         boolean saved;
         try {
-            saved = articleMapper.insertOrUpdate(article);
+            if (type == 0) {
+                saved = articleMapper.insertOrUpdate(article);
+            } else {
+                // content 每次保存都换成新的对象名，正好当版本号：两人同时编辑时后写者更新 0 行，
+                // 而不是静默覆盖先写者的编辑（它的新对象还会成为无人引用的孤儿）。
+                UpdateWrapper<Article> cas = new UpdateWrapper<>();
+                cas.eq("id", article.getId()).eq("content", oldContentName);
+                saved = articleMapper.update(article, cas) == 1;
+                if (!saved && articleMapper.selectById(article.getId()) != null) {
+                    // 0 行且文章还在 = 别人先改了：交给下面的 catch 回收本次上传，并给出明确提示
+                    throw new ArticleConcurrentEditException("这篇文章刚被改过，请刷新页面后重新提交");
+                }
+            }
         } catch (Exception e) {
             // 写库失败（如 DuplicateKeyException）：回收本次上传的新文件，旧文件始终没动过，
             // 原样抛出交给上层转成友好提示。
@@ -149,8 +164,9 @@ public class ArticleServiceImpl implements ArticleService {
                     && !rustFsUtil.delete(oldContentName, "json")) {
                 log.warn("delete old content failed: articleId={}, key={}", article.getId(), oldContentName);
             }
-            // 换图或删图（新旧不一致）时，旧封面已无人引用
-            if (!Objects.equals(oldImgName, "") && !oldImgName.equals(article.getCoverImg())
+            // 换图或删图（新旧不一致）时，旧封面已无人引用；旧值为 NULL / 空串时无需清理
+            if (oldImgName != null && !oldImgName.isEmpty()
+                    && !Objects.equals(oldImgName, article.getCoverImg())
                     && !rustFsUtil.delete(oldImgName, "image")) {
                 log.warn("delete old cover failed: articleId={}, key={}", article.getId(), oldImgName);
             }
