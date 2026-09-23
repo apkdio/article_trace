@@ -50,7 +50,7 @@ article_trace_front/
     │   ├── PageHeader.vue          #   页面标题栏
     │   ├── StatCard.vue            #   统计卡片
     │   ├── TopArticlesList.vue     #   热门文章榜
-    │   ├── AuthorCard.vue          #   作者/站长名片
+    │   ├── AuthorCard.vue          #   作者/站长名片（昵称下方展示个性签名，没填不占位）
     │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
     │   ├── NotificationBell.vue    #   站内通知铃铛 + 抽屉（后台与门户页共用）
     │   ├── ReportButton.vue        #   举报入口（按钮 + 理由弹窗，文章 / 评论 / 作者卡三处共用）
@@ -176,7 +176,7 @@ article_trace_front/
 | `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
 | `readerHome.vue` | 读者中心布局（复用 `UserLayout`，含站内通知）|
 | `mainPage.vue` | 后台侧边栏布局（复用 `UserLayout`，含站内通知）|
-| `UserInfo.vue` | 用户信息查看与修改 |
+| `UserInfo.vue` | 用户信息查看与修改。昵称与**个性签名**都走内容规则：格式类就地报错（输入框下），命中内容规则提示「已提交审核」（info 而不是红字）；成功改名后 7 天内不能再改，**昵称与个签共用一个锁定期**。个性签名**只对作者与站长展示**，读者看不到这一项，后端也会丢弃读者提交的签名 |
 | `UserLogo.vue` | 头像提交与重置（读者端与后台端共用）。待审期间头像框打上「审核中」角标、上传与重置按钮锁住，并展示待审或上次被拒的理由。**站长自己的头像免审核**，提交即生效，提示文案也按角色区分（提交与重置后都调 store 的 `refreshUserLogo()` 回写，顶栏随之更新）|
 | `UserResetPassword.vue` | 修改密码 |
 | `AvatarReview.vue` | 头像审核（站长）：缩略图点开看原图、通过/拒绝，拒绝弹窗收理由 |
