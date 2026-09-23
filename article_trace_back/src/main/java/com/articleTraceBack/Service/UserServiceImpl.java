@@ -9,6 +9,8 @@ import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
+import com.articleTraceBack.constant.RedisKeys;
+import com.articleTraceBack.pojo.ProfileApply;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -22,6 +24,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -33,6 +36,8 @@ public class UserServiceImpl implements UserService {
     private static final String NICKNAME_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
     private static final int NICKNAME_SUFFIX_LEN = 6;
     private static final SecureRandom NICKNAME_RANDOM = new SecureRandom();
+    /** 改名锁定期：成功改名后多少天内不能再改 */
+    private static final int NICKNAME_LOCK_DAYS = 7;
 
     @Value("${JWT.longTime}")
     private long longTime;
@@ -44,11 +49,14 @@ public class UserServiceImpl implements UserService {
     private final ArticleService articleService;
     private final AgentSessionService agentSessionService;
     private final AuthorApplyMapper authorApplyMapper;
+    private final ProfileGuard profileGuard;
+    private final ProfileApplyService profileApplyService;
 
     public UserServiceImpl(UserMapper userMapper,
                            JwtUtil jwtUtil, RustFsUtil rustFsUtil,
                            StringRedisTemplate stringRedisTemplate, ArticleService articleService,
-                           AgentSessionService agentSessionService, AuthorApplyMapper authorApplyMapper) {
+                           AgentSessionService agentSessionService, AuthorApplyMapper authorApplyMapper,
+                           ProfileGuard profileGuard, ProfileApplyService profileApplyService) {
         this.userMapper = userMapper;
         this.articleService = articleService;
         this.jwtUtil = jwtUtil;
@@ -56,6 +64,8 @@ public class UserServiceImpl implements UserService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.agentSessionService = agentSessionService;
         this.authorApplyMapper = authorApplyMapper;
+        this.profileGuard = profileGuard;
+        this.profileApplyService = profileApplyService;
     }
 
     @Override
@@ -161,6 +171,46 @@ public class UserServiceImpl implements UserService {
             return null;
         }
         return (String) values.getFirst();
+    }
+
+    @Override
+    public ProfileUpdateResult updateNickname(User user) {
+        User current = userMapper.selectById(user.getId());
+        if (current == null) {
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "用户不存在", "nickname");
+        }
+        if (Objects.equals(current.getNickname(), user.getNickname())) {
+            // 只改了邮箱（或什么都没改）：不碰规则、不碰锁定期，走原来的路径
+            return update(user, 0)
+                    ? new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null)
+                    : new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "修改失败！请重试！", "error");
+        }
+        String lockKey = RedisKeys.PROFILE_NICKNAME_LOCK + user.getId();
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(lockKey))) {
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.LOCKED, "昵称 7 天内只能改一次", "nickname");
+        }
+        ProfileGuard.Verdict verdict = profileGuard.checkNickname(user.getNickname());
+        if (verdict.kind() == ProfileGuard.Verdict.Kind.FORMAT) {
+            // 无效输入：直接拒，不给待审队列添垃圾
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, verdict.reason(), "nickname");
+        }
+        if (verdict.kind() == ProfileGuard.Verdict.Kind.CONTENT) {
+            // 内容类：保留旧值、落待审；本次提交里的邮箱照常写，别让用户白改一次
+            String awaiting = user.getNickname();
+            user.setNickname(current.getNickname());
+            update(user, 0);
+            boolean submitted = profileApplyService.submit(user.getId(), ProfileApply.TYPE_NICKNAME, awaiting);
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.PENDING,
+                    submitted ? "昵称已提交审核，通过后自动生效" : "昵称已有一条待审申请，请等审核结果",
+                    "nickname");
+        }
+        if (!update(user, 0)) {
+            return new ProfileUpdateResult(ProfileUpdateResult.Kind.REJECTED, "修改失败！请重试！", "error");
+        }
+        stringRedisTemplate.opsForValue().set(lockKey, "1", NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
+        // 此前若留着一条待审，它一旦被批准就会覆盖掉刚改好的名字
+        profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_NICKNAME);
+        return new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null);
     }
 
     @Override

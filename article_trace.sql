@@ -209,6 +209,32 @@ CREATE TABLE `avatar_apply` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='头像审核记录';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Table structure for table `profile_apply`
+--
+
+DROP TABLE IF EXISTS `profile_apply`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `profile_apply` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `user_id` int NOT NULL COMMENT '申请人 user.id',
+  `type` tinyint NOT NULL COMMENT '资料类型: 1-昵称 2-个签',
+  `pending_value` varchar(64) NOT NULL COMMENT '待审的昵称 / 个签文本',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待审 1-通过 2-拒绝',
+  `reject_reason` varchar(200) DEFAULT NULL COMMENT '拒绝理由',
+  `review_user` int DEFAULT NULL COMMENT '审核人 user.id',
+  `review_time` datetime DEFAULT NULL COMMENT '审核时间',
+  `create_time` datetime NOT NULL COMMENT '提交时间（审核列表展示用）',
+  `pending_flag` tinyint GENERATED ALWAYS AS (if((`status` = 0),1,NULL)) STORED COMMENT '待审标记（非待审为 NULL），与 type 一起保证每人每类最多一条待审',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pending` (`user_id`,`type`,`pending_flag`),
+  KEY `idx_status_time` (`status`,`create_time`),
+  KEY `fk_profile_user` (`user_id`),
+  CONSTRAINT `fk_profile_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='昵称/个签审核记录';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `report` (

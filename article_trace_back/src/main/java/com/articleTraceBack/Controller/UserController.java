@@ -310,16 +310,17 @@ public class UserController {
         if (Objects.equals(name, username)
                 && Objects.equals(id, tokenUid)) {
             try {
-                if (userService.update(user, 0)) {
+                UserService.ProfileUpdateResult result = userService.updateNickname(user);
+                if (result.kind() == UserService.ProfileUpdateResult.Kind.UPDATED) {
                     return Result.success();
                 }
+                // 待审 / 被拒 / 锁定期内：都用一个字符串 message 回，前端直接展示 res.message
+                return Result.error(result.reason());
             } catch (DuplicateKeyException e) {
                 // 并发下由唯一索引兜底：昵称可重复，只有邮箱有唯一约束
                 error.put("email", "邮箱已被使用！");
                 return Result.error(error);
             }
-            error.put("error", "更新失败！请重试！");
-            return Result.error(error);
         }
         error.put("error", "Token不匹配！");
         return Result.error(error);

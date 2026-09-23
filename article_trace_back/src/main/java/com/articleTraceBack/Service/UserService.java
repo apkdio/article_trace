@@ -22,6 +22,17 @@ public interface UserService {
     /** 校验原密码并改密；原密码已变（并发改密）时返回 false，不覆盖先写者的新密码 */
     boolean updatePass(String username, String newPass, String oriPass);
 
+    /** 昵称修改的四种结果：决定上层怎么提示（成功 / 待审 / 被拒 / 锁定期内） */
+    record ProfileUpdateResult(Kind kind, String reason, String field) {
+        public enum Kind {UPDATED, PENDING, REJECTED, LOCKED}
+    }
+
+    /**
+     * 按内容规则修改昵称：格式类直接拒、内容类落待审（保留旧值）、通过则立即生效并起 7 天锁定期。
+     * 同一次提交里的邮箱照常写入——用户改昵称顺带改邮箱时，不该因为昵称要审核就整单丢掉。
+     */
+    ProfileUpdateResult updateNickname(User user);
+
     boolean isValidFile(MultipartFile file);
 
     /**
