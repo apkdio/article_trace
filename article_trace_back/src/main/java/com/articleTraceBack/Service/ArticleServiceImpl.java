@@ -60,14 +60,9 @@ public class ArticleServiceImpl implements ArticleService {
     }
     @Override
     public List<AhoCorasickUtil.Match> containsSensitive(String content) {
-        // 匹配前先归一化：AC 是逐字符精确匹配，词中间插个空格/换成全角/塞个零宽字符就能绕过。
-        // 只压平这份“待匹配副本”，落库的原文不动；命中记录的是词，不依赖位置。
-        String normalized = TextNormalizer.forMatch(content);
-        if (normalized.isEmpty()) {
-            return List.of();
-        }
-        // 每次现取：词表热更新后替换的是 holder 里的引用，业务必须拿当前实例
-        return sensitiveWordHolder.get().search(normalized);
+        // 先归一化：AC 逐字符匹配，插空格 / 全角 / 零宽字符都能绕过；只压副本，落库原文不动
+        // 每次现取：词表热更新后替换的是 holder 里的引用
+        return sensitiveWordHolder.get().search(TextNormalizer.forMatch(content));
     }
     @Override
     public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username) {

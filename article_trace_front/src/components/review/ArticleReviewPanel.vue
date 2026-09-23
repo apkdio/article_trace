@@ -5,11 +5,8 @@ import {CloseBold, Select} from '@element-plus/icons-vue'
 import {errorText} from '@/utils/errorText.js'
 import {assessArticleService, getArticleWithConditionsMaster} from '@/api/article.js'
 
-/**
+/*
  * 审核中心 · 待审文章面板。
- *
- * 列表与处置都用文章模块原有的接口：`/article/manageArticles`（state=2）与
- * `PATCH /article/assess`。搬过来的只有「呈现」——审核仍受状态机与条件更新保护。
  */
 const STATE_PENDING = 2
 const STATE_PUBLISHED = 1
