@@ -323,7 +323,8 @@ const searchArticleInWriter = (nickName) => {
                   <span><el-icon><View/></el-icon> {{ item.views ? item.views : 0 }}</span>
                   <span>
                     <el-icon><Timer/></el-icon>
-                    {{ formatDate(item.updateTime ? item.updateTime : item.createTime) }}</span>
+                    <!-- 与列表排序一致（按发布时间）：显示 updateTime 会让顺序看着是坏的 -->
+                    {{ formatDate(item.createTime) }}</span>
                 </div>
               </div>
             </div>

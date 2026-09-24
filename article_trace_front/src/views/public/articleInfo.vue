@@ -263,8 +263,9 @@ const pushSearch = (type) => {
                   <span class="item-nickname" @click="pushSearch(1)"><el-icon><User/></el-icon> {{
                       articleInfo.createUserName
                     }}</span>
+                  <!-- 与首页统一：读者看到的是发布时间，不是最后改动时间 -->
                   <span class="item"><el-icon><Calendar/></el-icon> {{
-                      formatDate(articleInfo.updateTime || articleInfo.createTime)
+                      formatDate(articleInfo.createTime)
                     }}</span>
                   <span class="item"><el-icon><Timer/></el-icon> 阅读 {{ articleInfo.views }}</span>
                 </div>
