@@ -552,7 +552,7 @@ SITE_DISPLAY_NAME=文迹小站
 
 ## 数据库设计
 
-数据库 `article_trace`，共 9 张表（见根目录 `article_trace.sql`）。
+数据库 `article_trace`，共 10 张表（见根目录 `article_trace.sql`）。
 
 ### `user` 用户表
 
