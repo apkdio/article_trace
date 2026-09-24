@@ -290,8 +290,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public int getAllArticles(int uid) {
-        return articleService.findAllArticlesWithConditions(uid, null, null, null);
+    public int countPublishedArticles(int uid) {
+        return articleService.findAllArticlesWithConditions(uid, null, ArticleService.STATE_PUBLISHED, null);
     }
 
     @Override

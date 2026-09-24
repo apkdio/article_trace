@@ -46,7 +46,8 @@ public interface UserService {
 
     boolean deleteRedisToken(String username);
 
-    int getAllArticles(int uid);
+    /** 已发布文章数：首页「我的发布」算的是产出，草稿、待审、已驳回都不计 */
+    int countPublishedArticles(int uid);
 
     boolean removeUserLogo(String username);
 

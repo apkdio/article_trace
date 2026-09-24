@@ -294,7 +294,7 @@ public class UserController {
             error.put("error", "未找到用户！");
             return Result.error(error);
         }
-        user.setArticlesTotal(userService.getAllArticles(uid));
+        user.setArticlesTotal(userService.countPublishedArticles(uid));
         return Result.success(user);
     }
 
