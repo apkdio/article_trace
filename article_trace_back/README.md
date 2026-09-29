@@ -93,7 +93,7 @@ article_trace_back/
     │   │   ├── TokenCheck.java              #   登录拦截器（鉴权 + 权限分级）
     │   │   ├── ThreadLocalUtil.java         #   ThreadLocal 上下文传递
     │   │   ├── RichTextCleaner.java         #   富文本清洗（jsoup）
-    │   │   ├── TextExtractor.java           #   纯文本提取/摘要
+    │   │   ├── TextExtractor.java           #   纯文本提取/摘要（剔除公式段）
     │   │   ├── RustFsUtil.java              #   RustFS/S3 对象存储封装
     │   │   ├── ThumbnailUtil.java           #   图片缩略图生成（Thumbnailator）
     │   │   ├── EmailUtil.java               #   邮件发送（SMTP，含 multipart 双载体）
@@ -211,6 +211,8 @@ article_trace_back/
 ### 7. 富文本清洗（RichTextCleaner / TextExtractor）
 
 基于 jsoup 清洗富文本：移除 `<script>/<style>` 与图片标签、base64 图片，块级标签转换行，压缩空白，输出纯文本用于敏感词校验与文章摘要展示。
+
+> **摘要会先剔掉公式段**：认 `$$..$$` / `\[..\]` / `\(..\)` 三种分隔符，与前端展示端同一套；**不认单独的 `$..$`**——它会把「价格 $5 到 $10」这类正文一起吃掉。LaTeX 原文留在列表卡上只是噪声，规则写在 `TextExtractor.MATH_SEGMENT` 上，用例见 `TextExtractorTest`。
 
 另提供 `cleanToSafeHtml()` 做**白名单清洗并保留 HTML**，用于落库与回显：基于 `Safelist.relaxed()`，额外放行 `figure/figcaption/hr` 与 `:all` 的 `class`、`img` 的 `alt/width/height`、`a` 的 `target/rel`，协议限 `http/https`（外链另加 `mailto`）。
 
@@ -547,8 +549,9 @@ SITE_DISPLAY_NAME=文迹小站
 - 前端统一走 `api/site.js`：原生 `fetch`（不用 axios 实例——登录页和文章页在未登录时也会加载，
   axios 拦截器碰到 401 会触发全局登出跳转，那不该发生）、结果缓存、**探测失败按「全开」兜底**
   （宁可多显示一个入口，后端还会拒；也不要因为一次网络抖动把本地开发的功能全藏起来）
-- 测试环境不配这段，走代码默认值（多用户态）；要覆盖关闭态的用例用
-  `@SpringBootTest(properties = "site.register-enabled=false")` 单独指定
+- 测试环境不配这段，走代码默认值（多用户态）；关闭态由 `SiteGatingTest` 覆盖——三个开关一起置 false，
+  断言注册 / 评论 / 作者申请三条门禁都直接拒（直接调 Controller 方法，断言的就是门禁本身）
+- **发码接口那条门禁未覆盖**：它排在图形验证码之后，用例拿不到有效验证码就到不了那一步（用例注释里写明了）
 
 ## 数据库设计
 
