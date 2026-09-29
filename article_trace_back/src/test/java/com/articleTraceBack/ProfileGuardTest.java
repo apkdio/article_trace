@@ -111,6 +111,7 @@ public class ProfileGuardTest {
         assertPass(guard.checkSignature("记录想法，留下痕迹。"), "个签里的中文标点必须放行");
         assertPass(guard.checkSignature("写点东西——顺手记下！"), "破折号与其它标点");
         assertPass(guard.checkSignature("官方客服的小号"), "个签不查冒充——这是正常表达");
-        assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkSignature("长".repeat(31)).kind(), "个签上限 30");
+        assertPass(guard.checkSignature("长".repeat(60)), "个签上限 60：刚好到上限要放行");
+        assertEquals(ProfileGuard.Verdict.Kind.FORMAT, guard.checkSignature("长".repeat(61)).kind(), "个签上限 60：超一个字符就拒");
     }
 }
