@@ -1,5 +1,5 @@
 <script setup>
-import {ref, onMounted, computed} from 'vue'
+import {ref, onMounted, computed, nextTick} from 'vue'
 import {
   Search, SwitchButton, CaretBottom, User, Timer, Calendar,
   ChatLineRound, Delete, Bell
@@ -23,6 +23,7 @@ import ReportButton from "@/components/ReportButton.vue";
 import {logout as doLogout} from "@/utils/auth.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import {getSiteFeatures} from "@/api/site.js";
+import {renderMathIn} from "@/utils/mathRender.js";
 
 const props = defineProps(["id"])
 const loading = ref(true)
@@ -36,6 +37,7 @@ const commentConditions = ref({
 })
 
 const articleInfo = ref({})
+const contentRef = ref()
 const writerInfo = ref({})
 const writerLoading = ref(true)
 const isLogin = ref(false)
@@ -84,6 +86,9 @@ const getData = async () => {
     const data = await getArticleDetail(props.id)
     if (data.code === 0) {
       articleInfo.value = data.data
+      // 公式在客户端渲染：存在对象里的是 LaTeX 原文，渲染结果不进存储、也不过后端白名单
+      await nextTick()
+      renderMathIn(contentRef.value)
       const writerData = await getWriterInfoService(data.data.createUserName)
       if (writerData.code === 0) {
         writerInfo.value = writerData.data
@@ -280,7 +285,7 @@ const pushSearch = (type) => {
               <el-image :src="articleInfo.coverImgSrc" fit="contain" :preview-src-list="[articleInfo.coverImgSrc]"/>
             </div>
 
-            <div class="article-detail-content ql-editor" v-html="articleInfo.content"></div>
+            <div ref="contentRef" class="article-detail-content ql-editor" v-html="articleInfo.content"></div>
 
             <div class="comment-section">
               <div class="comment-divider">

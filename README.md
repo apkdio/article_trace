@@ -57,6 +57,7 @@
 **内容体系**
 
 - **文章**：富文本撰写、封面上传（选图后按 3:2 客户端裁剪）；作者可**存草稿**或**送审**，站长审核通过才置为已发布（驳回可修改后重投）。标题在同一作者内唯一。
+- **公式与 Markdown**：正文支持 LaTeX 公式（KaTeX **客户端**渲染，渲染结果不进存储）与 Markdown 导入（粘贴即转正文）；字号 6 档。存储仍是 HTML，后端与清洗白名单未改。
 - **富文本清洗**：正文在**落库与回显两头**都做 jsoup 白名单清洗（保留 `p` / `img` 等排版标签，剥掉脚本、事件属性与 `javascript:` 伪协议），防止存储型 XSS。编辑器插入的图片是 base64 内联的 `data:`，这部分**保留位图**（png / jpeg / gif / webp / bmp）——但 `data:image/svg+xml` 一类一律剔除，SVG 能内嵌脚本，而正文是 `v-html` 直渲染。
 - **分类**：作者自定义分类，读者按分类浏览。
 - **评论**：登录评论 + 敏感词校验 + 分级删除。
@@ -75,7 +76,7 @@
 ## 技术栈
 
 - **后端**：Spring Boot 3.5 · Java 21 · MyBatis-Plus · MySQL 8 · Redis · RustFS(S3) · JWT · BCrypt · Spring Mail · easy-captcha · jsoup · gRPC / Protobuf
-- **前端**：Vue 3.5 · Vite 7 · Element Plus · Pinia · Vue Router · Axios · Vue-Quill · Sass
+- **前端**：Vue 3.5 · Vite 7 · Element Plus · Pinia · Vue Router · Axios · Vue-Quill · KaTeX（公式）· Sass
 - **AI 服务**：Python · gRPC · 双路召回（dense + sparse）+ RRF 融合 · LLM 生成
 - **部署**：Docker Compose（后端 + 前端 Nginx + agent）
 

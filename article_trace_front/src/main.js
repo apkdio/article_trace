@@ -1,5 +1,6 @@
 import './assets/main.scss'
 import './assets/quill-content.scss'
+import 'katex/dist/katex.min.css'
 import {createApp} from 'vue'
 import router from '@/router/index.js'
 import App from './App.vue'

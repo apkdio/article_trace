@@ -1,8 +1,9 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {onMounted, ref, nextTick} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {CloseBold, Select} from '@element-plus/icons-vue'
 import {errorText} from '@/utils/errorText.js'
+import {renderMathIn} from '@/utils/mathRender.js'
 import {assessArticleService, getArticleWithConditionsMaster} from '@/api/article.js'
 
 /*
@@ -21,6 +22,7 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const previewVisible = ref(false)
 const previewRow = ref({})
+const previewContentRef = ref()
 
 const load = async () => {
   loading.value = true
@@ -60,9 +62,11 @@ const onSizeChange = (size) => {
   load()
 }
 
-const openPreview = (row) => {
+const openPreview = async (row) => {
   previewRow.value = row
   previewVisible.value = true
+  await nextTick()
+  renderMathIn(previewContentRef.value)
 }
 
 /** 通过 / 驳回共用；命中的违禁词只有站长看得到，这里照实列出来 */
@@ -147,7 +151,7 @@ defineExpose({load})
       </div>
       <el-alert v-if="previewRow.sensitiveHit" type="warning" :closable="false" show-icon class="preview-alert"
                 :title="'命中违禁词' + (previewRow.sensitiveWords ? '：' + previewRow.sensitiveWords : '')"/>
-      <div class="preview-content ql-editor" v-html="previewRow.content"></div>
+      <div ref="previewContentRef" class="preview-content ql-editor" v-html="previewRow.content"></div>
     </el-dialog>
   </div>
 </template>

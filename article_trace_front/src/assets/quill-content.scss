@@ -31,4 +31,29 @@
       padding-left: 1.5em + 3em * $i;
     }
   }
+
+  // 字号档位：工具栏的 size 白名单用同一组值（ArticleManage.vue 的 SIZE_OPTIONS），两边必须成对改
+  .ql-size-14px {
+    font-size: 14px;
+  }
+
+  .ql-size-16px {
+    font-size: 16px;
+  }
+
+  .ql-size-18px {
+    font-size: 18px;
+  }
+
+  .ql-size-20px {
+    font-size: 20px;
+  }
+
+  .ql-size-24px {
+    font-size: 24px;
+  }
+
+  .ql-size-28px {
+    font-size: 28px;
+  }
 }

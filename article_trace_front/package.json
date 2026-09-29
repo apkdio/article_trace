@@ -13,6 +13,8 @@
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.13.3",
     "element-plus": "^2.13.1",
+    "katex": "^0.18.9",
+    "marked": "^18.0.14",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "unplugin-auto-import": "^21.0.0",

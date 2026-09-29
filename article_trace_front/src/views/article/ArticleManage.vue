@@ -2,14 +2,14 @@
 
 import {Delete, Edit, Plus, Picture, Search, User, Calendar, Timer, UserFilled} from '@element-plus/icons-vue'
 import cover from '@/assets/defaultCover.jpg'
-import {nextTick, onMounted, ref} from 'vue'
+import {nextTick, onMounted, ref, watch} from 'vue'
 import {addCategory, getAllCategories} from "@/api/category.js";
 import {
   addArticleService, deleteArticleService,
   getArticleWithConditions, getArticleWithConditionsMaster,
   updateArticleService
 } from "@/api/article.js";
-import {QuillEditor} from '@vueup/vue-quill'
+import {Quill, QuillEditor} from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {checkPersonInfo} from "@/api/checkPersonInfo.js";
@@ -17,6 +17,8 @@ import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
 import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} from "@/utils/upload.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
+import {markdownToHtml} from "@/utils/markdown.js";
+import {renderMathIn, renderTex} from "@/utils/mathRender.js";
 import PageHeader from "@/components/PageHeader.vue";
 import ImageCropper from "@/components/ImageCropper.vue";
 
@@ -51,6 +53,118 @@ const previewData = ref({})
 // 封面延后到提交时才上传：选好文件先本地预览，避免「还没决定发布就落存储」产生孤儿对象
 const pendingCover = ref(null)
 const coverPreviewUrl = ref('')
+
+// 字号档位：class 驱动（后端白名单已放行 class），展示侧 CSS 在 assets/quill-content.scss
+const SIZE_OPTIONS = ['14px', '16px', '18px', '20px', '24px', '28px']
+const SizeAttributor = Quill.import('attributors/class/size')
+SizeAttributor.whitelist = SIZE_OPTIONS
+Quill.register(SizeAttributor, true)
+
+const previewContentRef = ref()
+const formulaDialog = ref(false)
+const formulaTex = ref('')
+const formulaDisplay = ref(true)
+const formulaPreview = ref('')
+const markdownDialog = ref(false)
+const markdownText = ref('')
+// 打开对话框时记下光标位置：对话框一开编辑器就失焦，插入时取不到 selection
+let insertIndex = null
+
+const openPreview = async (row) => {
+  previewData.value = row
+  previewDrawer.value = true
+  await nextTick()
+  renderMathIn(previewContentRef.value)
+}
+
+const rememberCursor = () => {
+  const quill = quillEditorRef.value?.getQuill()
+  if (!quill) {
+    insertIndex = null
+    return
+  }
+  const range = quill.getSelection(true)
+  insertIndex = range ? range.index : quill.getLength()
+}
+
+const updateFormulaPreview = () => {
+  const tex = formulaTex.value.trim()
+  formulaPreview.value = tex ? renderTex(tex, formulaDisplay.value) : ''
+}
+
+watch([formulaTex, formulaDisplay], updateFormulaPreview)
+
+const openFormulaDialog = () => {
+  rememberCursor()
+  formulaTex.value = ''
+  formulaPreview.value = ''
+  formulaDialog.value = true
+}
+
+const insertPlainText = (text) => {
+  const quill = quillEditorRef.value?.getQuill()
+  if (!quill) return
+  const index = insertIndex === null ? quill.getLength() : insertIndex
+  quill.insertText(index, text, 'user')
+  quill.setSelection(index + text.length, 0, 'silent')
+}
+
+const insertFormula = () => {
+  const tex = formulaTex.value.trim()
+  if (!tex) {
+    ElMessage.warning('请先写一条公式')
+    return
+  }
+  // 块级 $$..$$、行内 \(..\)：展示端只认这两种，不认单独的 $..$（它会吞掉「价格 $5 到 $10」）
+  insertPlainText(formulaDisplay.value ? `$$${tex}$$` : `\\(${tex}\\)`)
+  formulaDialog.value = false
+}
+
+const openMarkdownDialog = () => {
+  rememberCursor()
+  markdownDialog.value = true
+}
+
+const insertMarkdown = (replaceAll) => {
+  const html = markdownToHtml(markdownText.value)
+  if (!html.trim()) {
+    ElMessage.warning('还没有要转换的内容')
+    return
+  }
+  const quill = quillEditorRef.value?.getQuill()
+  if (!quill) return
+  if (replaceAll) {
+    quill.setContents([], 'user')
+    quill.clipboard.dangerouslyPasteHTML(0, html, 'user')
+  } else {
+    const index = insertIndex === null ? quill.getLength() : insertIndex
+    quill.clipboard.dangerouslyPasteHTML(index, html, 'user')
+  }
+  markdownDialog.value = false
+  markdownText.value = ''
+}
+
+// 工具栏：snow 默认配置之外补 6 档字号，以及「插入公式 / 导入 Markdown」两个自定义按钮
+const quillModules = {
+  toolbar: {
+    container: [
+      [{header: [1, 2, 3, 4, false]}],
+      [{size: [...SIZE_OPTIONS, false]}],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{color: []}, {background: []}],
+      [{list: 'ordered'}, {list: 'bullet'}],
+      [{indent: '-1'}, {indent: '+1'}],
+      [{align: []}],
+      ['blockquote', 'code-block', 'link', 'image'],
+      ['formula', 'markdown'],
+      ['clean']
+    ],
+    handlers: {
+      formula: openFormulaDialog,
+      markdown: openMarkdownDialog
+    }
+  }
+}
 
 const validateContent = (rule, value, callback) => {
   if (!value || value.trim() === '' || value === '<p><br></p>' || value === '<p></p>') {
@@ -485,7 +599,7 @@ const deleteArticle = (id, createUser) => {
 
           <el-table-column label="文章标题（点击预览）" width="360">
             <template #default="{row}">
-              <span class="table-article-title" @click="previewDrawer=true;previewData = row">{{ row.title }}</span>
+              <span class="table-article-title" @click="openPreview(row)">{{ row.title }}</span>
             </template>
 
           </el-table-column>
@@ -617,6 +731,7 @@ const deleteArticle = (id, createUser) => {
             <quill-editor
                 ref="quillEditorRef"
                 theme="snow"
+                :modules="quillModules"
                 v-model:content="articleModel.content"
                 contentType="html"
                 @blur="handleEditorBlur"
@@ -673,13 +788,41 @@ const deleteArticle = (id, createUser) => {
         </el-alert>
 
         <el-divider/>
-        <div class="article-content ql-editor" v-html="previewData.content"></div>
+        <div ref="previewContentRef" class="article-content ql-editor" v-html="previewData.content"></div>
       </div>
 
       <!-- 审核动作已收进「审核中心」，这里只留预览 -->
     </el-drawer>
 
     <ImageCropper ref="cropperRef" v-bind="CROP_PRESETS.cover" @confirm="applyCoverFile"/>
+
+    <el-dialog v-model="formulaDialog" title="插入公式" width="520px" append-to-body>
+      <el-input v-model="formulaTex" type="textarea" :rows="3"
+                placeholder="只写 LaTeX 本体，例如 \frac{1}{2} 或 \sum_{i=1}^{n} i"/>
+      <div class="formula-preview">
+        <span class="formula-preview-label">预览</span>
+        <div v-if="formulaPreview" class="formula-preview-body" v-html="formulaPreview"></div>
+        <span v-else class="formula-empty">输入 LaTeX 后这里实时显示</span>
+      </div>
+      <el-radio-group v-model="formulaDisplay" size="small">
+        <el-radio-button :value="false">行内</el-radio-button>
+        <el-radio-button :value="true">独立一行</el-radio-button>
+      </el-radio-group>
+      <template #footer>
+        <el-button @click="formulaDialog = false">取消</el-button>
+        <el-button type="primary" @click="insertFormula">插入</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="markdownDialog" title="导入 Markdown" width="640px" append-to-body>
+      <el-input v-model="markdownText" type="textarea" :rows="10"
+                placeholder="把 Markdown 粘进来，确认后转成正文格式；公式写成 $..$ 或 $$..$$ 即可"/>
+      <template #footer>
+        <el-button @click="markdownDialog = false">取消</el-button>
+        <el-button @click="insertMarkdown(false)">插入到光标处</el-button>
+        <el-button type="primary" @click="insertMarkdown(true)">替换整篇正文</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <style>
@@ -800,12 +943,52 @@ const deleteArticle = (id, createUser) => {
     border: none;
     border-bottom: 1px solid #dcdfe6;
     background: #fcfcfc;
+
+    /* 两个自定义按钮没有内置图标，用字符顶上 */
+    .ql-formula::before {
+      content: '∑';
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .ql-markdown::before {
+      content: 'M↓';
+      font-size: 13px;
+      font-weight: 700;
+    }
   }
 
   :deep(.ql-container) {
     border: none;
     min-height: 350px;
     font-size: 15px;
+  }
+}
+
+/* 公式对话框里的实时预览 */
+.formula-preview {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background: #fafafa;
+  min-height: 56px;
+
+  .formula-preview-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: #909399;
+  }
+
+  .formula-preview-body {
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .formula-empty {
+    font-size: 13px;
+    color: #c0c4cc;
   }
 }
 
