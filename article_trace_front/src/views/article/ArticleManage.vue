@@ -15,9 +15,10 @@ import {userInfoStore} from "@/stores/userInfo.js";
 import {checkPersonInfo} from "@/api/checkPersonInfo.js";
 import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
-import {checkImageFile} from "@/utils/upload.js";
+import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} from "@/utils/upload.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
 import PageHeader from "@/components/PageHeader.vue";
+import ImageCropper from "@/components/ImageCropper.vue";
 
 
 const categories = ref([])
@@ -34,6 +35,7 @@ const previewDrawer = ref(false)
 const visibleDrawer = ref(false)
 const drawerTitle = ref('')
 const coverRef = ref(false)
+const cropperRef = ref()
 const articleModelRef = ref()
 const articleModel = ref({
   id: '',
@@ -191,14 +193,31 @@ const revokeCoverPreview = () => {
 }
 
 /**
- * 选中封面文件：只做本地预览，不发任何请求。
+ * 选中封面文件：先按 3:2 裁剪，产物只做本地预览、不发任何请求。
  * 真正的上传发生在提交文章时，这样用户中途放弃就不会在服务端留下垃圾对象。
  */
 const onCoverChange = (file) => {
   if (!file || !file.raw) return
+  // 非动图会先裁剪，按原图上限校验；动图跳过裁剪，仍按产物上限
+  const limit = file.raw.type === 'image/gif' ? MAX_IMAGE_SIZE : MAX_SOURCE_IMAGE_SIZE
+  if (!checkImageFile(file.raw, limit)) {
+    if (coverRef.value) coverRef.value.clearFiles()
+    return
+  }
+  // 动图经 canvas 会被拍成静态图，跳过裁剪直接用原图
+  if (file.raw.type === 'image/gif') {
+    ElMessage.info("动图不做裁剪，直接使用原图")
+    applyCoverFile(file.raw)
+    return
+  }
+  cropperRef.value?.open(file.raw)
+}
+
+/** 把（裁剪后或跳过的）封面文件落进本地状态 */
+const applyCoverFile = (raw) => {
   revokeCoverPreview()
-  pendingCover.value = file.raw
-  coverPreviewUrl.value = URL.createObjectURL(file.raw)
+  pendingCover.value = raw
+  coverPreviewUrl.value = URL.createObjectURL(raw)
   articleModel.value.coverImgSrc = coverPreviewUrl.value
 }
 
@@ -566,7 +585,7 @@ const deleteArticle = (id, createUser) => {
           </el-col>
         </el-row>
 
-        <el-form-item label="封面管理（保存文章时一并上传）">
+        <el-form-item label="封面管理（按 3:2 裁剪，保存文章时一并上传）">
           <div class="cover-upload-wrapper">
             <el-upload
                 ref="coverRef"
@@ -574,7 +593,7 @@ const deleteArticle = (id, createUser) => {
                 :auto-upload="false"
                 :show-file-list="false"
                 accept="image/*"
-                :before-upload="checkImageFile"
+                :before-upload="(f) => checkImageFile(f, MAX_SOURCE_IMAGE_SIZE)"
                 :on-change="onCoverChange"
             >
               <div v-if="articleModel.coverImgSrc" class="cover-preview">
@@ -659,6 +678,8 @@ const deleteArticle = (id, createUser) => {
 
       <!-- 审核动作已收进「审核中心」，这里只留预览 -->
     </el-drawer>
+
+    <ImageCropper ref="cropperRef" v-bind="CROP_PRESETS.cover" @confirm="applyCoverFile"/>
   </div>
 </template>
 <style>

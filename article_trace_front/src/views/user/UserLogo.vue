@@ -5,13 +5,18 @@ import logo from '@/assets/defaultLogo.jpg'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {removeUserLogoService, submitUserLogoService} from "@/api/user.js";
 import {getMyAvatarApply} from "@/api/avatar.js";
-import {isAllowedImageType, MAX_IMAGE_SIZE, MAX_IMAGE_SIZE_TEXT} from "@/utils/upload.js";
+import {checkImageFile, CROP_PRESETS, isAllowedImageType, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE_TEXT} from "@/utils/upload.js";
 import PageHeader from "@/components/PageHeader.vue";
+import ImageCropper from "@/components/ImageCropper.vue";
 
 const uploadRef = ref()
 const fileList = ref([])
 const imgSrc = ref()
 const imgKey = ref()
+const cropperRef = ref()
+// 提交的是裁剪产物；动图没有产物（跳过裁剪），提交时回退到原图
+const croppedFile = ref(null)
+let previewUrl = ''
 const submitting = ref(false)
 // 我最新一条提交记录；null 表示从未提交过
 const myApply = ref(null)
@@ -82,12 +87,20 @@ function changeSetSrc(file, fileList) {
   if (fileList.length > 0) {
     const currentFile = fileList[fileList.length - 1]
     if (currentFile.raw && isAllowedImageType(currentFile.raw.type)) {
-      if (currentFile.raw.size > MAX_IMAGE_SIZE) {
-        ElMessage.error(`上传图片不能大于${MAX_IMAGE_SIZE_TEXT}!`)
+      // 非动图会先裁剪，所以按原图上限校验；动图跳过裁剪，仍按产物上限
+      const limit = currentFile.raw.type === 'image/gif' ? MAX_IMAGE_SIZE : MAX_SOURCE_IMAGE_SIZE
+      if (!checkImageFile(currentFile.raw, limit)) {
         uploadRef.value.clearFiles()
         return
       }
-      imgSrc.value = URL.createObjectURL(currentFile.raw)
+      // 动图经 canvas 会被拍成静态图，跳过裁剪直接用原图
+      if (currentFile.raw.type === 'image/gif') {
+        ElMessage.info("动图不做裁剪，直接使用原图")
+        croppedFile.value = null
+        setPreviewUrl(currentFile.raw)
+        return
+      }
+      cropperRef.value?.open(currentFile.raw)
     } else {
       if (currentFile.raw) {
         ElMessage.error("只支持 JPG、PNG、GIF、BMP、WEBP 格式的图片！")
@@ -97,8 +110,20 @@ function changeSetSrc(file, fileList) {
   }
 }
 
+const setPreviewUrl = (file) => {
+  if (previewUrl) URL.revokeObjectURL(previewUrl)
+  previewUrl = URL.createObjectURL(file)
+  imgSrc.value = previewUrl
+}
+
+const onCropped = (file) => {
+  croppedFile.value = file
+  setPreviewUrl(file)
+}
+
 const uploadSubmit = async () => {
-  const file = fileList.value[fileList.value.length - 1]?.raw
+  // 裁过的用裁剪产物，动图用原图
+  const file = croppedFile.value || fileList.value[fileList.value.length - 1]?.raw
   if (!file) {
     ElMessage.warning("请先选择一张图片！")
     return
@@ -117,6 +142,7 @@ const uploadSubmit = async () => {
     ElMessage.error("服务器响应失败！")
   } finally {
     submitting.value = false
+    croppedFile.value = null
     uploadRef.value?.clearFiles()
     // 无论成败都恢复成当前生效的头像：刚才显示的是本地预览图
     await loadValue()
@@ -175,8 +201,8 @@ const uploadSubmit = async () => {
               />
 
               <div class="info-text">
-                <p><el-icon><InfoFilled/></el-icon> 支持 JPG/PNG/WEBP 等主流格式</p>
-                <p><el-icon><WarningFilled/></el-icon> 图片大小不超过 {{ MAX_IMAGE_SIZE_TEXT }}</p>
+                <p><el-icon><InfoFilled/></el-icon> 支持 JPG/PNG/WEBP 等主流格式，选图后按 1:1 裁剪</p>
+                <p><el-icon><WarningFilled/></el-icon> 原图不超过 {{ MAX_SOURCE_IMAGE_SIZE_TEXT }}，裁剪后自动压到 2MB 以内</p>
               </div>
 
               <div class="button-group">
@@ -230,7 +256,7 @@ const uploadSubmit = async () => {
             <div class="tips-box">
               <h4 class="tips-title">选图建议</h4>
               <ul>
-                <li>建议使用正方形图片，以免剪裁后主体偏移。</li>
+                <li>选图后会按 1:1 裁剪，非正方形图片也能用——把主体放在取景框中央即可。</li>
                 <li v-if="userInfoStore().type === 0 || userInfoStore().type === 1">光线充足、背景简单的照片会让你的个人主页更具高级感。</li>
                 <li v-if="userInfoStore().type === 0 || userInfoStore().type === 1">定期更新头像能保持你的创作动态活跃度。</li>
               </ul>
@@ -240,6 +266,8 @@ const uploadSubmit = async () => {
       </el-row>
     </div>
   </div>
+
+  <ImageCropper ref="cropperRef" v-bind="CROP_PRESETS.avatar" @confirm="onCropped"/>
 </template>
 
 <style lang="scss" scoped>
