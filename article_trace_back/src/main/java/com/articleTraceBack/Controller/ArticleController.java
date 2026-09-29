@@ -81,8 +81,6 @@ public class ArticleController {
         String articleTitle = article.getTitle();
         String content = article.getTitle() + article.getContent();
         String cleanContent = RichTextCleaner.cleanToPlainText(content);
-        // 命中违禁词不再直接驳回：转为「落待审 + 打标」，由站长优先审核（见 applySensitiveMark）
-        List<AhoCorasickUtil.Match> matches = articleService.containsSensitive(cleanContent);
         // 不拆箱：此前写成 int 接收，请求不带 categoryId 会直接 NPE 500
         Integer categoryId = article.getCategoryId();
         if (categoryId == null) {
@@ -103,11 +101,12 @@ public class ArticleController {
                 error.put("state", "非合理值！");
                 return Result.error(error);
             }
-            // 命中违禁词一律转待审，站长也不例外——站长是唯一能改词库的人，
-            // 只有让命中结果落进他能看见的审核队列，误伤才能反馈回词表。
-            if (!matches.isEmpty()) {
-                target = ArticleService.STATE_PENDING;
-            }
+            // 草稿不扫（见 shouldCheckSensitive）；送审 / 发布命中则一律转待审，站长也不例外——
+            // 站长是唯一能改词库的人，只有让命中结果落进他能看见的审核队列，误伤才能反馈回词表。
+            List<AhoCorasickUtil.Match> matches = shouldCheckSensitive(target)
+                    ? articleService.containsSensitive(cleanContent)
+                    : List.of();
+            target = applySensitiveVerdict(target, !matches.isEmpty());
             article.setState(target);
             applySensitiveMark(article, matches);
             try {
@@ -157,8 +156,6 @@ public class ArticleController {
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
-            // 同新增：命中不再驳回，只影响目标状态与标记
-            List<AhoCorasickUtil.Match> matches = articleService.containsSensitive(cleanContent);
             // 同上：不能直接拆箱，缺失时要给明确提示而不是 500
             Integer categoryId = article.getCategoryId();
             if (categoryId == null) {
@@ -185,11 +182,14 @@ public class ArticleController {
                     error.put("state", "非合理值！");
                     return Result.error(error);
                 }
-                // 命中违禁词的流转目标固定为待审（站长也一样），再交给状态机判断该流转是否合法
-                if (!matches.isEmpty()) {
-                    target = ArticleService.STATE_PENDING;
-                }
-                if (!articleService.canTransfer(art.getState(), target, roleType)) {
+                // 草稿不扫（见 shouldCheckSensitive）；命中则流转目标固定为待审（站长也一样），再交给状态机判断
+                List<AhoCorasickUtil.Match> matches = shouldCheckSensitive(target)
+                        ? articleService.containsSensitive(cleanContent)
+                        : List.of();
+                target = applySensitiveVerdict(target, !matches.isEmpty());
+                // 目标与当前一致时（例如已在待审的稿子再保存）不是流转，跳过状态机：否则会误报「不允许」
+                if (!target.equals(art.getState())
+                        && !articleService.canTransfer(art.getState(), target, roleType)) {
                     error.put("state", "当前文章状态不允许该操作！");
                     return Result.error(error);
                 }
@@ -234,6 +234,19 @@ public class ArticleController {
         return (roleType == ArticleService.ROLE_MASTER)
                 ? ArticleService.STATE_PUBLISHED
                 : ArticleService.STATE_PENDING;
+    }
+
+    /** 草稿不进敏感词监测：草稿是还没打算交出去的私有产物，扫了也不进审核队列，只会让作者改稿时被标记牵住 */
+    static boolean shouldCheckSensitive(Integer target) {
+        return target != null && target != ArticleService.STATE_DRAFT;
+    }
+
+    /** 命中违禁词后的最终状态：草稿不动，其余（送审 / 站长直接发布）一律转待审 */
+    static Integer applySensitiveVerdict(Integer target, boolean sensitiveHit) {
+        if (target == null || !sensitiveHit || target == ArticleService.STATE_DRAFT) {
+            return target;
+        }
+        return ArticleService.STATE_PENDING;
     }
 
     /** 落「命中违禁词」标记；每次写入都重算，命中词改掉后标记必须回到 0，否则该文章会一直排在待审列表最前。 */
