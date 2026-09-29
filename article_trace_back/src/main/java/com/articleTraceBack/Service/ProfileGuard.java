@@ -30,7 +30,7 @@ public class ProfileGuard {
     private static final Verdict PASS = new Verdict(Verdict.Kind.PASS, null);
     private static final int NICKNAME_MIN = 2;
     private static final int NICKNAME_MAX = 20;
-    private static final int SIGNATURE_MAX = 30;
+    private static final int SIGNATURE_MAX = 60;
 
     /** 冒充站方身份的词，逗号分隔；站名另从 {@code site.display-name} 取。放配置里，改词不必重新发版 */
     @Value("${profile.impersonation-words:站长,管理员,管理員,官方,客服,认证}")

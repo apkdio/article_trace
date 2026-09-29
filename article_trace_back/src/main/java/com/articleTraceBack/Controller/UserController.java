@@ -276,7 +276,7 @@ public class UserController {
     }
 
     /**
-     * 秒数向上取整成分钟，至少算 1 分钟——“请 0 分钟后再试”比不说还糟
+     * 秒数向上取整成分钟
      */
     private long minutesOf(long seconds) {
         return Math.max(1, (seconds + 59) / 60);

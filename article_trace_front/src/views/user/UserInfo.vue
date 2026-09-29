@@ -30,6 +30,9 @@ const rules = {
   email: [
     { required: true, message: '请输入用户邮箱', trigger: 'blur' },
     { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  ],
+  signature:[
+    {max:60,message:'个性签名长度不能超过60个字符!'}
   ]
 }
 
@@ -126,8 +129,8 @@ const updateUserInfo = () => {
                   v-model="userInfo.signature"
                   type="textarea"
                   :rows="2"
-                  placeholder="一句自我介绍一下（可选，最长 30 字）"
-                  maxlength="30"
+                  placeholder="一句自我介绍一下（可选，最长 60 字）"
+                  maxlength="60"
                   show-word-limit
               />
             </el-form-item>
