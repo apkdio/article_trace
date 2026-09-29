@@ -43,6 +43,7 @@ article_trace_front/
     │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
     ├── assets/                     # 静态资源
     │   ├── main.scss               #   全局样式
+    │   ├── quill-content.scss      #   正文排版类（对齐/缩进）在展示侧的样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
     ├── components/                 # 公共组件
     │   ├── UserLayout.vue          #   用户中心布局（侧边栏 + header）
@@ -195,6 +196,16 @@ article_trace_front/
 **页面自身不要再写 `height: 100% + overflow: hidden`** —— `height:100%` 会让页面恰好撑满容器（永不「超出」→ 外层不产生滚动），`overflow:hidden` 又把超出部分裁掉，两者一夹就是「内容超出窗口却滚不动」。需要占满时用 `min-height: 100%`。
 
 `assets/main.scss` 里的 `width: 100% !important` 是**为抵消 Element Plus 给 body 加的滚动条补偿宽度**（`calc(100% - 15px)`）——它与常驻滚动条叠加会多减 15px 造成横向抖动。这条不能删。
+
+## 正文排版类：编辑区与展示侧要各有一份 CSS
+
+Quill 输出的 HTML 用 class 表达排版（`ql-align-center`、`ql-indent-2`…）。snow 主题的 CSS 只在**编辑器**（`ArticleManage.vue`）里引入，而正文页、预览抽屉、审核面板都是 `v-html` 直渲染同一份 HTML——**没有那份 CSS 就没有样式**，现象是「编辑时居中，发出去是左对齐、缩进消失」。
+
+所以展示侧另有一份最小补丁 `assets/quill-content.scss`（`main.js` 全局引入），只覆盖对齐与缩进两级，取值逐条对齐 quill 的 snow 主题：正文 `3em/级`，列表项 `1.5em + 3em/级`。
+
+> 列表本身不需要补丁：quill 1.3 输出的是普通 `ul` / `ol` + `li`，符号走浏览器默认（`data-list` 那套是 Quill 2.x 的形态，本版本 CSS 里一次都没出现）。
+>
+> 新增任何「靠 class 生效」的排版（例如字号档位 `ql-size-*`）时，**编辑、展示两侧都要补 CSS**；只加工具栏不补样式，等于只改了一半。
 
 ## 启动与构建
 

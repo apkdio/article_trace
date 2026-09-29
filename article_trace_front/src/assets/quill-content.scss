@@ -1,0 +1,34 @@
+/**
+ * 正文排版类在展示侧的样式。
+ *
+ * snow 主题的 CSS 只在编辑器（ArticleManage.vue）里引入，正文页与审核预览都不引它——
+ * 那些页面用 v-html 直渲染编辑器产出的 HTML，于是「居中 / 缩进」这类靠 class 生效的排版
+ * 在公开页完全没有效果：编辑时居中，发出去是左对齐。
+ *
+ * 取值与 quill snow 主题逐条对齐（正文 3em/级、列表项 4.5em/级），保证编辑区与展示一致。
+ * 列表不需要这里补：quill 1.3 输出的是普通 ul / ol + li，走浏览器默认符号，没有 class 参与。
+ */
+.ql-editor {
+  .ql-align-center {
+    text-align: center;
+  }
+
+  .ql-align-right {
+    text-align: right;
+  }
+
+  .ql-align-justify {
+    text-align: justify;
+  }
+
+  @for $i from 1 through 8 {
+    .ql-indent-#{$i} {
+      padding-left: 3em * $i;
+    }
+
+    li.ql-indent-#{$i} {
+      // 列表项比段落多一个 1.5em 的基准（ul/ol 自身的内边距），所以不是 4.5em * i
+      padding-left: 1.5em + 3em * $i;
+    }
+  }
+}

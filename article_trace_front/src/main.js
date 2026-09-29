@@ -1,4 +1,5 @@
 import './assets/main.scss'
+import './assets/quill-content.scss'
 import {createApp} from 'vue'
 import router from '@/router/index.js'
 import App from './App.vue'
