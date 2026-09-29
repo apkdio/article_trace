@@ -291,12 +291,18 @@ const getArticles = async () => {
   }
 }
 
-const reset = () => {
+/** 只清条件与分页、不发请求：抽屉开关这类「不该动列表」的场景用它 */
+const resetConditions = () => {
   conditions.value = {pageNum: null, pageSize: null, categoryId: null, state: null, search: null, searchType: 0}
   pageNum.value = 1
   pageSize.value = 5
   if (conditionRef.value) conditionRef.value.resetFields()
-  getArticles()
+}
+
+/** 搜索框的「重置」按钮：清空条件后重新查询 */
+const reset = async () => {
+  resetConditions()
+  await getArticles()
 }
 
 const revokeCoverPreview = () => {
@@ -354,7 +360,8 @@ const cleanCover = () => {
 
 const clearModel = () => {
   errorList.value = {}
-  reset()
+  // 只清稿件状态：打开/关闭抽屉不该顺手把列表的分页与筛选重置掉（T27）
+  resetConditions()
   articleModel.value = {title: '', categoryId: '', coverImgSrc: '', coverImg: '', content: '', state: ''}
   revokeCoverPreview()
   pendingCover.value = null
@@ -483,31 +490,43 @@ const deleteArticle = (id, createUser) => {
     buttonSize: "default"
   }).then(async () => {
     try {
+      // 删别人的文章要站长密码；这条分支自己收尾，不能放任执行继续往下再删一次
       if (createUser !== userInfoStore().nickname) {
-        promptMasterPassword().then(async ({value}) => {
-          const result = await deleteArticleService(id, `${value}`)
-          if (result.code === 0) {
-            ElMessage.success("删除成功！")
-            await reset()
-          } else {
-            ElMessage.error(result.message.error ? result.message.error : "删除失败！")
-          }
-        })
-            .catch(() => {
-              ElMessage.info("取消删除！")
-            })
+        let pass
+        try {
+          pass = (await promptMasterPassword()).value
+        } catch (e) {
+          ElMessage.info("取消删除！")
+          return
+        }
+        const result = await deleteArticleService(id, `${pass}`)
+        if (result.code === 0) {
+          ElMessage.success("删除成功！")
+          await refreshAfterDelete()
+        } else {
+          ElMessage.error(result.message.error ? result.message.error : "删除失败！")
+        }
+        return
       }
       const result = await deleteArticleService(id, "")
       if (result.code === 0) {
         ElMessage.success("删除成功！")
+        await refreshAfterDelete()
       } else ElMessage.error("删除失败！")
-      await getArticles()
     } catch (error) {
       ElMessage.error("服务端响应失败！")
     }
   }).catch(() => {
     ElMessage.info("取消删除！")
   })
+}
+
+/** 删除后只刷新当前页；删掉的正好是这页最后一条时回退一页，否则会停在空页上 */
+const refreshAfterDelete = async () => {
+  if (articles.value.length === 1 && pageNum.value > 1) {
+    pageNum.value -= 1
+  }
+  await getArticles()
 }
 </script>
 
