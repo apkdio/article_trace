@@ -32,6 +32,19 @@ const pageNum = ref(1)
 const total = ref(0)
 const pageSize = ref(5)
 const quillEditorRef = ref()
+// 编辑器实例：ready 之前 getQuill() 会抛异常，而打开 / 关闭抽屉都要经过编辑器——统一从这里取，取不到就当没有
+const quillReady = ref(false)
+const onQuillReady = () => {
+  quillReady.value = true
+}
+const currentQuill = () => {
+  if (!quillReady.value || !quillEditorRef.value) return null
+  try {
+    return quillEditorRef.value.getQuill()
+  } catch {
+    return null
+  }
+}
 
 const previewDrawer = ref(false)
 const visibleDrawer = ref(false)
@@ -59,6 +72,8 @@ const SIZE_OPTIONS = ['14px', '16px', '18px', '20px', '24px', '28px']
 const SizeAttributor = Quill.import('attributors/class/size')
 SizeAttributor.whitelist = SIZE_OPTIONS
 Quill.register(SizeAttributor, true)
+// 下拉项要自带文案：snow 只为 Normal/Small/Large/Huge 配了 ::before，自定义档位不给 label 就是一片空白
+const SIZE_CHOICES = SIZE_OPTIONS.map(size => ({value: size, label: size.replace('px', '')}))
 
 const previewContentRef = ref()
 const formulaDialog = ref(false)
@@ -78,7 +93,7 @@ const openPreview = async (row) => {
 }
 
 const rememberCursor = () => {
-  const quill = quillEditorRef.value?.getQuill()
+  const quill = currentQuill()
   if (!quill) {
     insertIndex = null
     return
@@ -102,7 +117,7 @@ const openFormulaDialog = () => {
 }
 
 const insertPlainText = (text) => {
-  const quill = quillEditorRef.value?.getQuill()
+  const quill = currentQuill()
   if (!quill) return
   const index = insertIndex === null ? quill.getLength() : insertIndex
   quill.insertText(index, text, 'user')
@@ -131,7 +146,7 @@ const insertMarkdown = (replaceAll) => {
     ElMessage.warning('还没有要转换的内容')
     return
   }
-  const quill = quillEditorRef.value?.getQuill()
+  const quill = currentQuill()
   if (!quill) return
   if (replaceAll) {
     quill.setContents([], 'user')
@@ -144,25 +159,25 @@ const insertMarkdown = (replaceAll) => {
   markdownText.value = ''
 }
 
-// 工具栏：snow 默认配置之外补 6 档字号，以及「插入公式 / 导入 Markdown」两个自定义按钮
-const quillModules = {
-  toolbar: {
-    container: [
-      [{header: [1, 2, 3, 4, false]}],
-      [{size: [...SIZE_OPTIONS, false]}],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{color: []}, {background: []}],
-      [{list: 'ordered'}, {list: 'bullet'}],
-      [{indent: '-1'}, {indent: '+1'}],
-      [{align: []}],
-      ['blockquote', 'code-block', 'link', 'image'],
-      ['formula', 'markdown'],
-      ['clean']
-    ],
-    handlers: {
-      formula: openFormulaDialog,
-      markdown: openMarkdownDialog
-    }
+// 工具栏：snow 默认配置之外补 6 档字号，以及「插入公式 / 导入 Markdown」两个自定义按钮。
+// 这份配置走 quill-editor 的 `toolbar` prop——传对象时会被原样当作 modules.toolbar；
+// 而 `modules` prop 是「按 {name, module} 注册第三方模块」的意思，把配置塞进去会让 new Quill() 起不来。
+const quillToolbar = {
+  container: [
+    [{header: [1, 2, 3, 4, false]}],
+    [{size: [...SIZE_CHOICES, {value: false, label: '正文'}]}],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{color: []}, {background: []}],
+    [{list: 'ordered'}, {list: 'bullet'}],
+    [{indent: '-1'}, {indent: '+1'}],
+    [{align: []}],
+    ['blockquote', 'code-block', 'link', 'image'],
+    ['formula', 'markdown'],
+    ['clean']
+  ],
+  handlers: {
+    formula: openFormulaDialog,
+    markdown: openMarkdownDialog
   }
 }
 
@@ -358,20 +373,22 @@ const cleanCover = () => {
   })
 }
 
-const clearModel = () => {
+/** 只清稿件状态：不碰抽屉开关，也不动列表的筛选与分页（T27） */
+const resetArticleForm = () => {
   errorList.value = {}
-  // 只清稿件状态：打开/关闭抽屉不该顺手把列表的分页与筛选重置掉（T27）
-  resetConditions()
   articleModel.value = {title: '', categoryId: '', coverImgSrc: '', coverImg: '', content: '', state: ''}
   revokeCoverPreview()
   pendingCover.value = null
-  visibleDrawer.value = false
   if (articleModelRef.value) articleModelRef.value.resetFields()
   if (coverRef.value) coverRef.value.clearFiles()
-  if (quillEditorRef.value) {
-    const quill = quillEditorRef.value.getQuill()
-    if (quill) quill.setContents([])
-  }
+  const quill = currentQuill()
+  if (quill) quill.setContents([])
+}
+
+/** 关抽屉：先落开关再清表单，清稿过程中出任何问题都不会把抽屉卡在打不开的状态 */
+const closeDrawer = () => {
+  visibleDrawer.value = false
+  resetArticleForm()
 }
 
 const handleEditorBlur = () => {
@@ -427,7 +444,7 @@ const addOrUpdateArticle = async (state) => {
         if (resultData.code === 0) {
           ElMessage.success("添加成功！")
           alertSensitiveHit(resultData.data)
-          clearModel()
+          closeDrawer()
           await getArticles()
         } else {
           handleSubmitError(resultData.message)
@@ -441,7 +458,7 @@ const addOrUpdateArticle = async (state) => {
         if (resultData.code === 0) {
           ElMessage.success("修改成功！")
           alertSensitiveHit(resultData.data)
-          clearModel()
+          closeDrawer()
           await getArticles()
         } else {
           handleSubmitError(resultData.message)
@@ -456,12 +473,12 @@ const addOrUpdateArticle = async (state) => {
 }
 
 const openAddDrawer = () => {
-  clearModel()
+  resetArticleForm()
   drawerTitle.value = '添加文章'
   visibleDrawer.value = true
 }
 const openEditDrawer = async (row) => {
-  clearModel()
+  resetArticleForm()
   drawerTitle.value = '修改文章'
   articleModel.value = JSON.parse(JSON.stringify(row))
   visibleDrawer.value = true
@@ -475,7 +492,7 @@ const beforeCloseDrawer = () => {
     buttonSize: "default"
   }).then(async () => {
     // 封面此时还在浏览器里，没有产生任何服务端对象，直接清本地即可
-    clearModel()
+    closeDrawer()
     ElMessage.primary("数据已清空！")
   }).catch(() => {
     ElMessage.info("取消关闭！")
@@ -750,9 +767,10 @@ const refreshAfterDelete = async () => {
             <quill-editor
                 ref="quillEditorRef"
                 theme="snow"
-                :modules="quillModules"
+                :toolbar="quillToolbar"
                 v-model:content="articleModel.content"
                 contentType="html"
+                @ready="onQuillReady"
                 @blur="handleEditorBlur"
             />
           </div>
