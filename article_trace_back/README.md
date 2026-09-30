@@ -137,6 +137,8 @@ article_trace_back/
 > 判断顺序：**无注入依赖的纯函数** → `Utils/`（如 `TextNormalizer`）；**基础设施或配置 Bean** → `config/`（如 `SensitiveWordHolder`、`SiteFeatureProperties`）；**外部系统客户端** → `rpc/`（如 `ArticleAgentClient`）；**一次完整业务动作**（有事务/生命周期、被 Controller 当作用例调）→ `Service/`；剩下的规则类才进 `Support/`。
 >
 > 准入条件：无状态（或只持有注入的配置）· 不直接访问外部系统 · 被 Service 调用做判定 · 名字能落到 `XxxGuard` / `XxxRules` / `XxxPolicy` 这类。反例：站点门禁那几处 `if (!siteFeatures.isXxxEnabled())` 属于**入口拦截**（该收进拦截器，走 `TokenCheck` 那条路），不是丢进 `Support`。
+>
+> **但也不必一写好就抽**：只被一个 Service 用一次、又不打算单独测的规则，留在 impl 里就是在**就近可读**，不是坏味道。抽取信号是**同一判定出现第二处**、或**想脱离依赖链单独测**它——提前抽只是赌它会复用。
 
 ## 项目细节实现
 
