@@ -2,6 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.CategoryService;
+import com.articleTraceBack.Service.Support.ArticlePublishPolicy;
 import com.articleTraceBack.Service.Support.ArticleSensitivityGuard;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
@@ -20,11 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/article")
@@ -97,7 +96,7 @@ public class ArticleController {
             // 新增不接受客户端 id（防止借 insertOrUpdate 覆盖他人文章）
             article.setId(null);
             // 目标状态由服务端按「草稿 / 提交」意图 + 角色决定，不信任请求体
-            Integer target = resolveTargetState(article.getState(), (int) userInfo.get("type"));
+            Integer target = ArticlePublishPolicy.resolveTargetState(article.getState(), (int) userInfo.get("type"));
             if (target == null) {
                 error.put("state", "非合理值！");
                 return Result.error(error);
@@ -109,7 +108,7 @@ public class ArticleController {
                     : List.of();
             target = ArticleSensitivityGuard.applySensitiveVerdict(target, !matches.isEmpty());
             article.setState(target);
-            applySensitiveMark(article, matches);
+            ArticleSensitivityGuard.applyMark(article, matches);
             try {
                 if (articleService.articleAddOrUpdate(article, 0, cover, username)) {
                     return Result.success(savedResult(article, (int) userInfo.get("type")));
@@ -178,7 +177,7 @@ public class ArticleController {
             if (categoryService.findById(categoryId) != null) {
                 // 内容、归属、重名都校验通过后，最后判定状态流转是否合法
                 // （放在末尾是为了不遮蔽原有的内容类报错）
-                Integer target = resolveTargetState(article.getState(), roleType);
+                Integer target = ArticlePublishPolicy.resolveTargetState(article.getState(), roleType);
                 if (target == null) {
                     error.put("state", "非合理值！");
                     return Result.error(error);
@@ -195,7 +194,7 @@ public class ArticleController {
                     return Result.error(error);
                 }
                 article.setState(target);
-                applySensitiveMark(article, matches);
+                ArticleSensitivityGuard.applyMark(article, matches);
                 try {
                     if (articleService.articleAddOrUpdate(article, 1, cover, username)) {
                         return Result.success(savedResult(article, roleType));
@@ -213,59 +212,6 @@ public class ArticleController {
             error.put("categoryId", "文章类型不存在！");
             return Result.error(error);
         }
-    }
-
-    /**
-    * 按「草稿 / 提交」意图与角色决定目标状态，不信任请求体里的数值：state=0 存草稿，1/2/3 为提交（站长直接发布，其余送审）。
-    * @return 目标状态；取值不在 {0,1,2,3} 内时返回 {@code null}（由调用方拒绝）
-    */
-    private Integer resolveTargetState(Integer requested, int roleType) {
-        if (requested == null) {
-            return null;
-        }
-        if (requested == ArticleService.STATE_DRAFT) {
-            return ArticleService.STATE_DRAFT;
-        }
-        // 只有合法的「非草稿」状态值才算提交意图，其余取值一律视为非法入参
-        if (requested != ArticleService.STATE_PUBLISHED
-                && requested != ArticleService.STATE_PENDING
-                && requested != ArticleService.STATE_REJECTED) {
-            return null;
-        }
-        return (roleType == ArticleService.ROLE_MASTER)
-                ? ArticleService.STATE_PUBLISHED
-                : ArticleService.STATE_PENDING;
-    }
-
-    /** 落「命中违禁词」标记；每次写入都重算，命中词改掉后标记必须回到 0，否则该文章会一直排在待审列表最前。 */
-    private void applySensitiveMark(Article article, List<AhoCorasickUtil.Match> matches) {
-        if (matches.isEmpty()) {
-            article.setSensitiveHit(0);
-            article.setSensitiveWords(null);
-            return;
-        }
-        article.setSensitiveHit(1);
-        article.setSensitiveWords(joinKeywords(matches));
-    }
-
-    /** 命中的词去重后拼成顿号分隔的一行，超长截断——数据库列只有 varchar(255)。 */
-    private String joinKeywords(List<AhoCorasickUtil.Match> matches) {
-        Set<String> keywords = new LinkedHashSet<>();
-        for (AhoCorasickUtil.Match match : matches) {
-            keywords.add(match.keyword);
-        }
-        StringBuilder sb = new StringBuilder();
-        for (String keyword : keywords) {
-            if (sb.length() + keyword.length() > 250) {
-                sb.append('…');
-                break;
-            }
-            if (!sb.isEmpty()) {
-                sb.append('、');
-            }
-            sb.append(keyword);
-        }
-        return sb.toString();
     }
 
     /** 保存成功后的回执：告知前端落到了哪个状态；命中词只回给站长，避免作者拿词表逐条试探。 */

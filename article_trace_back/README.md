@@ -58,7 +58,8 @@ article_trace_back/
     │   │   ├── ReportService.java / ReportServiceImpl.java             # 举报（提交/查询/处置）
     │   │   └── Support/                     # 层内支撑：规则 / 策略类，不是「接口 + 实现」那种 Service
     │   │       ├── ProfileGuard.java        #   昵称 / 个签内容规则（格式类直接拒、内容类落待审）
-    │   │       └── ArticleSensitivityGuard.java # 违禁词与目标状态的判定（草稿不扫）
+    │   │       ├── ArticleSensitivityGuard.java # 违禁词判定：草稿不扫、命中转待审、按结果打标
+    │   │       └── ArticlePublishPolicy.java #  发布意图 + 角色 → 目标状态（作者只能送审）
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   7 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
@@ -187,8 +188,8 @@ article_trace_back/
   - **新增不接受客户端传入的 `id`**（强制 `setId(null)`），避免借 `insertOrUpdate` 覆盖他人文章。
   - **标题在同一作者内唯一**（`uk_user_title`）：应用层按 `(create_user, title)` 查重，并发冲突由唯一索引兜底并转成友好提示；不同作者可以同名。
   - **标题 1-30 字符，允许中间空格、首尾不能是空格**（`^\S(.*\S)?$` + `@Size`）；`@NotBlank` 顺带堵住「纯空格也能过」。分类名与昵称同此规则，且长度都与数据库列宽对齐（分类名 ≤ 20、分类别名 ≤ 30、昵称 2-20）。
-  - **目标状态由服务端决定**：请求体里的 `state` 只当作「草稿 / 提交」的意图（`resolveTargetState`），作者只能落到草稿(0) 或送审(2)，只有站长才能直接发布(1)。取值不在 `{0,1,2,3}` 内报「非合理值！」。
-  - **命中违禁词时目标状态被强制改成待审(2)**，站长也一样。**草稿例外**：草稿不进敏感词监测（不判、不打标，写入时会把 `sensitive_hit` 清掉），只有送审 / 发布才判定——草稿是还没打算交出去的私有产物，扫了也不进审核队列。判定规则收在 `Service/Support/ArticleSensitivityGuard`（`shouldCheckSensitive` / `applySensitiveVerdict` 两个静态方法，与 HTTP 无关），用例见 `ArticleSensitivityGuardTest`。
+  - **目标状态由服务端决定**：请求体里的 `state` 只当作「草稿 / 提交」的意图（`Service/Support/ArticlePublishPolicy.resolveTargetState`），作者只能落到草稿(0) 或送审(2)，只有站长才能直接发布(1)。取值不在 `{0,1,2,3}` 内报「非合理值！」。
+  - **命中违禁词时目标状态被强制改成待审(2)**，站长也一样。**草稿例外**：草稿不进敏感词监测（不判、不打标，写入时会把 `sensitive_hit` 清掉），只有送审 / 发布才判定——草稿是还没打算交出去的私有产物，扫了也不进审核队列。判定规则收在 `Service/Support/ArticleSensitivityGuard`（`shouldCheckSensitive` / `applySensitiveVerdict` / `applyMark`，都与 HTTP 无关），用例见 `ArticleSensitivityGuardTest`。
   - **目标状态与当前一致时跳过状态机**（例如已在待审的稿子再保存）：这不是状态流转，否则会误报「当前文章状态不允许该操作！」。状态机本身的语义不变。详见第 6 节。
 - **封面**：**随文章一次性 multipart 提交**（`POST /article/add`、`PATCH /article/update/{id}` 接收 `article` JSON + 可选 `cover` 文件），不再有独立的封面上传端点。
   - 带文件 → 上传新图，**对象名由服务端生成**；写库成功后旧封面才被删除。
@@ -1029,7 +1030,8 @@ python scripts/init_test_db.py
 | `ProfileNicknameUpdateTest` | 昵称修改链路：正常改名立即生效 + 7 天锁定期；内容命中落待审且保留旧值；格式类不进队列 |
 | `ProfileApplyReviewTest` | 昵称审核：通过写回并起锁定期、拒绝只记理由、重复处理被 CAS 挡住 |
 | `ArticleSensitiveFlagTest` | 审核通过（2→1）后清掉「命中违禁词」标记，命中词仍保留 |
-| `ArticleSensitivityGuardTest` | 违禁词判定规则：草稿不扫，送审 / 发布命中一律转待审 |
+| `ArticleSensitivityGuardTest` | 违禁词判定规则：草稿不扫，送审 / 发布命中一律转待审；打标每次重算、去重拼接、超长截断 |
+| `ArticlePublishPolicyTest` | 发布意图 + 角色 → 目标状态：草稿人人可存，提交时站长发布、作者送审，非法取值被拒 |
 
 测试数据由 `TestFixtures` 现场创建（用户名带 `zz-test-` 前缀便于识别），
 用例不依赖库里已有的数据——此前的写法会从开发库捞一条现成记录，在干净的测试库上必然失败。
