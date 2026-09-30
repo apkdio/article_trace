@@ -1,4 +1,4 @@
-package com.articleTraceBack.Service;
+package com.articleTraceBack.Service.Support;
 
 import com.articleTraceBack.Utils.TextNormalizer;
 import com.articleTraceBack.config.SensitiveWordHolder;

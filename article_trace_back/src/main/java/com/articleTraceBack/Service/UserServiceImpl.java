@@ -5,6 +5,7 @@ import com.articleTraceBack.Utils.BcryptUtils;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
+import com.articleTraceBack.Service.Support.ProfileGuard;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.AuthorApply;

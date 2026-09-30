@@ -1,6 +1,6 @@
 package com.articleTraceBack;
 
-import com.articleTraceBack.Service.ProfileGuard;
+import com.articleTraceBack.Service.Support.ProfileGuard;
 import com.articleTraceBack.config.SensitiveWordHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
