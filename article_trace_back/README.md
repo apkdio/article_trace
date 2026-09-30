@@ -132,6 +132,12 @@ article_trace_back/
         └── templates/email/                 # 邮件模板（email-code、avatar-rejected、profile-rejected，各含 .html + .txt 两份）
 ```
 
+> **包结构约定**：`Service/` 下平铺的是「`XxxService` 接口 + `XxxServiceImpl` 实现」；`Service/Support/` 放**层内支撑**——被 Service 用来做判断、但本身不是一次业务动作的规则 / 策略类（现有 `ProfileGuard`、`ArticleSensitivityGuard`）。
+>
+> 判断顺序：**无注入依赖的纯函数** → `Utils/`（如 `TextNormalizer`）；**基础设施或配置 Bean** → `config/`（如 `SensitiveWordHolder`、`SiteFeatureProperties`）；**外部系统客户端** → `rpc/`（如 `ArticleAgentClient`）；**一次完整业务动作**（有事务/生命周期、被 Controller 当作用例调）→ `Service/`；剩下的规则类才进 `Support/`。
+>
+> 准入条件：无状态（或只持有注入的配置）· 不直接访问外部系统 · 被 Service 调用做判定 · 名字能落到 `XxxGuard` / `XxxRules` / `XxxPolicy` 这类。反例：站点门禁那几处 `if (!siteFeatures.isXxxEnabled())` 属于**入口拦截**（该收进拦截器，走 `TokenCheck` 那条路），不是丢进 `Support`。
+
 ## 项目细节实现
 
 ### 1. 鉴权与权限控制
