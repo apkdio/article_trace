@@ -32,10 +32,46 @@ const pageNum = ref(1)
 const total = ref(0)
 const pageSize = ref(5)
 const quillEditorRef = ref()
+const editorContainerRef = ref()
 // 编辑器实例：ready 之前 getQuill() 会抛异常，而打开 / 关闭抽屉都要经过编辑器——统一从这里取，取不到就当没有
 const quillReady = ref(false)
+// Quill 的按钮只有图标、没有说明（`clean` 那个「T 带叉」尤其容易被当成乱码），补一层原生 title
+const TOOLBAR_TITLES = {
+  header: '标题层级',
+  size: '字号',
+  bold: '加粗',
+  italic: '斜体',
+  underline: '下划线',
+  strike: '删除线',
+  color: '文字颜色',
+  background: '背景色',
+  list: '列表',
+  indent: '缩进',
+  align: '对齐',
+  blockquote: '引用',
+  'code-block': '代码块',
+  link: '链接',
+  image: '图片',
+  formula: '插入公式（LaTeX）',
+  markdown: '导入 Markdown',
+  clean: '清除格式（先选中要清理的文字）'
+}
+const applyToolbarTitles = () => {
+  const toolbar = editorContainerRef.value?.querySelector('.ql-toolbar')
+  if (!toolbar) return
+  const titleOf = (el) => Object.keys(TOOLBAR_TITLES).find(key => el.classList.contains(`ql-${key}`))
+  toolbar.querySelectorAll('button').forEach(btn => {
+    const key = titleOf(btn)
+    if (key) btn.title = TOOLBAR_TITLES[key]
+  })
+  toolbar.querySelectorAll('.ql-picker').forEach(picker => {
+    const key = titleOf(picker)
+    if (key) picker.title = TOOLBAR_TITLES[key]
+  })
+}
 const onQuillReady = () => {
   quillReady.value = true
+  applyToolbarTitles()
 }
 const currentQuill = () => {
   if (!quillReady.value || !quillEditorRef.value) return null
@@ -72,8 +108,6 @@ const SIZE_OPTIONS = ['14px', '16px', '18px', '20px', '24px', '28px']
 const SizeAttributor = Quill.import('attributors/class/size')
 SizeAttributor.whitelist = SIZE_OPTIONS
 Quill.register(SizeAttributor, true)
-// 下拉项要自带文案：snow 只为 Normal/Small/Large/Huge 配了 ::before，自定义档位不给 label 就是一片空白
-const SIZE_CHOICES = SIZE_OPTIONS.map(size => ({value: size, label: size.replace('px', '')}))
 
 const previewContentRef = ref()
 const formulaDialog = ref(false)
@@ -165,7 +199,7 @@ const insertMarkdown = (replaceAll) => {
 const quillToolbar = {
   container: [
     [{header: [1, 2, 3, 4, false]}],
-    [{size: [...SIZE_CHOICES, {value: false, label: '正文'}]}],
+    [{size: [...SIZE_OPTIONS, false]}],
     ['bold', 'italic', 'underline', 'strike'],
     [{color: []}, {background: []}],
     [{list: 'ordered'}, {list: 'bullet'}],
@@ -763,7 +797,7 @@ const refreshAfterDelete = async () => {
         </el-form-item>
 
         <el-form-item label="文章正文" prop="content" required :error="errorList.content">
-          <div class="editor-container">
+          <div class="editor-container" ref="editorContainerRef">
             <quill-editor
                 ref="quillEditorRef"
                 theme="snow"
@@ -981,17 +1015,36 @@ const refreshAfterDelete = async () => {
     border-bottom: 1px solid #dcdfe6;
     background: #fcfcfc;
 
-    /* 两个自定义按钮没有内置图标，用字符顶上 */
-    .ql-formula::before {
-      content: '∑';
-      font-size: 17px;
-      font-weight: 700;
-    }
-
+    /* 只有 markdown 按钮需要自己画图标：Quill 的内置图标表里没有它（formula / clean 都有 SVG），
+       再给 formula 补一个就成两个图标叠在一起了 */
     .ql-markdown::before {
       content: 'M↓';
       font-size: 13px;
       font-weight: 700;
+    }
+
+    /* 下拉文案：snow 只为 Normal/Small/Large/Huge 配了 ::before，自定义档位与中文标题都得自己补，
+       否则每一项都会落到兜底的 'Normal'。档位值要与脚本里的 SIZE_OPTIONS 一致 */
+    @each $size, $label in (14px: '14', 16px: '16', 18px: '18', 20px: '20', 24px: '24', 28px: '28') {
+      .ql-picker.ql-size .ql-picker-item[data-value='#{$size}']::before,
+      .ql-picker.ql-size .ql-picker-label[data-value='#{$size}']::before {
+        content: '#{$label}';
+      }
+    }
+
+    @each $level, $label in (1: '标题1', 2: '标题2', 3: '标题3', 4: '标题4') {
+      .ql-picker.ql-header .ql-picker-item[data-value='#{$level}']::before,
+      .ql-picker.ql-header .ql-picker-label[data-value='#{$level}']::before {
+        content: '#{$label}';
+      }
+    }
+
+    /* 未设值时 Quill 不写 data-value（配置里的 `false` 那一项就是这种），size 与 header 的默认都叫正文 */
+    .ql-picker.ql-size .ql-picker-item:not([data-value])::before,
+    .ql-picker.ql-size .ql-picker-label:not([data-value])::before,
+    .ql-picker.ql-header .ql-picker-item:not([data-value])::before,
+    .ql-picker.ql-header .ql-picker-label:not([data-value])::before {
+      content: '正文';
     }
   }
 
