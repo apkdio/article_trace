@@ -787,6 +787,7 @@ const refreshAfterDelete = async () => {
     </div>
 
     <el-drawer v-model="visibleDrawer" :title="drawerTitle" direction="rtl" size="55%"
+               class="article-drawer" append-to-body
                :before-close="beforeCloseDrawer">
       <el-form :model="articleModel" ref="articleModelRef" :rules="articleModelRule" label-position="top">
         <el-row :gutter="20">
@@ -863,6 +864,8 @@ const refreshAfterDelete = async () => {
         title="文章预览"
         direction="rtl"
         size="55%"
+        class="article-drawer"
+        append-to-body
         custom-class="modern-preview-drawer"
     >
       <div class="preview-container">
@@ -1243,9 +1246,12 @@ const refreshAfterDelete = async () => {
   }
 }
 
-/* 抽屉整体背景色调优 */
-:deep(.el-drawer__header) {
-  margin-bottom: 0 !important;
+/* 抽屉 teleport 到 body 之后，祖先链上不再有本组件的 scope 标记，
+   所以这类样式要挂在「抽屉根节点」上（它同时带 class 与 scope id），否则会静默失效 */
+.article-drawer {
+  :deep(.el-drawer__header) {
+    margin-bottom: 0 !important;
+  }
 }
 
 :deep(.modern-preview-drawer) {
