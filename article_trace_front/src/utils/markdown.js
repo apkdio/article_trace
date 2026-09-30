@@ -29,7 +29,7 @@ export function markdownToHtml(markdown) {
  * 导入内容的一层保险：真正的门槛在后端 jsoup 白名单（保存与回显都会过），
  * 这里只是别让粘贴进来的 HTML 在编辑器里就先跑起来。
  */
-function sanitizeImportedHtml(html) {
+export function sanitizeImportedHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   doc.querySelectorAll('script, style, iframe, object, embed, link, meta, form').forEach((el) => el.remove())
   doc.querySelectorAll('*').forEach((el) => {
@@ -44,4 +44,28 @@ function sanitizeImportedHtml(html) {
     })
   })
   return doc.body.innerHTML
+}
+
+/**
+ * 把转换结果按「表格 / 非表格」切开。
+ *
+ * Quill 1.3 没有表格格式，表格只能以只读嵌入块插入（见 ArticleManage.vue 的 TableEmbed），
+ * 其余部分照旧走剪贴板粘贴。这里只做正则切分、不碰 DOM，好让这段纯逻辑能单独在 node 里验。
+ */
+export function splitMarkdownTables(html) {
+  const segments = []
+  const tableRe = /<table[\s\S]*?<\/table>/gi
+  let last = 0
+  let match
+  while ((match = tableRe.exec(html)) !== null) {
+    if (match.index > last) {
+      segments.push({type: 'html', html: html.slice(last, match.index)})
+    }
+    segments.push({type: 'table', html: match[0]})
+    last = match.index + match[0].length
+  }
+  if (last < html.length) {
+    segments.push({type: 'html', html: html.slice(last)})
+  }
+  return segments
 }

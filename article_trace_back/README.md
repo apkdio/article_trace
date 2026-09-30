@@ -217,6 +217,8 @@ article_trace_back/
 
 另提供 `cleanToSafeHtml()` 做**白名单清洗并保留 HTML**，用于落库与回显：基于 `Safelist.relaxed()`，额外放行 `figure/figcaption/hr` 与 `:all` 的 `class`、`img` 的 `alt/width/height`、`a` 的 `target/rel`，协议限 `http/https`（外链另加 `mailto`）。
 
+> **表格标签本就在白名单里**：`Safelist.relaxed()` 自带 `table/thead/tbody/tfoot/tr/td/th/caption/col/colgroup`，所以正文里那个只读表格块（`<div class="ql-table-embed"><table>…`，见前端 README「正文」一节）**后端一行都不用改**；用例 `RichTextCleanerTableTest` 盯着这条。顺带记下：`contenteditable` 不在白名单里，会被削掉——编辑器侧由 blot 的 `create()` 自己加回来，不影响展示。
+
 **存前与读时两头都清洗**：`articleAddOrUpdate` 落库前洗一次；三处读取走 `readCleanContent()`，`AgentSyncTask` 同步给 agent 前也洗。这样历史脏数据在**读时**同样被拦住，不必手工洗存量。
 
 > 前端转义不是替代方案：富文本要么全转义（排版全毁）、要么不转义（XSS），没有中间态。

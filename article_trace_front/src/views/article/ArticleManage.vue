@@ -9,7 +9,7 @@ import {
   getArticleWithConditions, getArticleWithConditionsMaster,
   updateArticleService
 } from "@/api/article.js";
-import {Quill, QuillEditor} from '@vueup/vue-quill'
+import {Delta, Quill, QuillEditor} from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {checkPersonInfo} from "@/api/checkPersonInfo.js";
@@ -17,7 +17,7 @@ import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
 import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} from "@/utils/upload.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
-import {markdownToHtml} from "@/utils/markdown.js";
+import {markdownToHtml, sanitizeImportedHtml, splitMarkdownTables} from "@/utils/markdown.js";
 import {renderMathIn, renderTex} from "@/utils/mathRender.js";
 import PageHeader from "@/components/PageHeader.vue";
 import ImageCropper from "@/components/ImageCropper.vue";
@@ -69,8 +69,20 @@ const applyToolbarTitles = () => {
     if (key) picker.title = TOOLBAR_TITLES[key]
   })
 }
+// 回填：正文里存的是 <div class="ql-table-embed"><table>…</table></div>，
+// 不认回去就会像普通 div 一样被摊平成文字（Quill 1.3 的 matcher 支持选择器）
+const applyTableMatcher = () => {
+  const quill = currentQuill()
+  if (!quill) return
+  quill.clipboard.addMatcher('.ql-table-embed', (node, delta) => {
+    const table = node.querySelector('table')
+    return table ? new Delta().insert({tableEmbed: table.outerHTML}) : delta
+  })
+}
+
 const onQuillReady = () => {
   quillReady.value = true
+  applyTableMatcher()
   applyToolbarTitles()
 }
 const currentQuill = () => {
@@ -108,6 +120,27 @@ const SIZE_OPTIONS = ['14px', '16px', '18px', '20px', '24px', '28px']
 const SizeAttributor = Quill.import('attributors/class/size')
 SizeAttributor.whitelist = SIZE_OPTIONS
 Quill.register(SizeAttributor, true)
+
+// 表格以「只读块」存在正文里：Quill 1.3 没有表格格式，整张表逃不过被摊平，只能整块嵌进来。
+// 类名要留着——回填时靠它把 <div class="ql-table-embed"> 认回嵌入块（见 applyTableMatcher）。
+const BlockEmbed = Quill.import('blots/block/embed')
+class TableEmbed extends BlockEmbed {
+  static create(value) {
+    const node = super.create(value)
+    node.setAttribute('contenteditable', 'false')
+    node.innerHTML = typeof value === 'string' ? value : ''
+    return node
+  }
+
+  static value(node) {
+    return node.innerHTML
+  }
+}
+
+TableEmbed.blotName = 'tableEmbed'
+TableEmbed.tagName = 'DIV'
+TableEmbed.className = 'ql-table-embed'
+Quill.register(TableEmbed)
 
 const previewContentRef = ref()
 const formulaDialog = ref(false)
@@ -184,11 +217,18 @@ const insertMarkdown = (replaceAll) => {
   if (!quill) return
   if (replaceAll) {
     quill.setContents([], 'user')
-    quill.clipboard.dangerouslyPasteHTML(0, html, 'user')
-  } else {
-    const index = insertIndex === null ? quill.getLength() : insertIndex
-    quill.clipboard.dangerouslyPasteHTML(index, html, 'user')
   }
+  let index = replaceAll ? 0 : (insertIndex === null ? quill.getLength() : insertIndex)
+  // 表格走只读嵌入块（Quill 会把 <table> 摊平），其余照旧粘贴；每插一段按正文长度把游标往后挪
+  splitMarkdownTables(html).forEach((segment) => {
+    const before = quill.getLength()
+    if (segment.type === 'table') {
+      quill.insertEmbed(index, 'tableEmbed', sanitizeImportedHtml(segment.html), 'user')
+    } else {
+      quill.clipboard.dangerouslyPasteHTML(index, segment.html, 'user')
+    }
+    index += quill.getLength() - before
+  })
   markdownDialog.value = false
   markdownText.value = ''
 }
@@ -1052,6 +1092,12 @@ const refreshAfterDelete = async () => {
     border: none;
     min-height: 350px;
     font-size: 15px;
+  }
+
+  /* 表格块在编辑器里给一层虚线轮廓：它是整块只读内容，不是普通段落 */
+  :deep(.ql-editor .ql-table-embed) {
+    outline: 1px dashed #dcdfe6;
+    outline-offset: -1px;
   }
 }
 

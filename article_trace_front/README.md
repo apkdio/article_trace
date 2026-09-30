@@ -186,13 +186,14 @@ article_trace_front/
 
 ### 正文：Markdown 导入、公式、字号档位
 
-三件事都**不改存储格式**：正文仍是 HTML，后端与 jsoup 白名单一行未动。
+这几件事都**不改存储格式**：正文仍是 HTML，后端与 jsoup 白名单一行未动（只读表格块也过得了白名单，用例 `RichTextCleanerTableTest`）。
 
 - **Markdown 导入**：工具栏「M↓」→ 粘贴 → 转成正文（`utils/markdown.js`，`marked` + 公式段先抽占位符，否则公式里的 `_` `*` `\` 会被当排版标记）。两个按钮：插入到光标处 / 替换整篇正文；转换结果仍会过后端白名单
 - **公式**：工具栏「∑」→ 写 LaTeX，**对话框里实时预览** → 插入。块级 `$$..$$`、行内 `\(..\)`
 - **字号 6 档**：14 / 16 / 18 / 20 / 24 / 28px，class 驱动（`ql-size-14px` …）——后端白名单已放行 `class`，所以**后端零改动**；档位值在 `ArticleManage.vue` 的 `SIZE_OPTIONS` 与 `assets/quill-content.scss` 两处，必须成对改
 - **工具栏怎么接**：配置走 `quill-editor` 的 **`:toolbar` prop**（传对象时它会被原样当作 `modules.toolbar`，`container` + `handlers` 都挂这），**不要塞给 `:modules`**——那个 prop 是「按 `{name, module}` 注册第三方模块」的意思，传配置会让 `new Quill()` 直接起不来：编辑区空白、控制台报 `The quill editor hasn't been instantiated yet`。**下拉的文案只能靠 `[data-value]` 的 CSS**：`toolbar.js` 的 `addSelect` 会把配置项直接当 `<option>` 的 `value`，**只认字符串**——写 `{value, label}` 会得到 `value="[object Object]"` 且没有文字，每一项都落到 snow 兜底的 `content:'Normal'`（表现为「字号全是 normal」「像是有两个字号工具」）。所以档位写纯字符串（`['14px', …, false]`），文案在 `ArticleManage.vue` 的样式块里按 `[data-value]` 补（含中文标题 1–4、「未设值 = 正文」），**档位值要与脚本里的 `SIZE_OPTIONS` 一致**。另外 Quill 自己给 `formula` / `clean` 画了 SVG（`ui/icons.js`），**别再叠 `::before` 字符**（只有 `markdown` 需要自己画）；按钮的悬浮说明也要自己加（`applyToolbarTitles()`）
 - **取编辑器实例统一走 `currentQuill()`**：`ready` 之前 `getQuill()` 会抛异常，而打开 / 关闭抽屉都要经过编辑器，抛一次就能把抽屉卡成打不开；`closeDrawer()` 也刻意**先落开关再清表单**
+- **表格（只读块）**：Quill 1.3 没有表格格式，`<table>` 插进编辑器会被摊平成段落，所以导入时把表格**整块当嵌入块**插入（`TableEmbed`，`blotName: tableEmbed`，DOM 为 `<div class="ql-table-embed"><table>…`）：编辑器里能看到、能删、能整体复制，**单元格不能在编辑器里改**（要改就重新导入 Markdown）。回填靠剪贴板 matcher 按类名认回嵌入块（`clipboard.js` 的 `matchBlot` 走 `Parchment.query`，`addMatcher` 支持选择器），否则第二次编辑就会被摊平；展示端样式在 `assets/quill-content.scss`（编辑器里额外给一层虚线轮廓，提示它是整块只读内容）
 
 **公式为什么不认单独的 `$..$`**：KaTeX 的扫描器只按分隔符配对、不看边界，认了 `$` 就会把「价格 $5 到 $10」整段当公式；它又没有反斜杠转义分支（转义 `\$` 只会在页面上露出反斜杠）。所以展示端只认 `$$` / `\[` / `\(`，Markdown 导入时把 `$..$` 规范成 `\(..\)`。
 
