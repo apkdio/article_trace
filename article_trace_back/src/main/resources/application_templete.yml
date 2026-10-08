@@ -87,7 +87,8 @@ JWT:
 Password:
   masterPass: ${MASTER_PASS} # 站长密码
 S3:
-  endpoint: ${RUSTFS_ENDPOINT} # rustfs存储服务端地址
+  endpoint: ${RUSTFS_ENDPOINT} # 写进预签名 URL 的 host，浏览器必须能直接访问
+  internalEndpoint: ${RUSTFS_INTERNAL_ENDPOINT:} # 服务端读写对象用的地址（一般填内网），留空则与 endpoint 同值
   accessKey: ${RUSTFS_ACCESS_KEY} # rustfs存储服务端密钥（登录用户名）
   secretKey: ${RUSTFS_SECRET_KEY} # rustfs存储服务端密钥（登录密码）
   picBucket: "pic" # 图片存储桶（封面等既有图片）

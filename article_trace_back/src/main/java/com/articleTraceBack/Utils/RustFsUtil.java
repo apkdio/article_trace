@@ -49,6 +49,9 @@ public class RustFsUtil {
     private S3Presigner s3Presigner;
     @Value("${S3.endpoint}")
     private String endpoint;
+    /** 服务端读写用的地址（一般是内网）；留空则与 {@link #endpoint} 同值 */
+    @Value("${S3.internalEndpoint:}")
+    private String internalEndpoint;
     @Value("${S3.accessKey}")
     private String accessKey;
     @Value("${S3.secretKey}")
@@ -61,16 +64,24 @@ public class RustFsUtil {
     private String avatarBucket;
     public static final String THUMB_PREFIX = "thumb_";
     private static final int THUMB_WIDTH = 400;
+    /**
+     * 正文缓存：前缀刻意避开桶名——预签名 URL 的缓存键是 {@code 桶名:对象名}，
+     * 若用 {@code content:} 会与内容桶的预签名缓存撞键，把一段 URL 当正文返回。
+     */
+    private static final String CONTENT_CACHE_PREFIX = "content-body:";
+    private static final long CONTENT_CACHE_TTL_HOURS = 24;
 
     public RustFsUtil(@Qualifier("stringRedisTemplate") StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
-    /** 初始化 S3 客户端与预签名器 */
+    /** 初始化 S3 客户端与预签名器：数据面走内网地址，预签名的 host 必须是对外地址（浏览器要能解析） */
     @PostConstruct
     public void init() {
-        this.s3Client = createS3Client(endpoint, accessKey, secretKey);
+        String internal = internalEndpoint == null || internalEndpoint.isBlank() ? endpoint : internalEndpoint;
+        this.s3Client = createS3Client(internal, accessKey, secretKey);
         this.s3Presigner = createS3Presigner(endpoint, accessKey, secretKey);
+        log.info("s3 client endpoint={}, presign endpoint={}", internal, endpoint);
     }
 
     /**
@@ -257,11 +268,22 @@ public class RustFsUtil {
     }
 
 
-    /** 读取内容桶中的正文 JSON */
+    /**
+     * 读取内容桶中的正文 JSON。
+     *
+     * 对象名每次保存都会换新、内容不可变，所以按 key 缓存天然安全，不需要失效逻辑；
+     * 读失败不写缓存，免得把一次失败固定住一整天。
+     */
     public String getContent(String fileKey) {
+        String cacheKey = CONTENT_CACHE_PREFIX + fileKey;
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
         try {
-            // 完整读取并解析JSON
-            return extractFieldFromJson(s3Client, contentBucket, fileKey);
+            String content = extractFieldFromJson(s3Client, contentBucket, fileKey);
+            stringRedisTemplate.opsForValue().set(cacheKey, content, CONTENT_CACHE_TTL_HOURS, TimeUnit.HOURS);
+            return content;
         } catch (Exception e) {
             log.error("read content failed: key={}", fileKey, e);
             return "";

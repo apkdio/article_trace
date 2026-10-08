@@ -207,8 +207,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
-      # RustFS（S3）：ENDPOINT 会写进图片的预签名 URL，上公网时必须改成浏览器可达的地址
+      # RustFS（S3）：ENDPOINT 只用于预签名 URL（浏览器要能访问）；INTERNAL_ENDPOINT 是服务端读写地址，
+      # 留空则与 ENDPOINT 同值——上公网后建议填内网地址，否则服务端每次读正文都要绕公网
       RUSTFS_ENDPOINT: ${RUSTFS_ENDPOINT:-http://rustfs:9000}
+      RUSTFS_INTERNAL_ENDPOINT: ${RUSTFS_INTERNAL_ENDPOINT:-}
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?请在 .env 中设置 RUSTFS_ACCESS_KEY}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?请在 .env 中设置 RUSTFS_SECRET_KEY}
       # 桶名：建桶（rustfs-init）与后端读写用的是同一组值，改就一起改

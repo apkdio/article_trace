@@ -95,6 +95,7 @@ Password:
 
 S3:
   endpoint: ${RUSTFS_ENDPOINT:http://rustfs:9000}
+  internalEndpoint: ${RUSTFS_INTERNAL_ENDPOINT:} # 服务端读写对象用的地址（一般填内网），留空则与 endpoint 同值
   accessKey: ${RUSTFS_ACCESS_KEY}
   secretKey: ${RUSTFS_SECRET_KEY}
   picBucket: ${RUSTFS_PIC_BUCKET:pic} # 图片存储桶（封面等既有图片）

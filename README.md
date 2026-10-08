@@ -238,6 +238,10 @@ certbot --nginx -d example.com -d files.example.com
 | `JWT_COOKIE_SECURE` | 上了 HTTPS 后置 `true` | 置 true 却没 HTTPS → Cookie 存不下，登录后一刷新就退出 |
 | `MAIL_LOGO_URL` | `https://example.com/logo2.png` | 邮件里 logo 位置裂图 |
 
+另有一项**性能项**（不影响功能，上公网后建议设）：`RUSTFS_INTERNAL_ENDPOINT` = **服务端自己读写对象**的地址，
+compose 部署填 `http://rustfs:9000`。不设就等于让它拿 `RUSTFS_ENDPOINT` 去读写——每次读正文都绕公网一圈，
+站点在海外时详情页的 QPS 与延迟会明显变差（本地开发两者同值，无需设置）。
+
 #### 2.1 可选：个人备案用的「单用户态」
 
 `.env` 里这三项**全设 false** 即把站点收敛成个人博客形态——不开放注册、不能新增评论、不能申请成为作者，

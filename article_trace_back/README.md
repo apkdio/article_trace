@@ -242,7 +242,7 @@ article_trace_back/
 
 桶名不是写死的：由 `RUSTFS_PIC_BUCKET` / `RUSTFS_CONTENT_BUCKET` / `RUSTFS_AVATAR_BUCKET` 统一驱动（`.env` → compose → 容器配置 `application-container.yml` 里的 `${RUSTFS_*_BUCKET:...}` 占位符）。**建桶（`rustfs-init`）与后端读写用的是同一组值**，改就一起改，避免「桶建成新名字、后端仍连旧名字」。
 
-> `S3.endpoint` 会写进预签名 URL 的 host（同一个值同时喂给 SDK 客户端和签名器），所以它必须是**浏览器能访问到的地址**；上公网部署时把它改成对象存储的对外域名。
+> **两个地址各管一头**：`S3.endpoint` 只用来签预签名 URL——它会被写进 URL 的 host，所以必须是**浏览器能访问到的地址**（上公网就是对象存储的对外域名）；`S3.internalEndpoint` 是**服务端自己读写对象**的地址，留空则与前者同值。上公网后不填后者，服务端每次读正文都要绕公网一圈（站点在海外时尤其明显），详情页延迟全压在这一跳上——详见下方「正文读取与缓存」。
 
 对象归属由**类型字符串**决定，而不是散落的桶名常量：`json` → content、`image` → pic、`avatar` → avatar，`upload` / `delete` / `exists` / `getPciUrl` / `getThumbUrl` / `generateThumbFor` 都按它解析目标桶。预签名的 Redis 缓存键是 `桶名:对象名`——两个桶可能出现同名对象，只用对象名会串味。
 
@@ -943,6 +943,9 @@ mvn clean package && java -jar target/article_trace-*.jar
   默认的 `http://127.0.0.1:9000` 只在浏览器与后端同机时可用；部署到服务器后要改成对象的对外地址
   （如 `https://files.example.com`），再用反向代理接回 RustFS 的 9000。
   建议用**独立子域**而不是主域下的路径前缀——S3 签名把 Host 和路径都算进去了，路径被改写会验签失败。
+- **`S3.internalEndpoint`**（环境变量 `RUSTFS_INTERNAL_ENDPOINT`，可选）：**服务端自己读写对象**的地址，留空则与 `S3.endpoint` 同值。
+  上公网后建议填内网地址（compose 部署填 `http://rustfs:9000`，后端裸机跑填 `http://127.0.0.1:9000`）——
+  不填的话，服务端读正文会拿对外域名绕公网一圈（hairpin），站点在海外时详情页的延迟几乎全压在这一跳上。
 - **`JWT.cookieSecure`**（环境变量 `JWT_COOKIE_SECURE`）：站点上了 HTTPS 后置 `true`。
   反之（置 `true` 却没有 HTTPS）浏览器会拒绝保存登录 Cookie，表现是「登录成功但一刷新就退出」，
   而且没有任何报错提示。
