@@ -2,7 +2,8 @@
 
 import {Delete, Edit, Plus, Picture, Search, User, Calendar, Timer, UserFilled} from '@element-plus/icons-vue'
 import cover from '@/assets/defaultCover.jpg'
-import {nextTick, onMounted, ref, watch} from 'vue'
+import {nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {clearDraft, loadDraft, saveDraft} from '@/utils/articleDraft.js'
 import {addCategory, getAllCategories} from "@/api/category.js";
 import {
   addArticleService, deleteArticleService,
@@ -463,6 +464,84 @@ const resetArticleForm = () => {
 const closeDrawer = () => {
   visibleDrawer.value = false
   resetArticleForm()
+  // 抽屉确认关闭（含保存成功）之后，本地草稿就没意义了
+  cancelDraftSave()
+  clearDraft()
+}
+
+const currentUsername = () => userInfoStore().username || ''
+
+let draftTimer = null
+
+/** 把当前表单写成草稿；标题与正文都空时 saveDraft 会自行清掉旧草稿 */
+const writeDraft = () => {
+  draftTimer = null
+  saveDraft({
+    username: currentUsername(),
+    id: articleModel.value.id,
+    title: articleModel.value.title,
+    categoryId: articleModel.value.categoryId,
+    content: articleModel.value.content
+  })
+}
+
+const cancelDraftSave = () => {
+  if (draftTimer) {
+    clearTimeout(draftTimer)
+    draftTimer = null
+  }
+}
+
+// 编辑中防抖落草稿：不拦刷新，只保证刷新后回来还在
+const scheduleDraftSave = () => {
+  cancelDraftSave()
+  draftTimer = setTimeout(writeDraft, 2000)
+}
+
+watch(() => [articleModel.value.title, articleModel.value.categoryId, articleModel.value.content], () => {
+  if (visibleDrawer.value) {
+    scheduleDraftSave()
+  }
+})
+
+// 关页 / 刷新前，把还压在防抖里的最后几个字补写一次
+window.addEventListener('beforeunload', writeDraft)
+onBeforeUnmount(() => {
+  cancelDraftSave()
+  window.removeEventListener('beforeunload', writeDraft)
+})
+
+/** 「几分钟前」：草稿提示里用，超过一天就直接给时间 */
+const draftAgeText = (savedAt) => {
+  const minutes = Math.floor((Date.now() - savedAt) / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.floor(minutes / 60)
+  return hours < 24 ? `${hours} 小时前` : new Date(savedAt).toLocaleString()
+}
+
+/** 点「添加文章」时问一句要不要恢复（改稿路径不调用，理由见 openEditDrawer）；选「丢弃」就清掉。只填表单字段，不改当前是新增还是修改 */
+const offerDraftRestore = () => {
+  const draft = loadDraft(currentUsername())
+  if (!draft) {
+    return
+  }
+  // 草稿可能是另一篇的（先改了 A 没提交，又点了 B 的修改）：先讲明，别糊里糊涂覆盖
+  const foreign = draft.id && articleModel.value.id && String(draft.id) !== String(articleModel.value.id)
+  ElMessageBox.confirm(
+      `${draftAgeText(draft.savedAt)}留下一份未提交的草稿${draft.title ? `：「${draft.title}」` : ''}，要恢复吗？`
+      + (foreign ? '（这份草稿来自另一篇文章）' : ''), '恢复草稿', {
+        confirmButtonText: '恢复',
+        cancelButtonText: '丢弃',
+        type: 'info'
+      }).then(() => {
+    articleModel.value.title = draft.title
+    articleModel.value.categoryId = draft.categoryId
+    articleModel.value.content = draft.content
+    ElMessage.success('已恢复草稿；封面如果选过，需要重新选择')
+  }).catch(() => {
+    clearDraft()
+  })
 }
 
 const handleEditorBlur = () => {
@@ -550,12 +629,14 @@ const openAddDrawer = () => {
   resetArticleForm()
   drawerTitle.value = '添加文章'
   visibleDrawer.value = true
+  offerDraftRestore()
 }
 const openEditDrawer = async (row) => {
   resetArticleForm()
   drawerTitle.value = '修改文章'
   articleModel.value = JSON.parse(JSON.stringify(row))
   visibleDrawer.value = true
+  // 改稿路径不弹草稿提示：草稿仍留着，下次点「添加文章」时再问，别干扰编辑
 }
 
 const beforeCloseDrawer = () => {
