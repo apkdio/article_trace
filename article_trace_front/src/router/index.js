@@ -19,41 +19,109 @@ import articleInfo from "@/views/public/articleInfo.vue";
 
 const routes = [
     {path: "", redirect: "/publicHome"},
-    {path: "/publicHome", component: publicHome, name: "PublicHome"},
-    {path: "/article/:id", component: articleInfo, name: "ArticleInfo", props: true, meta: {noTransition: true}},
+    {path: "/publicHome", component: publicHome, name: "PublicHome", meta: {title: "首页"}},
+    {
+        path: "/article/:id", component: articleInfo, name: "ArticleInfo", props: true,
+        // 标题由页面取到文章后自己写，这里只是加载期间的兜底
+        meta: {noTransition: true, title: "文章"}
+    },
     {
         path: "/reader/home", component: readerHome, redirect: "/reader/info", name: "ReaderHome", children: [
-            {path: "/reader/info", component: userInfo, name: "ReaderInfo"},
-            {path: "/reader/apply", component: authorApply, name: "ReaderApply", meta: {noTransition: true}},
-            {path: "/reader/updateLogo", component: UserLogo, name: "ReaderLogo", meta: {noTransition: true}},
+            {path: "/reader/info", component: userInfo, name: "ReaderInfo", meta: {title: "个人信息"}},
+            {
+                path: "/reader/apply",
+                component: authorApply,
+                name: "ReaderApply",
+                meta: {noTransition: true, title: "申请成为作者"}
+            },
+            {
+                path: "/reader/updateLogo",
+                component: UserLogo,
+                name: "ReaderLogo",
+                meta: {noTransition: true, title: "修改头像"}
+            },
             {
                 path: "/reader/updatePassword",
                 component: updateUserPassword,
                 name: "UpdateReaderPassword",
-                meta: {noTransition: true}
+                meta: {noTransition: true, title: "修改密码"}
             }
         ]
     },
-    {path: "/login", component: loginPage, name: "Login"},
+    {path: "/login", component: loginPage, name: "Login", meta: {title: "登录"}},
     {
         path: "/mainPage", component: mainPage, redirect: "/home", name: "MainPage", children: [
-            {path: "/home", component: home, name: "Home"},
-            {path: "/article/category", component: articleCategory, name: "ArticleCategory",meta:{noTransition:true}},
-            {path: "/article/list", component: articleList, name: "ArticleList",meta:{noTransition:true}},
-            {path: "/user/info", component: userInfo, name: "UserInfo",meta:{noTransition:true}},
-            {path: "/user/updateLogo", component: UserLogo, name: "UserLogo",meta:{noTransition:true}},
-            {path: "/user/updatePassword", component: updateUserPassword, name: "UpdateUserPassword",meta:{noTransition:true}},
-            {path: "/user/accountManage", component: accountManage, name: "AccountManage",meta:{noTransition:true}},
-            {path: "/avatar/review", component: avatarReview, name: "AvatarReview",meta:{noTransition:true}},
-            {path: "/report/manage", component: reportManage, name: "ReportManage",meta:{noTransition:true}},
-            {path: "/review/center", component: reviewCenter, name: "ReviewCenter",meta:{noTransition:true}}
+            {path: "/home", component: home, name: "Home", meta: {title: "后台首页"}},
+            {
+                path: "/article/category",
+                component: articleCategory,
+                name: "ArticleCategory",
+                meta: {noTransition: true, title: "分类管理"}
+            },
+            {
+                path: "/article/list",
+                component: articleList,
+                name: "ArticleList",
+                meta: {noTransition: true, title: "文章管理"}
+            },
+            {path: "/user/info", component: userInfo, name: "UserInfo", meta: {noTransition: true, title: "个人信息"}},
+            {
+                path: "/user/updateLogo",
+                component: UserLogo,
+                name: "UserLogo",
+                meta: {noTransition: true, title: "修改头像"}
+            },
+            {
+                path: "/user/updatePassword",
+                component: updateUserPassword,
+                name: "UpdateUserPassword",
+                meta: {noTransition: true, title: "修改密码"}
+            },
+            {
+                path: "/user/accountManage",
+                component: accountManage,
+                name: "AccountManage",
+                meta: {noTransition: true, title: "账号管理"}
+            },
+            {
+                path: "/avatar/review",
+                component: avatarReview,
+                name: "AvatarReview",
+                meta: {noTransition: true, title: "头像审核"}
+            },
+            {
+                path: "/report/manage",
+                component: reportManage,
+                name: "ReportManage",
+                meta: {noTransition: true, title: "举报处理"}
+            },
+            {
+                path: "/review/center",
+                component: reviewCenter,
+                name: "ReviewCenter",
+                meta: {noTransition: true, title: "审核中心"}
+            }
         ],
     },
-    {component: () => import('@/views/error.vue'), name: "ErrorPage",meta:{noTransition:true}},
-    {path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/error.vue'),meta:{noTransition:true}}
+    {component: () => import('@/views/error.vue'), name: "ErrorPage", meta: {noTransition: true, title: "出错了"}},
+    {
+        path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/error.vue'),
+        meta: {noTransition: true, title: "出错了"}
+    }
 ]
 const router = createRouter({
     history: createWebHistory(),
     routes: routes,
 })
+
+const DEFAULT_TITLE = '文迹'
+
+/**
+ * 页面标题统一在这里落：路由给静态标题，页面自己设的（文章标题、站名、登录页的三种状态）
+ * 在挂载后覆盖它——afterEach 先于组件渲染。不加站点后缀，按功能页名即可。
+ */
+router.afterEach((to) => {
+    document.title = (to.meta && to.meta.title) || DEFAULT_TITLE
+})
+
 export default router

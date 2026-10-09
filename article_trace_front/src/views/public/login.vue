@@ -168,6 +168,7 @@ watch([isRegister, resetPass], () => {
     setTimeout(() => isAnimating.value = false, 1200)
   }
 
+  // 别以为写反了：isRegister 沿原代码命名，true 即登录态（模板里 v-if="!isRegister" 才是注册表单）
   if (resetPass.value) document.title = "重置密码"
   else document.title = isRegister.value ? "登录" : "注册"
 

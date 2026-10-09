@@ -112,6 +112,8 @@ article_trace_front/
 | `/reader/home`、`/reader/apply` | 读者中心 | 个人信息、头像、改密；申请成为作者 |
 | `/mainPage` | 作者/站长后台 | 首页统计、文章管理、分类管理、账号管理；`/review/center` 审核中心仅站长可见（`/avatar/review`、`/report/manage` 两个旧页保留路由，供直达）|
 
+**页面标题**：每个路由带 `meta.title`，`router.afterEach` 直接把它写成浏览器标题（**不加站点后缀**，`index.html` 里留一个兜底标题）；文章详情、门户首页、登录页、404 这几处在页面里覆盖成更具体的内容（文章标题 / 站名 / 登录·注册·重置密码）——页面挂载在 `afterEach` 之后，所以页面写的标题天然赢。
+
 ### 请求封装（utils/request.js）
 
 - Axios 实例 `baseURL = /api`（`withCredentials: true`），开发环境由 Vite 代理转发到后端 `localhost:8080`。
