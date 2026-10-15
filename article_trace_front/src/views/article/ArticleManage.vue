@@ -1180,6 +1180,13 @@ const refreshAfterDelete = async () => {
     font-size: 15px;
   }
 
+  /* .ql-editor 是 height:100%，而父级高度只来自上面的 min-height（高度不确定）时百分比会退化成 auto：
+     编辑器只占内容高，下面被 min-height 撑出的那截不是编辑器，点上去没有光标（新建文章、短稿时最明显）。
+     下限放到编辑器自己身上，内容多了照常长高 */
+  :deep(.ql-editor) {
+    min-height: 350px;
+  }
+
   /* 表格块在编辑器里给一层虚线轮廓：它是整块只读内容，不是普通段落 */
   :deep(.ql-editor .ql-table-embed) {
     outline: 1px dashed #dcdfe6;
