@@ -14,13 +14,42 @@
  * 两个参照系的宽度就都固定了。这比 scrollbar-gutter 更省心——gutter 只对
  * 「被锁的那个元素」生效，而 fixed 元素根本不在那个元素的参照系里，管不到。
  */
+:root {
+  --at-bg-page: #f5f2eb;
+  --at-bg-aside: #ebe6db;
+  --at-bg-header: #faf8f3;
+  --at-bg-card: #fdfcf9;
+  --at-bg-stat: #f5f3ee;
+  --at-bg-tint: #f0ece3;
+  --at-border-warm: #e5e0d4;
+  --at-divider-warm: #ece7dc;
+  --at-text-main: #2c2a26;
+  --at-text-regular: #57534c;
+  --at-text-secondary: #8a847a;
+  --at-celadon: #2b7a78;
+  --at-celadon-hover: #236462;
+  --at-celadon-dark: #1f5c5a;
+  --at-celadon-tag-bg: #e3f1ef;
+  --at-celadon-tag-border: #bedcd8;
+
+  /* 覆写 Element Plus 主色为竹青色系，使按钮、Tag、输入框焦点与分页自然对齐 */
+  --el-color-primary: #2b7a78 !important;
+  --el-color-primary-light-3: #579b99 !important;
+  --el-color-primary-light-5: #7cb5b3 !important;
+  --el-color-primary-light-7: #aad0ce !important;
+  --el-color-primary-light-8: #c5e0de !important;
+  --el-color-primary-light-9: #e6f2f1 !important;
+  --el-color-primary-dark-2: #1f5c5a !important;
+}
+
 html {
   overflow-y: scroll;
 }
 
 body {
   margin: 0;
-  background-color: #f5f5f5;
+  background-color: var(--at-bg-page);
+  color: var(--at-text-main);
   /**
    * 压过 Element Plus 的滚动条补偿。
    *
@@ -30,6 +59,68 @@ body {
    * 导致右侧栏与正文整体左移。内联样式优先级高于普通 CSS，故必须用 !important。
    */
   width: 100% !important;
+}
+
+/* 通用文章分类标签 */
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--at-celadon-dark);
+  background-color: var(--at-celadon-tag-bg);
+  border: 1px solid var(--at-celadon-tag-border);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  line-height: 1.4;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--at-celadon);
+    border-color: var(--at-celadon);
+    color: #ffffff;
+  }
+
+  &.is-uncategorized {
+    color: #b7791f;
+    background-color: #fcf4e4;
+    border-color: #f0dfc0;
+
+    &:hover {
+      background-color: #d69e2e;
+      border-color: #d69e2e;
+      color: #ffffff;
+    }
+  }
+}
+
+/* 原生朴素风格的分页器配色跟进宣纸竹青 */
+.el-pagination.is-background {
+  .btn-prev,
+  .btn-next,
+  .el-pager li {
+    background-color: var(--at-bg-tint) !important;
+    color: var(--at-text-regular) !important;
+    border-radius: 4px;
+
+    &:hover:not(:disabled):not(.is-active) {
+      color: var(--at-celadon) !important;
+    }
+
+    &.is-active {
+      background-color: var(--at-celadon) !important;
+      color: #ffffff !important;
+      font-weight: 700;
+    }
+
+    &:disabled {
+      background-color: var(--at-bg-stat) !important;
+      color: #c0bbb0 !important;
+    }
+  }
 }
 
 /* fade-slide */
@@ -62,14 +153,19 @@ body {
 
 /* 用户头像下拉框 */
 .el-dropdown__box {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
   outline: none !important;
   cursor: pointer;
+  transition: background-color 0.18s, border-color 0.18s;
 
   &:hover {
-    background: #ededed;
+    background: var(--at-bg-tint);
+    border-color: var(--at-border-warm);
   }
 }
 

@@ -302,10 +302,10 @@ function formatSessionTime(ts) {
         height: 56px;
         border-radius: 50%;
         border: none;
-        background: linear-gradient(135deg, #409eff 0%, #337ecc 100%);
+        background: linear-gradient(135deg, #2b7a78 0%, #3a6073 100%);
         color: #fff;
         cursor: pointer;
-        box-shadow: 0 4px 16px rgba(64, 158, 255, 0.4);
+        box-shadow: 0 4px 16px rgba(43, 122, 120, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -322,15 +322,16 @@ function formatSessionTime(ts) {
         bottom: 68px;
         width: 360px;
         height: 500px;
-        background: #fff;
+        background: var(--at-bg-card);
+        border: 1px solid var(--at-border-warm);
         border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+        box-shadow: 0 8px 32px rgba(44, 42, 38, 0.14);
         display: flex;
         flex-direction: column;
         overflow: hidden;
 
         .chat-header {
-            background: linear-gradient(135deg, #409eff 0%, #337ecc 100%);
+            background: linear-gradient(135deg, #2b7a78 0%, #3a6073 100%);
             color: #fff;
             padding: 14px 16px;
             display: flex;
@@ -489,7 +490,7 @@ function formatSessionTime(ts) {
                     align-self: flex-end;
 
                     .bubble {
-                        background: #409eff;
+                        background: var(--at-celadon);
                         color: #fff;
                         border-radius: 12px 12px 4px 12px;
                     }
@@ -499,10 +500,10 @@ function formatSessionTime(ts) {
                     align-self: flex-start;
 
                     .bubble {
-                        background: #fff;
-                        color: #303133;
+                        background: var(--at-bg-card);
+                        color: var(--at-text-main);
                         border-radius: 12px 12px 12px 4px;
-                        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+                        box-shadow: 0 1px 4px rgba(44, 42, 38, 0.06);
                     }
                 }
 
@@ -525,20 +526,20 @@ function formatSessionTime(ts) {
                     gap: 6px;
 
                     .ref-item {
-                        background: #fff;
-                        border-left: 3px solid #409eff;
+                        background: var(--at-bg-card);
+                        border-left: 3px solid var(--at-celadon);
                         border-radius: 6px;
                         padding: 6px 10px;
                         font-size: 12px;
-                        color: #409eff;
+                        color: var(--at-celadon-dark);
                         cursor: pointer;
-                        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+                        box-shadow: 0 1px 4px rgba(44, 42, 38, 0.06);
                         overflow: hidden;
                         text-overflow: ellipsis;
                         white-space: nowrap;
 
                         &:hover {
-                            background: #ecf5ff;
+                            background: var(--at-celadon-tag-bg);
                         }
                     }
                 }

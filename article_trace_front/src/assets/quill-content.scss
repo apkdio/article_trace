@@ -57,26 +57,99 @@
     font-size: 28px;
   }
 
-  /* 只读表格块：Quill 1.3 没有表格格式，Markdown 导入的表格整块嵌在正文里（ArticleManage.vue 的 TableEmbed）*/
-  .ql-table-embed {
-    margin: 1em 0;
-    overflow-x: auto;
+  /* 标题、引用、代码与表格的阅读排版：仅在非编辑态展示区或编辑器内统一呈现 */
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--at-text-main, #2c2a26);
+    line-height: 1.4;
+    margin: 1.5em 0 0.7em;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 15px;
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--at-divider-warm, #ece7dc);
+  }
+
+  h3 {
+    font-size: 18.5px;
+    font-weight: 600;
+  }
+
+  blockquote {
+    margin: 20px 0;
+    padding: 14px 20px;
+    border-left: 4px solid var(--at-celadon, #2b7a78);
+    background: var(--at-bg-stat, #f5f3ee);
+    border-radius: 0 8px 8px 0;
+    color: var(--at-text-regular, #57534c);
+    font-style: italic;
+
+    p:last-child {
+      margin-bottom: 0;
     }
+  }
+
+  code {
+    font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+    font-size: 0.88em;
+    background: var(--at-celadon-tag-bg, #e3f1ef);
+    color: var(--at-celadon-dark, #1f5c5a);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--at-celadon-tag-border, #bedcd8);
+  }
+
+  pre,
+  pre.ql-syntax {
+    background: #1e242b !important;
+    color: #e6edf3 !important;
+    padding: 18px 22px;
+    border-radius: 10px;
+    font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+    font-size: 13.5px;
+    line-height: 1.68;
+    overflow-x: auto;
+    margin: 20px 0;
+
+    code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+  }
+
+  /* 只读表格块：Quill 1.3 没有表格格式，Markdown 导入的表格整块嵌在正文里（ArticleManage.vue 的 TableEmbed）*/
+  .ql-table-embed,
+  table {
+    margin: 1.2em 0;
+    overflow-x: auto;
+  }
+
+  table,
+  .ql-table-embed table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--at-border-warm, #e5e0d4);
 
     th,
     td {
-      border: 1px solid #dcdfe6;
-      padding: 6px 10px;
+      border: 1px solid var(--at-border-warm, #e5e0d4);
+      padding: 8px 12px;
       text-align: left;
     }
 
     th {
-      background: #f7f8fa;
+      background: var(--at-bg-stat, #f5f3ee);
+      color: var(--at-text-main, #2c2a26);
       font-weight: 600;
     }
   }

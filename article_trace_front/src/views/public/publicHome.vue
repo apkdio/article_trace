@@ -207,20 +207,21 @@ const searchArticleInWriter = (nickName) => {
       </div>
       <div class="spacer-div"></div>
       <div class="search-section">
-        <el-switch
-            v-model="searchCondition.searchType"
-            size="default"
-            active-value="1"
-            inactive-value="0"
-            active-text="作者"
-            inactive-text="标题"
-        />
-        <el-input
-            v-model="searchCondition.search"
-            placeholder="搜索感兴趣的内容..."
-            :prefix-icon="Search"
-            class="custom-search"
-        />
+        <div class="search-input-composite">
+          <div class="search-type-segmented">
+            <span :class="{ active: String(searchCondition.searchType) !== '1' }"
+                  @click="searchCondition.searchType = 0">标题</span>
+            <span :class="{ active: String(searchCondition.searchType) === '1' }"
+                  @click="searchCondition.searchType = 1">作者</span>
+          </div>
+          <el-input
+              v-model="searchCondition.search"
+              placeholder="搜索感兴趣的内容..."
+              :prefix-icon="Search"
+              class="custom-search"
+              @keyup.enter="getArticles"
+          />
+        </div>
         <el-tooltip
             class="box-item"
             effect="light"
@@ -257,26 +258,22 @@ const searchArticleInWriter = (nickName) => {
       <div class="spacer-div"></div>
 
       <div class="user-area-wrapper">
-        <div v-if="isLogin" class="welcome-box">
-      <span class="welcome-text">欢迎回来！
-        <span class="username">{{ userInfoStore().nickname ? userInfoStore().nickname : "匿名用户" }}
-        </span>
-        <el-tag size="small" v-if="userInfoStore().type === 0" round style="margin-bottom: 2px"
-                type="primary" disable-transitions>站长</el-tag>
-        <el-tag size="small" v-if="userInfoStore().type === 1" round style="margin-bottom: 2px"
-                type="warning" disable-transitions>作者</el-tag>
-        <el-tag size="small" v-if="userInfoStore().type === 2" round style="margin-bottom: 2px"
-                type="info" disable-transitions>读者</el-tag>
-      </span>
-        </div>
-
         <div class="user-action">
           <el-button v-if="!isLogin" type="primary" plain round @click="router.push({name: 'Login'})">登录</el-button>
           <el-dropdown placement="bottom-end" v-if="isLogin" @command="switchCommand">
-        <span class="el-dropdown__box">
-          <el-avatar :src="userInfoStore().userPicThumbSrc || avatar"/>
-          <el-icon class="arrow"><CaretBottom/></el-icon>
-        </span>
+            <span class="el-dropdown__box">
+              <span class="welcome-text">欢迎回来！
+                <span class="username">{{ userInfoStore().nickname ? userInfoStore().nickname : "匿名用户" }}</span>
+                <el-tag size="small" v-if="userInfoStore().type === 0" round style="margin-bottom: 2px"
+                        type="primary" disable-transitions>站长</el-tag>
+                <el-tag size="small" v-if="userInfoStore().type === 1" round style="margin-bottom: 2px"
+                        type="warning" disable-transitions>作者</el-tag>
+                <el-tag size="small" v-if="userInfoStore().type === 2" round style="margin-bottom: 2px"
+                        type="info" disable-transitions>读者</el-tag>
+              </span>
+              <el-avatar :size="36" :src="userInfoStore().userPicThumbSrc || avatar"/>
+              <el-icon class="arrow"><CaretBottom/></el-icon>
+            </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile" :icon="User">个人中心</el-dropdown-item>
@@ -314,10 +311,9 @@ const searchArticleInWriter = (nickName) => {
                 </router-link>
                 <p class="summary">{{ item.content }}</p>
                 <div class="meta">
-                  <el-check-tag v-if="item.categoryName !==null" @click="searchArticleInCategory(item.categoryId)"
-                                :checked="true">{{ item.categoryName }}
-                  </el-check-tag>
-                  <el-check-tag v-else type="warning">未分类</el-check-tag>
+                  <span v-if="item.categoryName !== null" class="category-chip"
+                        @click="searchArticleInCategory(item.categoryId)">{{ item.categoryName }}</span>
+                  <span v-else class="category-chip is-uncategorized">未分类</span>
                   <span @click="searchArticleInWriter(item.createUserName)" class="article-writer">
                     <el-icon><User/></el-icon> {{ item.createUserName }}</span>
                   <span><el-icon><View/></el-icon> {{ item.views ? item.views : 0 }}</span>
@@ -345,7 +341,7 @@ const searchArticleInWriter = (nickName) => {
 
         <el-aside width="320px" class="right-sidebar">
           <AuthorCard :info="masterInfo" :loading="masterLoading" default-name="文迹站长" contact-prefix="邮箱："
-                      header-bg="linear-gradient(135deg, #6addce 0%, #7a92f6 100%)">
+                      header-bg="linear-gradient(135deg, #2b7a78 0%, #3a6073 100%)">
             <template #role>
               <el-tag size="small" type="danger" disable-transitions>本站负责人</el-tag>
             </template>
@@ -366,7 +362,7 @@ const searchArticleInWriter = (nickName) => {
 <style lang="scss" scoped>
 .front-layout {
   min-height: 100vh;
-  background-color: #f0f5ff; // 沿用后台背景色
+  background-color: var(--at-bg-page);
 
   .outer-container {
     margin: 0 auto;
@@ -376,12 +372,13 @@ const searchArticleInWriter = (nickName) => {
 
   // Header 样式
   .custom-header {
-    background: #f8fffe;
+    background: var(--at-bg-header);
     height: 80px !important;
     display: flex;
     align-items: center;
     box-sizing: border-box;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid var(--at-border-warm);
+    box-shadow: 0 2px 12px rgba(44, 42, 38, 0.04);
     margin-bottom: 20px;
     z-index: 100;
     position: fixed;
@@ -404,7 +401,7 @@ const searchArticleInWriter = (nickName) => {
       .logo-text {
         font-size: 20px;
         font-weight: bold;
-        color: #409eff;
+        color: var(--at-celadon);
       }
     }
 
@@ -414,17 +411,64 @@ const searchArticleInWriter = (nickName) => {
 
     .welcome-text {
       font-size: 15px;
-      margin-left: auto;
       text-align: right;
-      color: #666;
+      color: var(--at-text-regular);
+      white-space: nowrap;
+    }
+
+    .search-input-composite {
+      display: flex;
+      align-items: center;
+      background: var(--at-bg-tint);
+      border: 1px solid var(--at-border-warm);
+      border-radius: 20px;
+      padding: 3px 10px 3px 4px;
+      height: 36px;
+      width: 350px;
+      transition: all 0.2s;
+
+      &:focus-within {
+        background: var(--at-bg-card);
+        border-color: var(--at-celadon);
+        box-shadow: 0 0 0 2px rgba(43, 122, 120, 0.12);
+      }
+    }
+
+    .search-type-segmented {
+      display: inline-flex;
+      background: rgba(44, 42, 38, 0.055);
+      border-radius: 16px;
+      padding: 2px;
+      margin-right: 4px;
+      flex-shrink: 0;
+
+      span {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 14px;
+        color: var(--at-text-regular);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.18s;
+        line-height: 1.25;
+
+        &.active {
+          background: var(--at-bg-card);
+          color: var(--at-celadon);
+          font-weight: 600;
+          box-shadow: 0 1px 2px rgba(44, 42, 38, 0.08);
+        }
+      }
     }
 
     .custom-search {
-      width: 300px;
+      flex: 1;
 
       :deep(.el-input__wrapper) {
         border-radius: 20px;
-        background-color: #f5f7fa;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        padding: 0 6px;
       }
     }
 
@@ -435,7 +479,7 @@ const searchArticleInWriter = (nickName) => {
 
       .welcome-text {
         font-size: 14px;
-        color: #666;
+        color: var(--at-text-regular);
       }
     }
   }
@@ -451,19 +495,20 @@ const searchArticleInWriter = (nickName) => {
     padding: 0;
 
     .content-card-wrapper {
-      background: #ffffff;
+      background: var(--at-bg-card);
       border-radius: 12px;
       padding: 24px;
       min-height: 656px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--at-border-warm);
+      box-shadow: 0 2px 12px rgba(44, 42, 38, 0.03);
     }
 
     .article-card {
       display: flex;
       padding: 20px 0;
-      border-bottom: 1px solid #dcdcdc;
+      border-bottom: 1px solid var(--at-divider-warm);
       transition: all 0.3s;
 
 
@@ -473,17 +518,18 @@ const searchArticleInWriter = (nickName) => {
         .title {
           margin: 0 0 10px 0;
           font-size: 20px;
-          color: #303133;
+          color: var(--at-text-main);
           cursor: pointer;
           text-decoration: none;
+          transition: color 0.2s;
 
           &:hover {
-            color: #409eff;
+            color: var(--at-celadon);
           }
         }
 
         .summary {
-          color: #606266;
+          color: var(--at-text-regular);
           font-size: 14px;
           line-height: 1.6;
           margin-bottom: 15px;
@@ -494,7 +540,7 @@ const searchArticleInWriter = (nickName) => {
           display: flex;
           align-items: center;
           gap: 15px;
-          color: #909399;
+          color: var(--at-text-secondary);
           font-size: 13px;
 
           .el-icon {
@@ -507,10 +553,11 @@ const searchArticleInWriter = (nickName) => {
       .article-cover {
         width: 180px;
         height: 120px;
-        border: 1px solid #dcdfe6;
+        border: 1px solid var(--at-border-warm);
         border-radius: 8px;
         margin-right: 20px;
         padding: 3px;
+        background: var(--at-bg-card);
 
         .el-image {
           border-radius: 6px;
@@ -535,8 +582,10 @@ const searchArticleInWriter = (nickName) => {
   }
 
   .article-writer {
+    transition: color 0.18s;
+
     &:hover {
-      color: #3c3c3c;
+      color: var(--at-celadon);
       cursor: pointer;
     }
   }
@@ -555,15 +604,15 @@ const searchArticleInWriter = (nickName) => {
   }
 
   .username {
-    color: #000000;
+    color: var(--at-text-main);
     text-align: center;
-    font-weight: 500;
-    padding-right: 5px;
+    font-weight: 600;
+    padding: 0 5px 0 2px;
   }
 
   .custom-footer {
     text-align: center;
-    color: #999;
+    color: var(--at-text-secondary);
     font-size: 13px;
     padding-top: 10px;
     padding-bottom: 5px;
@@ -587,11 +636,6 @@ const searchArticleInWriter = (nickName) => {
   justify-content: flex-end;
   min-width: 260px; /* 重要：给它一个足够的最小宽度，涵盖欢迎语+头像的宽度 */
   flex-shrink: 0; /* 禁止容器被压缩 */
-
-  .welcome-box {
-    margin-right: 10px;
-    white-space: nowrap; /* 禁止文字换行导致高度抖动 */
-  }
 }
 
 
@@ -604,7 +648,10 @@ const searchArticleInWriter = (nickName) => {
 
 .category-info {
   font-weight: bold;
-  border-bottom: 1px solid #989898;
+  color: var(--at-text-main);
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--at-divider-warm);
 }
 // ========== 移动端适配 (宽度 ≤ 768px) ==========
 @media (max-width: 768px) {
@@ -635,17 +682,9 @@ const searchArticleInWriter = (nickName) => {
         margin-top: 12px;
         gap: 8px;
 
-        .el-switch {
-          transform: scale(0.85);
-          transform-origin: left;
-        }
-
-        .custom-search {
+        .search-input-composite {
           flex: 1;
-          width: auto;                  // 让输入框自动填满
-          :deep(.el-input__wrapper) {
-            border-radius: 20px;
-          }
+          width: auto;
         }
 
         .el-button {
@@ -658,18 +697,16 @@ const searchArticleInWriter = (nickName) => {
         flex-shrink: 1;
         gap: 8px;
 
-        .welcome-box {
-          .welcome-text {
-            display: inline-flex;
-            align-items: center;
-            font-size: 13px;
-            .username {
-              display: inline-block;
-              max-width: 80px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              vertical-align: bottom;
-            }
+        .welcome-text {
+          display: inline-flex;
+          align-items: center;
+          font-size: 13px;
+          .username {
+            display: inline-block;
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: bottom;
           }
         }
       }

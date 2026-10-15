@@ -20,8 +20,8 @@ defineProps({
 
 <style lang="scss" scoped>
 .stat-item {
-    background: #f8fafc;
-    border: 1px solid #edf2f7;
+    background: var(--at-bg-stat);
+    border: 1px solid var(--at-border-warm);
     border-radius: 12px;
     padding: 16px 20px;
     display: flex;
@@ -30,9 +30,9 @@ defineProps({
     transition: all 0.3s;
 
     &:hover {
-        background: #fff;
-        border-color: #409eff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        background: var(--at-bg-card);
+        border-color: var(--at-celadon);
+        box-shadow: 0 4px 12px rgba(43, 122, 120, 0.06);
     }
 
     .stat-icon {
@@ -45,23 +45,23 @@ defineProps({
         font-size: 20px;
 
         &.purple {
-            background: #f5f3ff;
-            color: #7c3aed;
+            background: #f3ecf8;
+            color: #6b46c1;
         }
 
         &.blue {
-            background: #eff6ff;
-            color: #2563eb;
+            background: #e6f0f7;
+            color: #2b6cb0;
         }
 
         &.indigo {
-            background: #e0e7ff;
-            color: #4f46e5;
+            background: var(--at-celadon-tag-bg);
+            color: var(--at-celadon);
         }
 
         &.green {
-            background: #dcfce7;
-            color: #16a34a;
+            background: #e7f4ee;
+            color: #2e7d5b;
         }
     }
 
@@ -71,13 +71,13 @@ defineProps({
 
         .stat-label {
             font-size: 12px;
-            color: #64748b;
+            color: var(--at-text-secondary);
         }
 
         .stat-value {
             font-size: 20px;
             font-weight: 700;
-            color: #1e293b;
+            color: var(--at-text-main);
         }
     }
 }

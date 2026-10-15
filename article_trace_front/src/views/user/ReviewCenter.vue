@@ -91,10 +91,10 @@ watch(activeType, () => {
 
   .type-list {
     flex: 0 0 260px;
-    background: #fff;
+    background: var(--at-bg-stat);
+    border: 1px solid var(--at-border-warm);
     border-radius: 12px;
     padding: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
 
     .type-item {
       display: flex;
@@ -106,16 +106,16 @@ watch(activeType, () => {
       transition: background 0.2s;
 
       &:hover {
-        background: #f5f7fa;
+        background: var(--at-bg-tint);
       }
 
       &.active {
-        background: #ecf5ff;
+        background: var(--at-celadon-tag-bg);
       }
 
       .type-icon {
         font-size: 18px;
-        color: #409eff;
+        color: var(--at-celadon);
       }
 
       .type-text {
@@ -125,11 +125,12 @@ watch(activeType, () => {
 
         .type-label {
           font-weight: 600;
+          color: var(--at-text-main);
         }
 
         .type-hint {
           font-size: 12px;
-          color: #94a3b8;
+          color: var(--at-text-secondary);
         }
       }
 
@@ -153,7 +154,7 @@ watch(activeType, () => {
     .type-total {
       margin: 12px 12px 6px;
       font-size: 12px;
-      color: #909399;
+      color: var(--at-text-secondary);
     }
 
     .type-refresh {
@@ -164,10 +165,10 @@ watch(activeType, () => {
   .panel-area {
     flex: 1;
     min-width: 0;
-    background: #fff;
+    background: var(--at-bg-card);
+    border: 1px solid var(--at-border-warm);
     border-radius: 12px;
     padding: 16px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
   }
 
   // 四个子面板统一的入场过渡。刻意不用 <transition>：

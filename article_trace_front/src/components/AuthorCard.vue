@@ -6,7 +6,7 @@ defineProps({
     loading: {type: Boolean, default: false},
     defaultName: {type: String, default: '文迹作者'},
     contactPrefix: {type: String, default: '联系作者：'},
-    headerBg: {type: String, default: 'linear-gradient(135deg, #4ca1af 0%, #3973ac 100%)'}
+    headerBg: {type: String, default: 'linear-gradient(135deg, #35736e 0%, #2c4c5e 100%)'}
 })
 </script>
 
@@ -42,10 +42,11 @@ defineProps({
 
 <style lang="scss" scoped>
 .sidebar-author-widget {
-    background: #ffffff;
+    background: var(--at-bg-card);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--at-border-warm);
+    box-shadow: 0 2px 12px rgba(44, 42, 38, 0.03);
 
     .author-card-header {
         position: relative;
@@ -59,29 +60,38 @@ defineProps({
             left: 50%;
             transform: translateX(-50%);
             bottom: -40px;
-            border: 4px solid #fff;
+            border: 4px solid var(--at-bg-card);
         }
     }
 
     .author-card-body {
-        padding: 50px 20px 10px;
+        padding: 50px 20px 12px;
         text-align: center;
+        background: var(--at-bg-card);
 
         .writer-nick {
             font-size: 18px;
             font-weight: 700;
+            color: var(--at-text-main);
 
             .author-username {
                 font-size: 13px;
-                color: #94a3b8;
+                color: var(--at-text-secondary);
                 margin-top: 5px;
+                font-weight: 400;
             }
         }
 
         .writer-signature {
-            margin: 8px 0 0;
+            display: inline-block;
+            margin: 10px 0 2px;
+            padding: 4px 14px;
+            border-radius: 6px;
+            background: var(--at-bg-card);
+            border: 1px solid var(--at-divider-warm);
             font-size: 13px;
-            color: #64748b;
+            color: var(--at-text-regular);
+            font-style: italic;
             line-height: 1.5;
             word-break: break-all;
         }
@@ -89,35 +99,38 @@ defineProps({
         .writer-stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            background: #f8fafc;
+            background: #f5f3ee;
             border-radius: 8px;
             padding: 12px 0;
-            margin: 15px 0;
+            margin: 14px 0;
 
             .stat-item {
                 display: flex;
                 flex-direction: column;
+                align-items: center;
+                gap: 3px;
 
                 .val {
                     font-weight: 600;
+                    color: var(--at-text-main);
                 }
 
                 .lab {
                     font-size: 11px;
-                    color: #94a3b8;
+                    color: var(--at-text-secondary);
                 }
             }
         }
 
         .writer-contact {
             font-size: 12px;
-            color: #94a3b8;
+            color: var(--at-text-secondary);
         }
 
         .writer-actions {
             margin-top: 10px;
             padding-top: 10px;
-            border-top: 1px solid #f1f5f9;
+            border-top: 1px solid var(--at-divider-warm);
         }
     }
 }

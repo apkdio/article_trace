@@ -23,20 +23,20 @@ defineProps({
     justify-content: space-between;
     align-items: flex-end;
     padding-bottom: 12px;
-    border-bottom: 1px solid #f2f2f2;
+    border-bottom: 1px solid var(--at-divider-warm);
     margin-bottom: 24px;
 
     .title-group {
         .main-title {
             font-size: 24px;
             font-weight: bold;
-            color: #1a1a1a;
+            color: var(--at-text-main);
             margin: 0;
         }
 
         .sub-tip {
             font-size: 13px;
-            color: #999;
+            color: var(--at-text-secondary);
             margin: 4px 0 0;
         }
     }

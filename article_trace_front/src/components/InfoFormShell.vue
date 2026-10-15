@@ -29,24 +29,24 @@ defineProps({
 .info-header {
     margin-bottom: 30px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #f2f2f2;
+    border-bottom: 1px solid var(--at-divider-warm);
 
     .main-title {
         margin: 0;
         font-size: 24px;
         font-weight: bold;
-        color: #1a1a1a;
+        color: var(--at-text-main);
     }
 
     .sub-title {
         margin: 8px 0 0;
         font-size: 14px;
-        color: #8c8c8c;
+        color: var(--at-text-secondary);
     }
 }
 
 .info-content {
-    background: #ffffff;
+    background: transparent;
     padding: 20px 0;
 }
 

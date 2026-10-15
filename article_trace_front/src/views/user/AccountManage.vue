@@ -425,11 +425,17 @@ const changeUserType = (id, type) => {
 
 /* 表格深度定制 */
 :deep(.modern-table) {
+  --el-table-bg-color: var(--at-bg-card);
+  --el-table-tr-bg-color: var(--at-bg-card);
+  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-border-color: var(--at-divider-warm);
+
   .el-table__header th {
-    background-color: #fcfcfc;
-    color: #606266;
+    background-color: var(--at-bg-stat);
+    color: var(--at-text-regular);
     font-weight: bold;
     font-size: 13px;
+    border-bottom: 1px solid var(--at-border-warm);
   }
 
   .el-table__row {

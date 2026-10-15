@@ -191,12 +191,12 @@ defineExpose({openNotify, unread})
     cursor: pointer;
 
     .notify-bell {
-        color: #5c6b77;
+        color: var(--at-text-regular);
         transition: color 0.2s;
         display: block;
 
         &:hover {
-            color: #409eff;
+            color: var(--at-celadon);
         }
     }
 }

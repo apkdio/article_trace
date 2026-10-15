@@ -125,7 +125,7 @@ const AddComment = async () => {
     if (res.code === 0) {
       ElMessage.success("发表成功")
       commentModel.value.content = ""
-      commentConditions.value.pageNum = 1`m`
+      commentConditions.value.pageNum = 1
       await getComments()
     } else {
       if (res.message.error) {
@@ -202,10 +202,16 @@ const pushSearch = (type) => {
       </div>
       <div class="spacer-div"></div>
       <div class="search-section">
-        <el-switch v-model="searchCondition.searchType" active-value="1" inactive-value="0" active-text="作者"
-                   inactive-text="标题"/>
-        <el-input v-model="searchCondition.search" placeholder="搜索感兴趣的内容..." :prefix-icon="Search"
-                  class="custom-search"/>
+        <div class="search-input-composite">
+          <div class="search-type-segmented">
+            <span :class="{ active: String(searchCondition.searchType) !== '1' }"
+                  @click="searchCondition.searchType = 0">标题</span>
+            <span :class="{ active: String(searchCondition.searchType) === '1' }"
+                  @click="searchCondition.searchType = 1">作者</span>
+          </div>
+          <el-input v-model="searchCondition.search" placeholder="搜索感兴趣的内容..." :prefix-icon="Search"
+                    class="custom-search" @keyup.enter="pushSearch(0)"/>
+        </div>
         <el-button :icon="Search" circle @click="pushSearch(0)"/>
         <!-- 站内通知：与门户页一致，放在按钮组里、复用圆形按钮样式（未登录不显示）-->
         <el-tooltip
@@ -222,22 +228,20 @@ const pushSearch = (type) => {
       </div>
       <div class="spacer-div"></div>
       <div class="user-area-wrapper">
-        <div v-if="isLogin" class="welcome-box">
-          <span class="welcome-text">欢迎回来！
-            <span class="username">{{ userInfoStore().nickname || "匿名用户" }}</span>
-            <el-tag size="small" v-if="userInfoStore().type === 0" round type="primary"
-                    style="margin-bottom: 2px" disable-transitions>站长</el-tag>
-            <el-tag size="small" v-if="userInfoStore().type === 1" round type="warning"
-                    style="margin-bottom: 2px" disable-transitions>作者</el-tag>
-            <el-tag size="small" v-if="userInfoStore().type === 2" round type="info"
-                    style="margin-bottom: 2px" disable-transitions>读者</el-tag>
-          </span>
-        </div>
         <div class="user-action">
           <el-button v-if="!isLogin" type="primary" plain round @click="router.push({name: 'Login'})">登录</el-button>
-          <el-dropdown v-else @command="switchCommand">
+          <el-dropdown v-else placement="bottom-end" @command="switchCommand">
             <span class="el-dropdown__box">
-              <el-avatar :src="userInfoStore().userPicThumbSrc || avatar"/>
+              <span class="welcome-text">欢迎回来！
+                <span class="username">{{ userInfoStore().nickname || "匿名用户" }}</span>
+                <el-tag size="small" v-if="userInfoStore().type === 0" round type="primary"
+                        style="margin-bottom: 2px" disable-transitions>站长</el-tag>
+                <el-tag size="small" v-if="userInfoStore().type === 1" round type="warning"
+                        style="margin-bottom: 2px" disable-transitions>作者</el-tag>
+                <el-tag size="small" v-if="userInfoStore().type === 2" round type="info"
+                        style="margin-bottom: 2px" disable-transitions>读者</el-tag>
+              </span>
+              <el-avatar :size="36" :src="userInfoStore().userPicThumbSrc || avatar"/>
               <el-icon class="arrow"><CaretBottom/></el-icon>
             </span>
             <template #dropdown>
@@ -256,15 +260,18 @@ const pushSearch = (type) => {
         <el-main class="article-container" v-loading="loading">
           <div class="content-card-wrapper" v-if="articleInfo">
             <div class="article-detail-header">
-              <h1 class="main-title">{{ articleInfo.title }}</h1>
-              <!-- 举报单独占一行、靠右上外侧：和分类标签贴在同一行时既挤又容易点错
-                   （分类是跳转、举报是提交，两者动作性质完全不同） -->
-              <div class="header-report">
-                <ReportButton target-type="article" :target-id="props.id" :owner-id="articleInfo.createUser"
-                              label="举报文章"/>
+              <div class="article-top-nav">
+                <button type="button" class="back-list-link" @click="router.push({name: 'PublicHome'})">
+                  ← 返回文章列表
+                </button>
               </div>
+              <h1 class="main-title">{{ articleInfo.title }}</h1>
               <div class="main-meta">
                 <div class="meta-left">
+                  <span v-if="articleInfo.categoryName" class="category-chip" @click="pushSearch(2)">
+                    {{ articleInfo.categoryName }}
+                  </span>
+                  <span v-else class="category-chip is-uncategorized" @click="pushSearch(2)">未分类</span>
                   <span class="item-nickname" @click="pushSearch(1)"><el-icon><User/></el-icon> {{
                       articleInfo.createUserName
                     }}</span>
@@ -274,10 +281,10 @@ const pushSearch = (type) => {
                     }}</span>
                   <span class="item"><el-icon><Timer/></el-icon> 阅读 {{ articleInfo.views }}</span>
                 </div>
-                <el-check-tag :checked="true" @click="pushSearch(2)">{{
-                    articleInfo.categoryName || "未分类"
-                  }}
-                </el-check-tag>
+                <div class="header-report">
+                  <ReportButton target-type="article" :target-id="props.id" :owner-id="articleInfo.createUser"
+                                label="举报文章"/>
+                </div>
               </div>
             </div>
 
@@ -343,7 +350,7 @@ const pushSearch = (type) => {
 
         <el-aside width="320px" class="right-sidebar">
           <AuthorCard :info="writerInfo" :loading="writerLoading" default-name="文迹作者" contact-prefix="联系作者："
-                      header-bg="linear-gradient(135deg, #4ca1af 0%, #3973ac 100%)">
+                      header-bg="linear-gradient(135deg, #35736e 0%, #2c4c5e 100%)">
             <template #role>
               <el-tag size="small" v-if="writerInfo.type === 0" type="danger" disable-transitions>站长</el-tag>
               <el-tag size="small" v-else type="warning" disable-transitions>作者</el-tag>
@@ -366,7 +373,7 @@ const pushSearch = (type) => {
 <style lang="scss" scoped>
 .front-layout {
   min-height: 100vh;
-  background-color: #f0f5ff; // 沿用后台背景色
+  background-color: var(--at-bg-page);
   scrollbar-gutter: stable;
 
   .outer-container {
@@ -377,11 +384,12 @@ const pushSearch = (type) => {
 
   // Header 样式补全
   .custom-header {
-    background: #f8fffe;
+    background: var(--at-bg-header);
     height: 80px !important;
     display: flex;
     align-items: center;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    border-bottom: 1px solid var(--at-border-warm);
+    box-shadow: 0 2px 12px rgba(44, 42, 38, 0.04);
     z-index: 100;
     position: fixed;
     width: 100%;
@@ -404,12 +412,59 @@ const pushSearch = (type) => {
       flex: 1;
     }
 
+    .search-input-composite {
+      display: flex;
+      align-items: center;
+      background: var(--at-bg-tint);
+      border: 1px solid var(--at-border-warm);
+      border-radius: 20px;
+      padding: 3px 10px 3px 4px;
+      height: 36px;
+      width: 350px;
+      transition: all 0.2s;
+
+      &:focus-within {
+        background: var(--at-bg-card);
+        border-color: var(--at-celadon);
+        box-shadow: 0 0 0 2px rgba(43, 122, 120, 0.12);
+      }
+    }
+
+    .search-type-segmented {
+      display: inline-flex;
+      background: rgba(44, 42, 38, 0.055);
+      border-radius: 16px;
+      padding: 2px;
+      margin-right: 4px;
+      flex-shrink: 0;
+
+      span {
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 14px;
+        color: var(--at-text-regular);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.18s;
+        line-height: 1.25;
+
+        &.active {
+          background: var(--at-bg-card);
+          color: var(--at-celadon);
+          font-weight: 600;
+          box-shadow: 0 1px 2px rgba(44, 42, 38, 0.08);
+        }
+      }
+    }
+
     .custom-search {
-      width: 300px;
+      flex: 1;
 
       :deep(.el-input__wrapper) {
         border-radius: 20px;
-        background-color: #f5f7fa;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        padding: 0 6px;
       }
     }
 
@@ -427,22 +482,17 @@ const pushSearch = (type) => {
       min-width: 260px;
       flex-shrink: 0;
 
-      .welcome-box {
-        margin-right: 10px;
+      .welcome-text {
+        font-size: 15px;
+        text-align: right;
+        color: var(--at-text-regular);
         white-space: nowrap;
 
-        .welcome-text {
-          font-size: 15px;
-          margin-left: auto;
-          text-align: right;
-          color: #666;
-
-          .username {
-            color: #000;
-            font-weight: 500;
-            padding-right: 5px;
-            text-align: center;
-          }
+        .username {
+          color: var(--at-text-main);
+          font-weight: 600;
+          padding: 0 5px 0 2px;
+          text-align: center;
         }
       }
     }
@@ -459,47 +509,80 @@ const pushSearch = (type) => {
     padding: 0;
 
     .content-card-wrapper {
-      background: #ffffff;
+      background: var(--at-bg-card);
       border-radius: 12px;
-      padding: 10px 40px;
+      padding: 28px 40px;
       min-height: 686px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+      border: 1px solid var(--at-border-warm);
+      box-shadow: 0 2px 12px rgba(44, 42, 38, 0.03);
+
+      .article-top-nav {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .back-list-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        margin-left: -10px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: var(--at-text-secondary);
+        font-size: 13.5px;
+        cursor: pointer;
+        transition: background-color 0.18s, color 0.18s;
+
+        &:hover {
+          background: var(--at-bg-stat);
+          color: var(--at-celadon);
+        }
+      }
 
       .main-title {
         font-size: 30px;
         font-weight: 700;
-        margin-bottom: 20px;
-        color: #303133;
+        margin: 0 0 16px;
+        color: var(--at-text-main);
+        line-height: 1.38;
       }
 
       .header-report {
         display: flex;
-        justify-content: flex-end;
-        // 与标题拉开、与下方分类再拉开：举报是低频且有后果的动作，
-        // 离「分类」这种高频跳转远一点，减少误触
-        margin: 12px 2px 14px 0;
+        align-items: center;
+        flex-shrink: 0;
       }
 
       .main-meta {
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 15px;
+        background: var(--at-bg-stat);
+        border-radius: 8px;
+        padding: 11px 16px;
         margin-bottom: 30px;
-        color: #909399;
+        color: var(--at-text-secondary);
         font-size: 13px;
 
         .meta-left {
           display: flex;
-          gap: 20px;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 18px;
 
           .item-nickname {
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            color: var(--at-text-regular);
+            font-weight: 500;
+            transition: color 0.18s;
 
             &:hover {
-              color: #409eff;
+              color: var(--at-celadon);
               cursor: pointer;
             }
           }
@@ -526,6 +609,7 @@ const pushSearch = (type) => {
       .article-detail-content {
         font-size: 17px;
         line-height: 1.9;
+        color: var(--at-text-main);
 
         :deep(p) {
           margin-bottom: 1.5em;
@@ -535,7 +619,7 @@ const pushSearch = (type) => {
         :deep(img) {
           max-width: 100%;
           height: auto;
-          border-radius: 4px;
+          border-radius: 6px;
           display: block;
           margin: 20px auto;
         }
@@ -559,7 +643,7 @@ const pushSearch = (type) => {
     .comment-divider {
       font-size: 18px;
       font-weight: 600;
-      border-bottom: 2px solid #f2f2f2;
+      border-bottom: 2px solid var(--at-divider-warm);
       padding-bottom: 10px;
       margin-bottom: 20px;
     }
@@ -574,13 +658,13 @@ const pushSearch = (type) => {
         width: 100%;
         height: 80px;
         z-index: 10;
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(253, 252, 249, 0.75);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--at-border-warm);
 
         .mask-link {
           font-size: 14px;
@@ -588,7 +672,7 @@ const pushSearch = (type) => {
           text-decoration: none;
 
           &.login-type {
-            color: #409eff;
+            color: var(--at-celadon);
           }
 
           &.info-type {
@@ -608,7 +692,7 @@ const pushSearch = (type) => {
       display: flex;
       gap: 15px;
       padding: 20px 0;
-      border-bottom: 1px solid #f2f2f2;
+      border-bottom: 1px solid var(--at-divider-warm);
 
       .comment-main {
         flex: 1;
@@ -619,23 +703,24 @@ const pushSearch = (type) => {
           .comment-nickname {
             font-weight: bold;
             margin-right: 10px;
+            color: var(--at-text-main);
           }
 
           .comment-time {
             font-size: 12px;
-            color: #999;
+            color: var(--at-text-secondary);
             margin-right: 20px;
           }
 
           .comment-email {
             font-size: 12px;
-            color: #b1b1b1;
+            color: var(--at-text-secondary);
           }
         }
 
         .comment-content {
           font-size: 15px;
-          color: #333;
+          color: var(--at-text-main);
           line-height: 1.6;
         }
       }
@@ -644,7 +729,7 @@ const pushSearch = (type) => {
 
   .custom-footer {
     text-align: center;
-    color: #999;
+    color: var(--at-text-secondary);
     font-size: 13px;
     padding: 30px 0;
   }
@@ -684,12 +769,7 @@ const pushSearch = (type) => {
         margin-top: 12px;
         gap: 8px;
 
-        .el-switch {
-          transform: scale(0.85);
-          transform-origin: left;
-        }
-
-        .custom-search {
+        .search-input-composite {
           flex: 1;
           width: auto;
         }
@@ -704,17 +784,16 @@ const pushSearch = (type) => {
         flex-shrink: 1;
         gap: 8px;
 
-        .welcome-box {
-          .welcome-text {
-            display: inline-flex;
-            font-size: 13px;
+        .welcome-text {
+          display: inline-flex;
+          align-items: center;
+          font-size: 13px;
 
-            .username {
-              max-width: 80px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              vertical-align: bottom;
-            }
+          .username {
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: bottom;
           }
         }
       }
@@ -740,8 +819,9 @@ const pushSearch = (type) => {
 
           .main-meta {
             flex-direction: column; // 元信息纵向排列
+            align-items: flex-start;
             gap: 10px;
-            padding-bottom: 12px;
+            padding: 10px 12px;
 
             .meta-left {
               flex-wrap: wrap;

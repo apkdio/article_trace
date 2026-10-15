@@ -291,7 +291,7 @@ const uploadSubmit = async () => {
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #334155;
+  color: var(--at-text-main);
   margin-bottom: 25px;
   position: relative;
   padding-left: 12px;
@@ -303,7 +303,7 @@ const uploadSubmit = async () => {
     transform: translateY(-50%);
     width: 4px;
     height: 16px;
-    background: #409eff;
+    background: var(--at-celadon);
     border-radius: 2px;
   }
 }
@@ -322,22 +322,22 @@ const uploadSubmit = async () => {
     width: 220px;
     height: 220px;
     border-radius: 50%;
-    border: 2px dashed #dcdfe6;
+    border: 2px dashed var(--at-border-warm);
     overflow: hidden;
     position: relative;
-    background: #f8fafc;
+    background: var(--at-bg-stat);
     transition: all 0.3s;
     &:hover {
-      border-color: #409eff;
+      border-color: var(--at-celadon);
       .upload-overlay { opacity: 1; }
     }
     /* 审核期间不能再改，别给出可点的暗示 */
     &.is-pending {
       cursor: not-allowed;
       border-style: solid;
-      border-color: #409eff;
+      border-color: var(--at-celadon);
       .upload-overlay { display: none; }
-      &:hover { border-color: #409eff; }
+      &:hover { border-color: var(--at-celadon); }
     }
   }
   .avatar { width: 100%; height: 100%; object-fit: cover; }
@@ -351,7 +351,7 @@ const uploadSubmit = async () => {
   .pending-badge {
     position: absolute; left: 0; right: 0; bottom: 0;
     padding: 6px 0; text-align: center;
-    background: rgba(64, 158, 255, 0.92); color: #fff;
+    background: rgba(43, 122, 120, 0.92); color: #fff;
     font-size: 13px; letter-spacing: 1px;
   }
 }
@@ -370,12 +370,12 @@ const uploadSubmit = async () => {
 
 .mock-card {
   width: 240px;
-  background: #fff;
+  background: var(--at-bg-card);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--at-border-warm);
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  .card-bg { height: 60px; background: linear-gradient(135deg, #4ca1af 0%, #5f88af 100%); }
+  box-shadow: 0 4px 6px -1px rgba(44, 42, 38, 0.05);
+  .card-bg { height: 60px; background: linear-gradient(135deg, #2b7a78 0%, #3a6073 100%); }
   .card-body {
     padding: 0 15px 15px;
     text-align: center;
@@ -383,11 +383,11 @@ const uploadSubmit = async () => {
     .user-meta {
       margin-top: 10px;
       display: flex; flex-direction: column;
-      .nick { font-weight: bold; color: #1e293b; }
-      .role { font-size: 12px; color: #64748b; margin-top: 4px; }
+      .nick { font-weight: bold; color: var(--at-text-main); }
+      .role { font-size: 12px; color: var(--at-text-secondary); margin-top: 4px; }
     }
   }
-  .card-hint { font-size: 11px; color: #94a3b8; text-align: center; margin-bottom: 10px; }
+  .card-hint { font-size: 11px; color: var(--at-text-secondary); text-align: center; margin-bottom: 10px; }
 }
 
 .size-variants {
@@ -397,19 +397,20 @@ const uploadSubmit = async () => {
   gap: 15px;
   .variant-item {
     display: flex; align-items: center; gap: 12px;
-    span { font-size: 13px; color: #64748b; }
+    span { font-size: 13px; color: var(--at-text-regular); }
   }
 }
 
 .tips-box {
-  background: #f0f7ff;
+  background: var(--at-bg-stat);
+  border: 1px solid var(--at-border-warm);
   border-radius: 12px;
   padding: 20px;
   max-width: 500px;
-  .tips-title { margin: 0 0 10px; color: #0369a1; font-size: 14px; }
+  .tips-title { margin: 0 0 10px; color: var(--at-celadon-dark); font-size: 14px; }
   ul {
     margin: 0; padding-left: 18px;
-    li { font-size: 13px; color: #334155; margin-bottom: 6px; line-height: 1.6; }
+    li { font-size: 13px; color: var(--at-text-regular); margin-bottom: 6px; line-height: 1.6; }
   }
 }
 

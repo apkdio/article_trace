@@ -237,13 +237,13 @@ const handleClose = (done) => {
 
   .category-name {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--at-text-main);
     font-size: 15px;
   }
 
   .category-alias {
     font-size: 12px;
-    color: #a0aec0;
+    color: var(--at-text-secondary);
     margin-top: 2px;
   }
 }
@@ -253,14 +253,14 @@ const handleClose = (done) => {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: #f1f5f9;
+  background: var(--at-bg-stat);
   border-radius: 6px;
   font-size: 13px;
-  color: #475569;
+  color: var(--at-text-regular);
 
   &.is-me {
-    background: #ecf5ff;
-    color: #409eff;
+    background: var(--at-celadon-tag-bg);
+    color: var(--at-celadon-dark);
     font-weight: 500;
   }
 }
@@ -271,12 +271,12 @@ const handleClose = (done) => {
     align-items: center;
     gap: 4px;
     font-size: 13px;
-    color: #4a5568;
+    color: var(--at-text-regular);
   }
 
   .update-info {
     font-size: 11px;
-    color: #b2becd;
+    color: var(--at-text-secondary);
     margin-top: 4px;
   }
 }
@@ -288,11 +288,16 @@ const handleClose = (done) => {
 
 /* 对齐之前的表格样式 */
 :deep(.modern-table) {
+  --el-table-bg-color: var(--at-bg-card);
+  --el-table-tr-bg-color: var(--at-bg-card);
+  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-border-color: var(--at-divider-warm);
+
   .el-table__header th {
-    background-color: #fcfcfc;
-    color: #606266;
+    background-color: var(--at-bg-stat);
+    color: var(--at-text-regular);
     font-weight: bold;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--at-border-warm);
   }
 }
 

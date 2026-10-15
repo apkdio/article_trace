@@ -29,10 +29,11 @@ defineProps({
 
 <style lang="scss" scoped>
 .sidebar-card {
-    background: #ffffff;
+    background: var(--at-bg-card);
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--at-border-warm);
+    box-shadow: 0 2px 12px rgba(44, 42, 38, 0.03);
 
     .card-header {
         display: flex;
@@ -40,9 +41,9 @@ defineProps({
         gap: 8px;
         font-weight: bold;
         font-size: 16px;
-        color: #333;
+        color: var(--at-text-main);
         padding-bottom: 15px;
-        border-bottom: 2px solid #f4f6f9;
+        border-bottom: 2px solid var(--at-bg-stat);
         margin-bottom: 15px;
 
         .el-icon {
@@ -59,16 +60,17 @@ defineProps({
         .rank-num {
             width: 20px;
             height: 20px;
-            background: #f0f2f5;
-            color: #909399;
+            background: var(--at-bg-tint);
+            color: var(--at-text-secondary);
             text-align: center;
             line-height: 20px;
             border-radius: 4px;
             margin-right: 12px;
             font-size: 12px;
+            flex-shrink: 0;
 
             &.top-three {
-                background: #409eff;
+                background: var(--at-celadon);
                 color: #fff;
             }
         }
@@ -79,16 +81,17 @@ defineProps({
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: #555;
+            color: var(--at-text-regular);
             cursor: pointer;
+            transition: color 0.18s;
 
             &:hover {
-                color: #409eff;
+                color: var(--at-celadon);
             }
         }
 
         .top-views {
-            color: #acacac;
+            color: var(--at-text-secondary);
             font-size: 12px;
             display: inline-flex;
             align-items: center;

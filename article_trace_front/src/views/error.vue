@@ -43,7 +43,7 @@ const goHome = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f8fafc;
+  background-color: var(--at-bg-page);
   overflow: hidden;
   position: relative;
 }
@@ -59,10 +59,10 @@ const goHome = () => {
   font-weight: 900;
   margin: 0;
   line-height: 1;
-  background: linear-gradient(135deg, #409eff 0%, #a0cfff 100%);
+  background: linear-gradient(135deg, #2b7a78 0%, #57a09d 100%);
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  opacity: 0.15;
+  opacity: 0.16;
   letter-spacing: -5px;
 }
 
@@ -71,14 +71,14 @@ const goHome = () => {
 
   .error-title {
     font-size: 28px;
-    color: #2c3e50;
+    color: var(--at-text-main);
     margin-bottom: 12px;
     font-weight: 600;
   }
 
   .error-tip {
     font-size: 16px;
-    color: #94a3b8;
+    color: var(--at-text-secondary);
     max-width: 400px;
     margin: 0 auto 40px;
     line-height: 1.6;
@@ -89,11 +89,11 @@ const goHome = () => {
   padding: 12px 40px;
   font-size: 16px;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(43, 122, 120, 0.2);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
+    box-shadow: 0 6px 16px rgba(43, 122, 120, 0.3);
   }
 }
 
@@ -102,7 +102,7 @@ const goHome = () => {
   position: absolute;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(64, 158, 255, 0.05) 0%, rgba(248, 250, 252, 0) 70%);
+  background: radial-gradient(circle, rgba(43, 122, 120, 0.06) 0%, rgba(245, 242, 235, 0) 70%);
   border-radius: 50%;
   top: 50%;
   left: 50%;

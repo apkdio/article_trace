@@ -33,9 +33,9 @@ const logout = (command) => {
             <div class="el-aside__logo"></div>
             <el-menu
                 :default-active="defaultActive"
-                active-text-color="#409eff"
+                active-text-color="#2b7a78"
                 background-color="transparent"
-                text-color="#5c6b77"
+                text-color="#57534c"
                 :router="true"
                 unique-opened
                 class="custom-menu"
@@ -87,12 +87,12 @@ const logout = (command) => {
 <style lang="scss" scoped>
 .layout-container {
     height: 100vh;
-    background-color: #f4f6f9;
+    background-color: var(--at-bg-page);
     display: flex;
 
     .el-aside {
-        background-color: #ebedf0;
-        border-right: 1px solid #dcdfe6;
+        background-color: var(--at-bg-aside);
+        border-right: 1px solid var(--at-border-warm);
         display: flex;
         flex-direction: column;
 
@@ -113,7 +113,7 @@ const logout = (command) => {
                 line-height: 48px !important;
                 display: flex;
                 align-items: center;
-                color: #5c6b77 !important;
+                color: var(--at-text-regular) !important;
 
                 span {
                     display: inline-block;
@@ -124,7 +124,7 @@ const logout = (command) => {
             }
 
             :deep(.el-menu--inline) {
-                background-color: rgba(0, 0, 0, 0.03) !important;
+                background-color: rgba(44, 42, 38, 0.035) !important;
                 border-radius: 6px;
                 margin: 0 10px;
                 padding: 0;
@@ -138,10 +138,10 @@ const logout = (command) => {
 
             :deep(.el-menu-item) {
                 &.is-active {
-                    background-color: #ffffff !important;
-                    color: #409eff !important;
+                    background-color: var(--at-bg-card) !important;
+                    color: var(--at-celadon) !important;
                     font-weight: 600;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    box-shadow: 0 2px 8px rgba(44, 42, 38, 0.05);
                 }
             }
         }
@@ -163,26 +163,27 @@ const logout = (command) => {
     }
 
     .el-header {
-        background: #ffffff;
+        background: var(--at-bg-card);
+        border-bottom: 1px solid var(--at-border-warm);
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 0 20px;
         height: 60px;
-        box-shadow: 0 1px 4px rgba(0, 21, 41, 0.05);
+        box-shadow: 0 1px 4px rgba(44, 42, 38, 0.03);
         z-index: 10;
         flex-shrink: 0;
 
         .header-welcome {
             .greet {
-                color: #777777;
+                color: var(--at-text-secondary);
                 font-weight: bold;
                 font-size: 16px;
                 font-family: "Microsoft YaHei", serif;
             }
 
             .user-name {
-                color: #000000;
+                color: var(--at-text-main);
                 font-weight: bold;
                 font-family: 等线, serif;
                 margin-left: 5px;
@@ -201,7 +202,8 @@ const logout = (command) => {
         min-height: 0;
 
         .router-content {
-            background: #ffffff;
+            background: var(--at-bg-card);
+            border: 1px solid var(--at-border-warm);
             flex: 1;
             border-radius: 8px;
             padding: 24px;
@@ -214,7 +216,7 @@ const logout = (command) => {
         display: flex;
         justify-content: center;
         font-size: 12px;
-        color: #999;
+        color: var(--at-text-secondary);
         background: transparent;
         height: 22px !important;
     }
@@ -228,12 +230,12 @@ const logout = (command) => {
         cursor: pointer;
 
         .notify-bell {
-            color: #5c6b77;
+            color: var(--at-text-regular);
             transition: color 0.2s;
             display: block;
 
             &:hover {
-                color: #409eff;
+                color: var(--at-celadon);
             }
         }
     }
@@ -246,13 +248,13 @@ const logout = (command) => {
 
     .label {
         font-size: 11px;
-        color: #9f9f9f;
+        color: var(--at-text-secondary);
         margin: 0;
     }
 
     .value {
         font-size: 12px;
-        color: #555555;
+        color: var(--at-text-regular);
         margin: 0;
     }
 }
@@ -291,12 +293,12 @@ const logout = (command) => {
                 .el-icon {
                     margin: 0 !important;
                     font-size: 20px;
-                    color: #5c6b77;
+                    color: var(--at-text-regular);
                 }
 
                 &.is-active {
                     .el-icon {
-                        color: #409eff;
+                        color: var(--at-celadon);
                     }
                 }
             }
@@ -304,14 +306,14 @@ const logout = (command) => {
             .el-menu--inline {
                 margin: 0 !important;
                 padding: 0 !important;
-                background-color: rgba(0, 0, 0, 0.02) !important;
+                background-color: rgba(44, 42, 38, 0.025) !important;
 
                 .el-menu-item {
                     padding-left: 0 !important;
                     background-color: transparent !important;
 
                     &:hover {
-                        background-color: rgba(64, 158, 255, 0.1) !important;
+                        background-color: rgba(43, 122, 120, 0.1) !important;
                     }
                 }
             }

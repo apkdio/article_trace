@@ -50,7 +50,7 @@ onMounted(() => {
       class="dashboard-container"
       v-loading="isLoading"
       element-loading-text="文迹数据加载中..."
-      element-loading-background="rgba(244, 246, 249, 0.7)"
+      element-loading-background="rgba(245, 242, 235, 0.7)"
   >
     <template v-if="!isLoading">
       <!-- 保持原有结构，动画是通过 CSS animation 实现的 -->
@@ -196,18 +196,18 @@ onMounted(() => {
 
 /* 将动画应用到相应的元素上 */
 .top-section {
-  background: #ffffff;
+  background: var(--at-bg-card);
   border-radius: 12px;
   padding: 35px 20px;
   text-align: center;
-  border: 1px solid #dcdfe6;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--at-border-warm);
+  box-shadow: 0 2px 12px 0 rgba(44, 42, 38, 0.03);
   animation: fadeIn 0.6s ease-out; /* 保留动画 */
 
   .welcome-title {
     font-size: 26px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--at-text-main);
     margin-bottom: 35px;
     letter-spacing: 1px;
   }
@@ -221,7 +221,7 @@ onMounted(() => {
     .hitokoto-text {
       font-size: 20px;
       line-height: 1.8;
-      color: #5c6b77;
+      color: var(--at-text-regular);
       font-family: "PingFang SC", "Microsoft YaHei", serif;
       margin: 0;
     }
@@ -229,14 +229,14 @@ onMounted(() => {
     .hitokoto-from {
       margin-top: 20px;
       font-size: 15px;
-      color: #909399;
+      color: var(--at-text-secondary);
       font-style: italic;
     }
 
     .quote-mark {
       position: absolute;
       font-size: 55px;
-      color: #d3d3d3;
+      color: #d5cfc2;
       font-family: "Georgia", serif;
       user-select: none;
 
@@ -274,7 +274,7 @@ onMounted(() => {
 
     .main-label {
       font-size: 13px;
-      color: #909399;
+      color: var(--at-text-secondary);
       margin-top: 8px;
     }
   }
@@ -283,7 +283,7 @@ onMounted(() => {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    background: #f8fafc;
+    background: var(--at-bg-stat);
     border-radius: 8px;
     padding: 12px 5px;
 
@@ -300,18 +300,18 @@ onMounted(() => {
         top: 20%;
         height: 60%;
         width: 1px;
-        background: #e2e8f0;
+        background: var(--at-border-warm);
       }
 
       .item-num {
         font-size: 18px;
         font-weight: 600;
-        color: #303133;
+        color: var(--at-text-main);
       }
 
       .item-label {
         font-size: 11px;
-        color: #a8abb2;
+        color: var(--at-text-secondary);
         margin-top: 4px;
       }
     }
@@ -336,12 +336,12 @@ onMounted(() => {
   animation: fadeIn 0.8s ease-out; /* 保留动画 */
 
   .grid-content {
-    background: #ffffff;
+    background: var(--at-bg-card);
     border-radius: 12px;
     height: 100%;
     min-height: 200px;
     padding: 18px;
-    border: 1px solid #dcdfe6;
+    border: 1px solid var(--at-border-warm);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -355,8 +355,8 @@ onMounted(() => {
       top: 0;
       bottom: 0;
       width: 4px;
-      background: linear-gradient(to bottom, #409eff, #71b1ff);
-      opacity: 0.8;
+      background: linear-gradient(to bottom, #2b7a78, #57a09d);
+      opacity: 0.85;
       transition: opacity 0.3s;
     }
 
@@ -364,10 +364,10 @@ onMounted(() => {
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #409eff;
+      color: var(--at-celadon);
       font-weight: 600;
       font-size: 16px;
-      border-bottom: 1px solid #f0f2f5;
+      border-bottom: 1px solid var(--at-divider-warm);
       padding-bottom: 15px;
       margin-bottom: 20px;
     }
@@ -384,14 +384,14 @@ onMounted(() => {
   .data-num {
     font-size: 42px;
     font-weight: 700;
-    color: #303133;
+    color: var(--at-text-main);
     margin: 0;
     font-family: 'Arial', sans-serif;
   }
 
   .data-label {
     font-size: 14px;
-    color: #909399;
+    color: var(--at-text-secondary);
     margin-top: 10px;
   }
 }
@@ -408,22 +408,22 @@ onMounted(() => {
 
     .el-icon {
       margin-right: 12px;
-      color: #a8abb2;
+      color: var(--at-text-secondary);
       font-size: 17px;
     }
 
     .label {
-      color: #909399;
+      color: var(--at-text-secondary);
       width: 55px;
       flex-shrink: 0;
     }
 
     .value {
-      color: #303133;
+      color: var(--at-text-main);
       font-weight: 500;
 
       &.is-empty {
-        color: #c0c4cc;
+        color: #c0bbb0;
         font-style: italic;
         font-weight: normal;
       }
@@ -435,9 +435,9 @@ onMounted(() => {
   cursor: pointer;
 
   &:hover {
-    transform: translateY(-8px);
-    border-color: #409eff;
-    box-shadow: 0 15px 30px rgba(64, 158, 255, 0.1);
+    transform: translateY(-6px);
+    border-color: var(--at-celadon);
+    box-shadow: 0 15px 30px rgba(43, 122, 120, 0.10);
 
     &::before {
       opacity: 1;

@@ -44,8 +44,8 @@ article_trace_front/
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
     ├── assets/                     # 静态资源
-    │   ├── main.scss               #   全局样式
-    │   ├── quill-content.scss      #   正文排版类（对齐/缩进）在展示侧的样式
+    │   ├── main.scss               #   全局样式与宣纸竹青主题变量
+    │   ├── quill-content.scss      #   正文排版（对齐/缩进/字号/引用/代码块/表格）在展示侧的样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
     ├── components/                 # 公共组件
     │   ├── UserLayout.vue          #   用户中心布局（侧边栏 + header）
@@ -209,7 +209,7 @@ article_trace_front/
 | 页面 | 功能 |
 |---|---|
 | `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10 / 站内通知铃铛，未登录不显示）|
-| `articleInfo.vue` | 文章详情 + 评论 + 站内通知铃铛。「举报文章」单独占一行、右对齐到分类标签那条竖线上（与分类留 14px 间隔），避开与「分类」这个高频跳转贴在一起误触。正文里的 LaTeX 公式在渲染后（`renderMathIn`）展示 |
+| `articleInfo.vue` | 文章详情 + 评论 + 站内通知铃铛。左上角提供「返回文章列表」入口；标题下方元信息栏左侧放置分类标签、作者、发布日期与阅读数，「举报文章」置于元信息栏最右侧，与左侧分类标签远隔两端避免误触。正文里的 LaTeX 公式在渲染后（`renderMathIn`）展示 |
 | `login.vue` | 登录 / 注册 / 找回密码（注册与找回密码的图形码走弹窗，登录的图形码内联）|
 | `readerHome.vue` | 读者中心布局（复用 `UserLayout`，含站内通知）|
 | `mainPage.vue` | 后台侧边栏布局（复用 `UserLayout`，含站内通知）|
@@ -237,7 +237,7 @@ article_trace_front/
 
 Quill 输出的 HTML 用 class 表达排版（`ql-align-center`、`ql-indent-2`…）。snow 主题的 CSS 只在**编辑器**（`ArticleManage.vue`）里引入，而正文页、预览抽屉、审核面板都是 `v-html` 直渲染同一份 HTML——**没有那份 CSS 就没有样式**，现象是「编辑时居中，发出去是左对齐、缩进消失」。
 
-所以展示侧另有一份最小补丁 `assets/quill-content.scss`（`main.js` 全局引入），只覆盖对齐与缩进两级，取值逐条对齐 quill 的 snow 主题：正文 `3em/级`，列表项 `1.5em + 3em/级`。
+所以展示侧另有一份 `assets/quill-content.scss`（`main.js` 全局引入），覆盖对齐、缩进（正文 `3em/级`，列表项 `1.5em + 3em/级`）、字号档位以及标题、引用块、行内代码、深色代码块与表格的阅读排版样式。
 
 > 列表本身不需要补丁：quill 1.3 输出的是普通 `ul` / `ol` + `li`，符号走浏览器默认（`data-list` 那套是 Quill 2.x 的形态，本版本 CSS 里一次都没出现）。
 >

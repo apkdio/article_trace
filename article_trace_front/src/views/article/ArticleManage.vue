@@ -1036,7 +1036,8 @@ const refreshAfterDelete = async () => {
 
 /* 搜索栏背景微调，确保各页面色值统一 */
 .search-bar {
-  background: #f8fafc; // 使用更清爽的蓝灰色调，替代较暗的 #f4f4f4
+  background: var(--at-bg-stat);
+  border: 1px solid var(--at-border-warm);
   padding: 10px 20px 2px;
   border-radius: 8px;
   margin-bottom: 10px;
@@ -1055,7 +1056,7 @@ const refreshAfterDelete = async () => {
   height: 75px;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid #eee;
+  border: 1px solid var(--at-border-warm);
 
   .full-img {
     width: 100%;
@@ -1073,18 +1074,19 @@ const refreshAfterDelete = async () => {
     align-items: center;
     width: 100%;
     height: 100%;
-    background: #f5f7fa;
-    color: #909399;
+    background: var(--at-bg-stat);
+    color: var(--at-text-secondary);
   }
 }
 
 .table-article-title {
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--at-text-main);
   font-size: 15px;
+  transition: color 0.18s;
 
   &:hover {
-    color: #409eff;
+    color: var(--at-celadon);
     cursor: pointer;
   }
 }
@@ -1095,13 +1097,13 @@ const refreshAfterDelete = async () => {
     display: flex;
     align-items: center;
     gap: 5px;
-    color: #444;
+    color: var(--at-text-main);
     font-weight: 500;
   }
 
   .sub-time {
     font-size: 11px;
-    color: #a5a5a5;
+    color: var(--at-text-secondary);
     margin-top: 4px;
   }
 }
@@ -1262,14 +1264,14 @@ const refreshAfterDelete = async () => {
   color: #8c939d;
   width: 178px;
   height: 178px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed var(--at-border-warm);
   border-radius: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
 
   &:hover {
-    border-color: #409eff;
+    border-color: var(--at-celadon);
   }
 }
 
@@ -1294,10 +1296,16 @@ const refreshAfterDelete = async () => {
 }
 
 :deep(.modern-table) {
+  --el-table-bg-color: var(--at-bg-card);
+  --el-table-tr-bg-color: var(--at-bg-card);
+  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-border-color: var(--at-divider-warm);
+
   .el-table__header th {
-    background-color: #fcfcfc;
-    color: #606266;
+    background-color: var(--at-bg-stat);
+    color: var(--at-text-regular);
     font-weight: bold;
+    border-bottom: 1px solid var(--at-border-warm);
   }
 
 
@@ -1315,14 +1323,14 @@ const refreshAfterDelete = async () => {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background: #f1f5f9;
+  background: var(--at-bg-stat);
   border-radius: 6px;
   font-size: 13px;
-  color: #475569;
+  color: var(--at-text-regular);
 
   &.is-me {
-    background: #ecf5ff;
-    color: #409eff;
+    background: var(--at-celadon-tag-bg);
+    color: var(--at-celadon-dark);
     font-weight: 500;
   }
 }
@@ -1336,14 +1344,14 @@ const refreshAfterDelete = async () => {
 }
 
 :deep(.modern-preview-drawer) {
-  background-color: #fdfdfd;
+  background-color: var(--at-bg-card);
 }
 
 .el-drawer__header {
   margin-bottom: 0 !important;
   padding-bottom: 0 !important;
-  border-bottom: 1px solid #f2f2f2;
-  color: #333;
+  border-bottom: 1px solid var(--at-divider-warm);
+  color: var(--at-text-main);
   font-weight: bold;
 }
 
