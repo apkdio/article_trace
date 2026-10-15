@@ -47,7 +47,11 @@ const setDefaultValue = () => {
     id: store.id,
     username: store.username,
     nickname: store.nickname,
-    email: store.email
+    email: store.email,
+    // signature 不回填就会出现「改个签时不自动填充」；type 不回填则个签表单项的
+    // v-if(type !== 2) 恒为真，读者也会看到这个框（后端会丢弃读者的签名）
+    type: store.type,
+    signature: store.signature ?? ''
   }
 }
 

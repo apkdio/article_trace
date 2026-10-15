@@ -19,6 +19,7 @@ export const userInfoStore
         const articlesTotal = ref(0)
         const categories = ref(0)
         const type = ref()
+        const signature = ref("")
         const allArticles = ref()
         const waitTotal = ref(0)
         const accessTotal = ref(0)
@@ -39,6 +40,7 @@ export const userInfoStore
                 userPicThumbSrc.value = result.data.userPicThumbSrc
                 articlesTotal.value = result.data.articlesTotal
                 type.value = result.data.type
+                signature.value = result.data.signature ?? ""
             }).catch((err) => {
                 return Promise.reject(err)
             })
@@ -94,6 +96,7 @@ export const userInfoStore
             categories.value = 0
             articlesTotal.value = 0
             type.value = null
+            signature.value = ""
             allArticles.value = 0
             waitTotal.value = 0
             rejectTotal.value = 0
@@ -104,7 +107,7 @@ export const userInfoStore
             fetchUserInfo, refreshUserLogo, clearUserInfo,
             username, userPic, userPicSrc, userPicThumbSrc, email, nickname, lastLogin, id,
             updateTime, createTime, categories, articlesTotal, setLastLogin,
-            type, allArticles, fetchArticlesCount, waitTotal,accessTotal,rejectTotal,fetchCategories
+            type, signature, allArticles, fetchArticlesCount, waitTotal,accessTotal,rejectTotal,fetchCategories
         }
     },
     {

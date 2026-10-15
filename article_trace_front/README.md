@@ -134,7 +134,7 @@ article_trace_front/
 
 | 仓库 | 用途 |
 |---|---|
-| `userInfo` | 当前登录用户信息（**仅展示字段，不含凭证**）。`fetchUserInfo()` 拉整份（登录 / 改资料 / 应用启动）；`refreshUserLogo()` 只刷新头像三个字段（头像页提交与重置）|
+| `userInfo` | 当前登录用户信息（**仅展示字段，不含凭证**）。`fetchUserInfo()` 拉整份（登录 / 改资料 / 应用启动）；`refreshUserLogo()` 只刷新头像三个字段（头像页提交与重置）。其中 `signature`（个签）只有作者与站长有，**改资料页靠它回填**——store 缺了就会出现「个签打开是空的」|
 | `searchConditions` | 跨页面搜索条件 |
 
 ### AI 问答（AgentChat.vue）
