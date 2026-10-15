@@ -18,7 +18,8 @@ import articleInfo from "@/views/public/articleInfo.vue";
 
 
 const routes = [
-    {path: "", redirect: "/publicHome"},
+    // 顶层必须写 "/"：空串只对嵌套子路由生效，写 "" 匹配不到根路径，会直接掉进兜底 error 页
+    {path: "/", redirect: "/publicHome"},
     {path: "/publicHome", component: publicHome, name: "PublicHome", meta: {title: "首页"}},
     {
         path: "/article/:id", component: articleInfo, name: "ArticleInfo", props: true,
@@ -103,7 +104,8 @@ const routes = [
             }
         ],
     },
-    {component: () => import('@/views/error.vue'), name: "ErrorPage", meta: {noTransition: true, title: "出错了"}},
+    // 这条必须给 path：不写 path 时 vue-router 会把它当成 "/"，从而抢走根路径（表现为打开裸地址落到出错页）
+    {path: "/error", component: () => import('@/views/error.vue'), name: "ErrorPage", meta: {noTransition: true, title: "出错了"}},
     {
         path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/error.vue'),
         meta: {noTransition: true, title: "出错了"}
