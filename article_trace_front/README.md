@@ -207,6 +207,8 @@ article_trace_front/
 
 ### 页面视图（views/）
 
+> **`v-loading` 的目标必须有定位**：遮罩（`.el-loading-mask`）是绝对定位的，而这份 Element Plus 版本**不会**给加载目标补 `position: relative`（代码里已没有 `el-loading-parent`，只剩 CSS 里那条规则）。目标若是 `static`、祖先也没定位，遮罩就会锚到初始包含块 = **整个视口**（连固定页头一起罩住，看着「太靠上」）。`main.scss` 已给 `.el-main / .el-aside / .el-table` 兜了定位；把 `v-loading` 挂到别的容器上时，记得那个容器也要有定位。
+
 | 页面 | 功能 |
 |---|---|
 | `publicHome.vue` | 文章公开列表（分类筛选 / 搜索 / 热门 Top10 / 站内通知铃铛，未登录不显示）|

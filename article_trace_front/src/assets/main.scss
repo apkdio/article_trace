@@ -61,6 +61,16 @@ body {
   width: 100% !important;
 }
 
+/* v-loading 的遮罩（.el-loading-mask）是 absolute 的，而这份 Element Plus 版本**不会**给加载目标
+   补 position: relative（代码里已经没有 el-loading-parent 了，只剩 CSS 里那条规则）。
+   目标若是 static，遮罩就锚到初始包含块——整个视口，把固定页头一起罩住、范围看着「太靠上」。
+   这里给最常承载 v-loading 的容器兜住定位；新页面把 v-loading 挂到别的容器上时，那个容器也要有定位 */
+.el-main,
+.el-aside,
+.el-table {
+  position: relative;
+}
+
 /* 通用文章分类标签 */
 .category-chip {
   display: inline-flex;
