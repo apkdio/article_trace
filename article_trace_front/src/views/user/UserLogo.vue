@@ -69,6 +69,11 @@ const removeUserLogo = () => {
         if (result.code === 0) {
           ElMessage.success("重置成功！")
           uploadRef.value.clearFiles()
+          // 重置成功就本地立即回落到默认头像：别把「预览变没变」押在随后的 nowLogo 上——
+          // refreshUserLogo 遇到非 0 会静默返回，那样 imgSrc 还是旧值，预览（含浏览器图片缓存）
+          // 会一直显示那张已被删掉的旧头像。下面的 loadValue 只为同步 store 与顶栏。
+          imgSrc.value = ''
+          imgKey.value = ''
           await loadValue()
         } else {
           ElMessage.error("重置失败！")
