@@ -89,6 +89,12 @@ const removeUserLogo = () => {
 
 
 function changeSetSrc(file, fileList) {
+  // 待审期间不许改：按钮与 el-upload 都已禁用，这里再兜一道（拖拽等路径也能触发 change）
+  if (isPending.value) {
+    uploadRef.value?.clearFiles()
+    ElMessage.warning("头像正在审核中，通过或驳回后才能重新上传")
+    return
+  }
   if (fileList.length > 0) {
     const currentFile = fileList[fileList.length - 1]
     if (currentFile.raw && isAllowedImageType(currentFile.raw.type)) {
@@ -173,6 +179,7 @@ const uploadSubmit = async () => {
                   accept="image/*"
                   :show-file-list="false"
                   :auto-upload="false"
+                  :disabled="isPending"
                   :on-change="changeSetSrc"
               >
                 <div class="preview-box" :class="{'is-pending': isPending}">
