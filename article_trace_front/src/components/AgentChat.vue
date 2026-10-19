@@ -50,6 +50,8 @@ async function send() {
     matchedArticles.value = []
     scrollToBottom()
 
+    let failed = false
+    let failText = ''
     try {
         await askAgentStream(
             {query, sessionId: sessionId.value || undefined},
@@ -65,22 +67,20 @@ async function send() {
                     scrollToBottom()
                 },
                 onError: (msg) => {
-                    if (!streamingContent.value) {
-                        streamingContent.value = msg || 'AI 助手暂时不可用。'
-                    }
+                    // 流中失败（如答案引用了不存在的来源，agent 末条回 ok=False）不能静默忽略：
+                    // 之前已经把内容逐字下发过来了，那一段是「不可信」的，必须整条丢弃
+                    failed = true
+                    failText = msg || 'AI 助手暂时不可用。'
                 }
             }
         )
-        messages.value.push({
-            role: 'assistant',
-            content: streamingContent.value,
-            articles: matchedArticles.value
-        })
+        messages.value.push(failed
+            ? {role: 'assistant', content: failText, failed: true}
+            : {role: 'assistant', content: streamingContent.value, articles: matchedArticles.value})
     } catch (e) {
         ElMessage.error('对话失败，请稍后重试')
-        if (!streamingContent.value) {
-            messages.value.push({role: 'assistant', content: '抱歉，AI 助手暂时不可用。'})
-        }
+        // 连接断了也一样：已经下发的半截答案不能当正常回答留下
+        messages.value.push({role: 'assistant', content: '抱歉，AI 助手暂时不可用。', failed: true})
     } finally {
         streaming.value = false
         streamingContent.value = ''
@@ -257,7 +257,7 @@ function formatSessionTime(ts) {
                         <p class="empty-tip">可以问我「有什么关于 xxx 的文章」</p>
                     </div>
 
-                    <div v-for="(msg, index) in messages" :key="index" :class="['msg', msg.role]">
+                    <div v-for="(msg, index) in messages" :key="index" :class="['msg', msg.role, {failed: msg.failed}]">
                         <div class="bubble">{{ msg.content }}</div>
                         <div v-if="msg.articles && msg.articles.length" class="refs">
                             <div v-for="a in msg.articles" :key="a.id" class="ref-item"
@@ -505,6 +505,13 @@ function formatSessionTime(ts) {
                         border-radius: 12px 12px 12px 4px;
                         box-shadow: 0 1px 4px rgba(44, 42, 38, 0.06);
                     }
+                }
+
+                /* 流中失败/生成失败：这不是一条正常回答，用弱化色区分出来 */
+                &.failed .bubble {
+                    color: var(--at-text-secondary);
+                    font-style: italic;
+                    background: rgba(180, 85, 45, 0.08);
                 }
 
                 .bubble {
