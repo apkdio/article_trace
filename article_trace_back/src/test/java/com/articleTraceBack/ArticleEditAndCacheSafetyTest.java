@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
+import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ArticleMapper;
@@ -109,7 +110,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("被编辑后的正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertThrows(Exception.class, () -> articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit"),
+        assertThrows(Exception.class, () -> articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", null),
                 "标题撞唯一索引应当抛异常（由上层转友好提示）");
 
         // 核心断言：旧正文对象从未被删除
@@ -135,7 +136,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("新正文");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit"), "正常编辑应当成功");
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", null), "正常编辑应当成功");
 
         // 写库成功后旧对象才被清理
         verify(rustFsUtil).delete(eq(oldKey), eq("json"));
@@ -181,5 +182,36 @@ public class ArticleEditAndCacheSafetyTest {
         assertEquals("标题,含逗号", hot.get(0).getTitle());
 
         redis.delete(cacheKey);
+    }
+
+    /**
+     * P1-3：CAS 必须带 state 维——审核（2→1 或 2→3）与保存并发时，后到的一方要落空，
+     * 不允许出现「驳回成功、保存又把状态写回已发布」这种状态机外的转移。
+     */
+    @Test
+    public void editFailsWhenStateChangedSinceRead() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-状态竞争-" + System.nanoTime(), "zz-test-old3.json");
+        // insertArticle 落的是草稿(0)；模拟「读取后、保存前」审核把它改成了待审(2)
+        articleMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Article>()
+                .eq("id", id).set("state", ArticleService.STATE_PENDING));
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-状态竞争改-" + System.nanoTime());
+        edit.setContent("新正文");
+        edit.setState(ArticleService.STATE_PUBLISHED);
+
+        // expectedState 还是读取时的 0：库里已是 2，CAS 应落空并抛「刚被改过」
+        assertThrows(ArticleConcurrentEditException.class,
+                () -> articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", ArticleService.STATE_DRAFT),
+                "状态在读取后被审核改过，保存必须落空而不是覆盖");
+        // 状态不被保存动作改写，仍是审核落下的 2
+        assertEquals(ArticleService.STATE_PENDING, articleMapper.selectById(id).getState(),
+                "并发下状态必须停留在审核结果上");
     }
 }

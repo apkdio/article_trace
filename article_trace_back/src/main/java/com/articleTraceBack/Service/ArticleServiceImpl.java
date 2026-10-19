@@ -67,7 +67,8 @@ public class ArticleServiceImpl implements ArticleService {
         return sensitiveWordHolder.get().search(TextNormalizer.forMatch(content));
     }
     @Override
-    public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username) {
+    public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username,
+                                      Integer expectedState) {
         // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
         // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
         article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
@@ -131,8 +132,13 @@ public class ArticleServiceImpl implements ArticleService {
             } else {
                 // content 每次保存都换成新的对象名，正好当版本号：两人同时编辑时后写者更新 0 行，
                 // 而不是静默覆盖先写者的编辑（它的新对象还会成为无人引用的孤儿）。
+                // state 是第二个版本维：CAS 条件用进入接口时读到的旧值（controller 传入），不能重读库——
+                // 重读会拿到并发先写者刚落的新值，校验等于白做。
                 UpdateWrapper<Article> cas = new UpdateWrapper<>();
                 cas.eq("id", article.getId()).eq("content", oldContentName);
+                if (expectedState != null) {
+                    cas.eq("state", expectedState);
+                }
                 saved = articleMapper.update(article, cas) == 1;
                 if (!saved && articleMapper.selectById(article.getId()) != null) {
                     // 0 行且文章还在 = 别人先改了：交给下面的 catch 回收本次上传，并给出明确提示

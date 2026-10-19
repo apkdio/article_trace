@@ -13,10 +13,11 @@ public interface ArticleService {
     /**
      * 新增或更新一篇文章；封面随本次请求一起提交。
      *
-     * @param cover 新封面文件；为 null 表示不换封面，此时 {@code article.coverImg}
-     *              只接受「空串 = 删除封面」或「与库中原值一致」，其余一律回退为原值
+     * @param cover        新封面文件；为 null 表示不换封面，此时 {@code article.coverImg}
+     *                     只接受「空串 = 删除封面」或「与库中原值一致」，其余一律回退为原值
+     * @param expectedState 更新时 CAS 期望的文章状态（以进入接口时的读数为准，防止与审核并发互相覆盖）
      */
-    boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username);
+    boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username, Integer expectedState);
 
     /** 查同一作者是否已有同名文章（标题在作者内唯一，不同作者可同名） */
     Article findArticleByUserAndTitle(int userId, String articleTitle);

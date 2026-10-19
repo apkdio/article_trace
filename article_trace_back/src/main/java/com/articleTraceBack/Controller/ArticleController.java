@@ -110,7 +110,8 @@ public class ArticleController {
             article.setState(target);
             ArticleSensitivityGuard.applyMark(article, matches);
             try {
-                if (articleService.articleAddOrUpdate(article, 0, cover, username)) {
+                // expectedState 传「进入接口时」读到的状态：保存与审核并发时，CAS 会让后到的一方落空
+                if (articleService.articleAddOrUpdate(article, 0, cover, username, null)) {
                     return Result.success(savedResult(article, (int) userInfo.get("type")));
                 }
             } catch (DuplicateKeyException e) {
@@ -184,7 +185,8 @@ public class ArticleController {
                 article.setState(target);
                 ArticleSensitivityGuard.applyMark(article, matches);
                 try {
-                    if (articleService.articleAddOrUpdate(article, 1, cover, username)) {
+                    // expectedState 传「进入接口时」读到的状态：保存与审核并发时，CAS 会让后到的一方落空
+                    if (articleService.articleAddOrUpdate(article, 1, cover, username, art.getState())) {
                         return Result.success(savedResult(article, roleType));
                     }
                 } catch (ArticleConcurrentEditException e) {
