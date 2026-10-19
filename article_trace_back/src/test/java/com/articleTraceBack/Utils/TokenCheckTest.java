@@ -38,7 +38,7 @@ class TokenCheckTest {
     @Test
     void writersCanUseAuthorEndpoints() {
         for (String uri : new String[]{
-                "/article/list", "/article/add", "/article/update/12", "/article/delete", "/article/detail/12",
+                "/article/list", "/article/add", "/article/update/12", "/article/delete",
                 "/category", "/category/add", "/category/update/3", "/category/delete/3",
                 "/applyAuthor", "/applyAuthor/mine", "/avatar/mine", "/report",
                 "/notification/list", "/notification/unreadCount", "/notification/readAll",
@@ -69,7 +69,7 @@ class TokenCheckTest {
         for (String uri : new String[]{
                 "/category", "/category/add", "/category/detail/2",
                 "/article/list", "/article/add", "/article/update/12",
-                "/article/delete", "/article/detail/12", "/article/count",
+                "/article/delete", "/article/count",
                 "/article/assess", "/article/manageArticles",
                 "/user/accountManage", "/user/delete", "/user/changeType",
                 "/review/summary", "/report/manage/list", "/applyAuthor/manage/list"}) {
@@ -98,7 +98,7 @@ class TokenCheckTest {
         for (String uri : new String[]{
                 "/user/accountManage", "/user/delete", "/user/changeType",
                 "/article/assess", "/article/manageArticles", "/article/count",
-                "/article/add", "/article/list", "/article/detail/12",
+                "/article/add", "/article/list",
                 "/category", "/category/add", "/review/summary",
                 "/applyAuthor/manage/review/1", "/avatar/manage/review/2"}) {
             assertFalse(TokenCheck.blocked(uri, 0, writerRules, readerRules), "站长应放行: " + uri);

@@ -125,18 +125,6 @@ public class ArticleController {
         return Result.error(error);
     }
 
-    /** 文章详情（作者侧，存在即返回） */
-    @GetMapping("/detail/{id}")
-    public Result<Article> detail(@PathVariable("id") int id) {
-        Map<String, Object> error = new HashMap<>();
-        if (articleService.findArticleById(id)) {
-            Article article = articleService.findArticleByIdWithEntity(id);
-            return Result.success(article);
-        }
-        error.put("error", "文章不存在!");
-        return Result.error(error);
-    }
-
     /** 更新文章。封面随本次请求一起提交；不传 cover 时按 {@code article.coverImg} 决定保留还是清空。 */
     @PatchMapping("/update/{id}")
     public Result<Map<String, Object>> update(@PathVariable("id") int id,
