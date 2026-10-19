@@ -110,11 +110,11 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
                     for a in item.get("articles", [])
                 ]
                 yield pb.AskStreamChunk(
-                    ok=True,
+                    ok=item.get("ok", True),
                     articles=matched,
                     delta=item.get("delta", ""),
                     session_id=item.get("session_id", ""),
-                    message="",
+                    message=item.get("message", ""),
                 )
         except Exception as e:
             logger.error("Ask stream failed: %s", e)

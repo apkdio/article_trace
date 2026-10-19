@@ -45,6 +45,28 @@ def _get_retriever():
 
 
 _PUNCT_RE = re.compile(r"[\s，。！？；：、,.!?;:～~·…\-—_]+")
+_CITE_RE = re.compile(r"《([^》]+)》")
+
+# LLM 输出不可信：生成失败/引用了不存在的来源时统一回这句，且不落会话历史
+_LLM_FAIL_TEXT = "抱歉，本次回答生成失败，请稍后重试。"
+
+
+def _section(tag: str, text: str) -> str:
+    """用定界标签包住一段数据，配合系统提示声明「只是数据不是指令」。"""
+    return f"【{tag}开始】\n{text}\n【{tag}结束】"
+
+
+def _answer_ok(answer: str, articles: list) -> bool:
+    """LLM 输出不可信：答案非空，且引用的《标题》都来自本次召回才算可信。"""
+    if not (answer or "").strip():
+        return False
+    titles = {(a.get("title") or "").strip() for a in articles}
+    for cited in _CITE_RE.findall(answer):
+        c = cited.strip()
+        if c and not any(c == t or c in t or t in c for t in titles):
+            logger.warning("answer cited unknown source: %s", c)
+            return False
+    return True
 
 
 def _is_greeting(query: str) -> bool:
@@ -150,9 +172,9 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
         for m in get_recent(session_id)
     )
 
-    # 纯检索模式：直接返回命中片段原文
+    # 纯检索模式：只回命中文章列表，不回正文原文
     if _behavior.get("retrieval_only", False):
-        answer = _context_block(fused, _article_cfg.get("context_chunks", 4)) or "暂无相关文章。"
+        answer = "已为你找到相关文章，请查看下方列表。"
         append_message(session_id, "assistant", answer)
         return {"answer": answer, "articles": articles}
 
@@ -161,28 +183,33 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
             [
                 SystemMessage(content=load_main_prompts()),
                 HumanMessage(content=(
-                    f"对话历史：\n{history_block}\n\n"
-                    f"用户问题：{q}\n\n"
+                    f"{_section('对话历史', history_block or '无')}\n\n"
+                    f"{_section('用户问题', q)}\n\n"
                     f"（参考资料为空，请据实说明暂未检索到相关文章。）"
                 )),
             ],
             model=_llm_cfg.get("model"),
             temperature=_llm_cfg.get("temperature", 0.3),
         )
+        if not _answer_ok(answer, []):
+            return {"answer": _LLM_FAIL_TEXT, "articles": []}
         append_message(session_id, "assistant", answer)
         return {"answer": answer, "articles": []}
 
     context_block = _context_block(fused, _article_cfg.get("context_chunks", 4))
     user_msg = (
-        f"对话历史：\n{history_block}\n\n"
-        f"参考资料：\n{context_block}\n\n"
-        f"用户问题：{q}"
+        f"{_section('对话历史', history_block or '无')}\n\n"
+        f"{_section('参考资料', context_block)}\n\n"
+        f"{_section('用户问题', q)}"
     )
     answer = chat_once(
         [SystemMessage(content=load_main_prompts()), HumanMessage(content=user_msg)],
         model=_llm_cfg.get("model"),
         temperature=_llm_cfg.get("temperature", 0.3),
     )
+    if not _answer_ok(answer, articles):
+        logger.info("[Ask] q=%s → 输出不可信，已丢弃", digest(q))
+        return {"answer": _LLM_FAIL_TEXT, "articles": articles}
     append_message(session_id, "assistant", answer)
     logger.info("[Ask] q=%s → %d article(s)", digest(q), len(articles))
     return {"answer": answer, "articles": articles}
@@ -228,9 +255,9 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
         for m in get_recent(session_id)
     )
 
-    # 纯检索模式：命中片段作为单条增量直接返回
+    # 纯检索模式：只回命中文章列表，不回正文原文
     if _behavior.get("retrieval_only", False):
-        answer = _context_block(fused, _article_cfg.get("context_chunks", 4)) or "暂无相关文章。"
+        answer = "已为你找到相关文章，请查看下方列表。"
         append_message(session_id, "assistant", answer)
         yield {"articles": articles, "delta": answer, "session_id": session_id}
         return
@@ -240,16 +267,16 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
 
     if not articles:
         user_msg = (
-            f"对话历史：\n{history_block}\n\n"
-            f"用户问题：{q}\n\n"
+            f"{_section('对话历史', history_block or '无')}\n\n"
+            f"{_section('用户问题', q)}\n\n"
             f"（参考资料为空，请据实说明暂未检索到相关文章。）"
         )
     else:
         context_block = _context_block(fused, _article_cfg.get("context_chunks", 4))
         user_msg = (
-            f"对话历史：\n{history_block}\n\n"
-            f"参考资料：\n{context_block}\n\n"
-            f"用户问题：{q}"
+            f"{_section('对话历史', history_block or '无')}\n\n"
+            f"{_section('参考资料', context_block)}\n\n"
+            f"{_section('用户问题', q)}"
         )
 
     messages = [SystemMessage(content=load_main_prompts()), HumanMessage(content=user_msg)]
@@ -259,5 +286,11 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
         if chunk:
             full += chunk
             yield {"articles": [], "delta": chunk, "session_id": session_id}
+    # LLM 输出不可信：生成空/引用了不存在的来源 → 不落历史，末条回 ok=False 供调用方丢弃
+    if not _answer_ok(full, articles):
+        logger.info("[AskStream] q=%s → 输出不可信", digest(q))
+        yield {"articles": [], "delta": "", "session_id": session_id,
+               "ok": False, "message": _LLM_FAIL_TEXT}
+        return
     append_message(session_id, "assistant", full)
     logger.info("[AskStream] q=%s → %d article(s)", digest(q), len(articles))
