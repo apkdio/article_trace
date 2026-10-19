@@ -56,6 +56,11 @@ def _section(tag: str, text: str) -> str:
     return f"【{tag}开始】\n{text}\n【{tag}结束】"
 
 
+def _fail_chunk(session_id: str) -> dict:
+    """输出不可信/生成失败时的收尾块：末条回 ok=False + 固定文案，由调用方丢弃这一轮的答案。"""
+    return {"articles": [], "delta": "", "session_id": session_id, "ok": False, "message": _LLM_FAIL_TEXT}
+
+
 def _answer_ok(answer: str, articles: list) -> bool:
     """LLM 输出不可信：答案非空，且引用的《标题》都来自本次召回才算可信。"""
     if not (answer or "").strip():
@@ -156,6 +161,10 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
             model=_llm_cfg.get("model"),
             temperature=_llm_cfg.get("temperature", 0.3),
         )
+        # 与检索路径同一道出口：生成失败 / 空答案 → 固定文案，且不落任何会话消息
+        if not _answer_ok(answer, []):
+            logger.info("[Ask] greeting q=%s → 输出不可信", digest(q))
+            return {"answer": _LLM_FAIL_TEXT, "articles": []}
         append_message(session_id, "user", q)
         append_message(session_id, "assistant", answer)
         return {"answer": answer, "articles": []}
@@ -239,6 +248,11 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
             if chunk:
                 full += chunk
                 yield {"articles": [], "delta": chunk, "session_id": session_id}
+        # 与检索路径同一道出口：空答案 / 引用了不存在的来源 → 不落历史，末条回 ok=False
+        if not _answer_ok(full, []):
+            logger.info("[AskStream] greeting q=%s → 输出不可信", digest(q))
+            yield _fail_chunk(session_id)
+            return
         append_message(session_id, "user", q)
         append_message(session_id, "assistant", full)
         return
@@ -289,8 +303,7 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
     # LLM 输出不可信：生成空/引用了不存在的来源 → 不落历史，末条回 ok=False 供调用方丢弃
     if not _answer_ok(full, articles):
         logger.info("[AskStream] q=%s → 输出不可信", digest(q))
-        yield {"articles": [], "delta": "", "session_id": session_id,
-               "ok": False, "message": _LLM_FAIL_TEXT}
+        yield _fail_chunk(session_id)
         return
     append_message(session_id, "assistant", full)
     logger.info("[AskStream] q=%s → %d article(s)", digest(q), len(articles))
