@@ -1,5 +1,7 @@
 """gRPC 服务实现：把 RPC 方法映射到检索/问答内核。"""
 
+import functools
+
 import article_agent_pb2 as pb
 import article_agent_pb2_grpc as pb_grpc
 
@@ -34,7 +36,22 @@ def _article_to_dict(a) -> dict:
     }
 
 
+def _guard(reply_cls):
+    """RPC 异常兜底：内部异常统一转成 ok=False 的 reply，不裸抛成 gRPC INTERNAL。"""
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapper(self, request, context):
+            try:
+                return fn(self, request, context)
+            except Exception as e:
+                logger.exception("RPC %s failed: %s", fn.__name__, e)
+                return reply_cls(ok=False, message=str(e))
+        return wrapper
+    return deco
+
+
 class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
+    @_guard(pb.IngestReply)
     def IngestArticle(self, request, context):
         result = ingest_article(_article_to_dict(request.article))
         ok = result.get("status") == "ok"
@@ -44,6 +61,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
             message=result.get("message", ""),
         )
 
+    @_guard(pb.BatchIngestReply)
     def BatchIngestArticles(self, request, context):
         result = ingest_articles([_article_to_dict(a) for a in request.articles])
         return pb.BatchIngestReply(
@@ -53,6 +71,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
             message=result.get("message", ""),
         )
 
+    @_guard(pb.DeleteReply)
     def DeleteArticles(self, request, context):
         result = delete_articles(list(request.article_ids))
         return pb.DeleteReply(
@@ -61,6 +80,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
             message=result.get("message", ""),
         )
 
+    @_guard(pb.SyncReply)
     def SyncArticles(self, request_iterator, context):
         articles = [_article_to_dict(a) for a in request_iterator]
         result = ingest_articles(articles)
@@ -100,6 +120,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
             logger.error("Ask stream failed: %s", e)
             yield pb.AskStreamChunk(ok=False, message=str(e))
 
+    @_guard(pb.ListSessionsReply)
     def ListSessions(self, request, context):
         sessions = list_sessions(list(request.session_ids) or None)
         summaries = [
@@ -113,6 +134,7 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         ]
         return pb.ListSessionsReply(ok=True, sessions=summaries, message="")
 
+    @_guard(pb.GetSessionMessagesReply)
     def GetSessionMessages(self, request, context):
         # 会话 ID 必须是合法 UUID：非法/空一律归一成随机 id，读不到任何数据（防路径穿越）
         msgs = get_messages(ensure_session_id(request.session_id), request.limit)
@@ -126,11 +148,13 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         ]
         return pb.GetSessionMessagesReply(ok=True, messages=out, message="")
 
+    @_guard(pb.DeleteSessionReply)
     def DeleteSession(self, request, context):
         # 幂等：会话不存在也返回成功；会话 ID 归一成合法 UUID，避免越权删除
         delete_session(ensure_session_id(request.session_id))
         return pb.DeleteSessionReply(ok=True, message="")
 
+    @_guard(pb.HealthReply)
     def Health(self, request, context):
         info = list_collections_info()
         agent_cfg = load_config("agent")
