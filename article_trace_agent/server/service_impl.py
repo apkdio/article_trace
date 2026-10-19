@@ -2,6 +2,8 @@
 
 import functools
 
+import grpc
+
 import article_agent_pb2 as pb
 import article_agent_pb2_grpc as pb_grpc
 
@@ -18,6 +20,22 @@ from tools.vector_store import (
 )
 
 logger = get_logger(name="grpc_service")
+
+_KEY_NAME = "x-agent-key"
+_shared_key = ""   # 启动时由 server.py 注入；为空表示不启用鉴权（两侧未配好时不致断链）
+
+
+def set_shared_key(key: str) -> None:
+    """注入 Java→agent 的共享密钥。"""
+    global _shared_key
+    _shared_key = key or ""
+
+
+def _authorized(context) -> bool:
+    if not _shared_key:
+        return True
+    md = dict(context.invocation_metadata() or [])
+    return md.get(_KEY_NAME) == _shared_key
 
 
 def _article_to_dict(a) -> dict:
@@ -42,6 +60,8 @@ def _guard(reply_cls):
     def deco(fn):
         @functools.wraps(fn)
         def wrapper(self, request, context):
+            if not _authorized(context):
+                context.abort(grpc.StatusCode.UNAUTHENTICATED, "invalid agent key")
             try:
                 return fn(self, request, context)
             except Exception as e:
@@ -93,6 +113,8 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         )
 
     def Ask(self, request, context):
+        if not _authorized(context):
+            context.abort(grpc.StatusCode.UNAUTHENTICATED, "invalid agent key")
         try:
             for item in core_ask_stream(
                 request.query,

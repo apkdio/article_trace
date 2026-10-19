@@ -8,6 +8,10 @@ llm:
   temperature: 0.3
   max_tokens: 1024
 
+# 服务监听
+server:
+  bind: "[::]"   # 监听地址；仅内网部署时建议收绑到具体网卡地址
+
 # 行为开关
 behavior:
   retrieval_only: false   # true=直接返回检索片段原文；false=走 LLM 生成答案
