@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -143,5 +144,58 @@ public class MailServiceTest {
                         || MailServiceImpl.STATUS_SENT.equals(after.getStatus()),
                 "10 分钟内的 pending 行不该被补投扫描领走");
         mailMapper.deleteById(fresh.getId());
+    }
+
+    /**
+     * 卡死的 {@code sending} 行要能被捡起，但「刚被领取、还没投完」的 sending 行不能再被领取一次
+     * （回归：只按 status 匹配等于「匹配但值不变」的更新，驱动返回 1，同一封会投两遍）。
+     */
+    @Test
+    public void sendingRowIsClaimedOnlyWhenStale() throws Exception {
+        // ① 刚刚领取过的 sending 行：sending_since 是现在 → 不该被再领一次
+        NotificationMail fresh = new NotificationMail();
+        fresh.setToEmail("nobody@example.invalid");
+        fresh.setSubject("sending 领取排他测试");
+        fresh.setContent("刚领取，投递中");
+        fresh.setStatus(MailServiceImpl.STATUS_SENDING);
+        fresh.setRetryCount(0);
+        fresh.setCreateTime(LocalDateTime.now());
+        fresh.setSendingSince(LocalDateTime.now());
+        mailMapper.insert(fresh);
+
+        mailService.retryFailed();
+        assertEquals(MailServiceImpl.STATUS_SENDING, mailMapper.selectById(fresh.getId()).getStatus(),
+                "sending_since 是才写的，不该被第二次扫描领走（领走就会重复投递）");
+
+        // ② 把领取时刻推回阈值之前：这时才该被捡起（进程中途退出的自愈路径）
+        NotificationMail stale = new NotificationMail();
+        stale.setToEmail("nobody@example.invalid");
+        stale.setSubject("sending 卡死自愈测试");
+        stale.setContent("领取时刻已超阈值");
+        stale.setStatus(MailServiceImpl.STATUS_SENDING);
+        stale.setRetryCount(0);
+        stale.setCreateTime(LocalDateTime.now().minusMinutes(30));
+        stale.setSendingSince(LocalDateTime.now().minusMinutes(30));
+        mailMapper.insert(stale);
+
+        mailService.retryFailed();
+        NotificationMail rescued = awaitSendOutcome(stale.getId());
+        assertFalse(MailServiceImpl.STATUS_SENDING.equals(rescued.getStatus()),
+                "卡死的 sending 行应被捡起并重新投递（结果取决于 SMTP，只要离开 sending 即可）");
+
+        mailMapper.deleteById(fresh.getId());
+        mailMapper.deleteById(stale.getId());
+    }
+
+    /** 轮询等待行离开 sending（最多 20 秒），投递结果本身取决于 SMTP */
+    private NotificationMail awaitSendOutcome(Long id) throws InterruptedException {
+        for (int i = 0; i < 20; i++) {
+            NotificationMail mail = mailMapper.selectById(id);
+            if (mail != null && !MailServiceImpl.STATUS_SENDING.equals(mail.getStatus())) {
+                return mail;
+            }
+            Thread.sleep(1000);
+        }
+        return mailMapper.selectById(id);
     }
 }

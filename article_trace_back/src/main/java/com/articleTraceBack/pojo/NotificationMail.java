@@ -31,6 +31,10 @@ public class NotificationMail {
     /** pending / sent / failed */
     private String status;
 
+    /** 最近一次被领取（置 sending）的时间；卡死判定与领取排他的依据 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime sendingSince;
+
     private Integer retryCount;
 
     private String error;

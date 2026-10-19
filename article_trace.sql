@@ -160,6 +160,7 @@ CREATE TABLE `notification_mail` (
   `content` text COMMENT '纯文本正文（兜底载体）',
   `content_html` mediumtext COMMENT 'HTML 正文；NULL 时只发纯文本',
   `status` varchar(16) NOT NULL DEFAULT 'pending' COMMENT '状态: pending/sending/sent/failed',
+  `sending_since` datetime DEFAULT NULL COMMENT '最近一次被领取（置 sending）的时间；卡死判定与领取排他的依据',
   `retry_count` int NOT NULL DEFAULT '0' COMMENT '已重试次数',
   `error` varchar(500) DEFAULT NULL COMMENT '失败原因',
   `create_time` datetime NOT NULL COMMENT '创建时间',

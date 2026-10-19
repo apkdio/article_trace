@@ -81,19 +81,17 @@ public class MailServiceImpl implements MailService {
         try {
             LocalDateTime stuckBefore = LocalDateTime.now().minusMinutes(STUCK_MINUTES);
             QueryWrapper<NotificationMail> wrapper = new QueryWrapper<>();
-            // 两类要补投：failed 未超限的常规重试；pending/sending 卡住的（进程被杀、
-            // 线程池拒绝后未来得及标状态）——只认 create_time 早于阈值的，避免抢正在投递中的行
+            // 三类要补投：failed 未超限的常规重试；pending 卡住的（进程被杀、线程池拒绝）；
+            // sending 卡住的（投递中途进程退出，sending_since 停在旧时刻；历史行可能为 NULL）
             wrapper.and(w -> w
                     .eq("status", STATUS_FAILED).le("retry_count", maxRetry)
-                    .or(x -> x.in("status", STATUS_PENDING, STATUS_SENDING).lt("create_time", stuckBefore)));
+                    .or(x -> x.eq("status", STATUS_PENDING).lt("create_time", stuckBefore))
+                    .or(x -> x.eq("status", STATUS_SENDING)
+                            .and(y -> y.isNull("sending_since").or().lt("sending_since", stuckBefore))));
             List<NotificationMail> list = mailMapper.selectList(wrapper);
             int claimed = 0;
             for (NotificationMail mail : list) {
-                // 条件更新把这条领走：按读取到的当前状态带条件，重叠的两次扫描里
-                // 只有一次能改得动，否则同一封信会被投递两遍。
-                UpdateWrapper<NotificationMail> claim = new UpdateWrapper<>();
-                claim.eq("id", mail.getId()).eq("status", mail.getStatus()).set("status", STATUS_SENDING);
-                if (mailMapper.update(null, claim) == 1) {
+                if (claim(mail, stuckBefore)) {
                     claimed++;
                     submit(mail.getId());
                 }
@@ -103,6 +101,29 @@ public class MailServiceImpl implements MailService {
             log.error("retry failed mails error", e);
             return 0;
         }
+    }
+
+    /**
+     * 领取（置 sending）并刷新 {@code sending_since}：只有真正改动了行才算领到。
+     *
+     * <p>{@code sending} 分支必须带「上次领取已过阈值」的条件——对本来就是 sending 的行，
+     * 只按 status 匹配等于「匹配但值不变」的更新，而驱动默认按 CLIENT_FOUND_ROWS 语义返回 1，
+     * 重叠的两次扫描会把同一封信投两遍。刷新 sending_since 同时也让这个判断在
+     * 「按改变行数」语义下依然排他。</p>
+     */
+    private boolean claim(NotificationMail mail, LocalDateTime stuckBefore) {
+        UpdateWrapper<NotificationMail> claim = new UpdateWrapper<>();
+        claim.eq("id", mail.getId())
+                .set("status", STATUS_SENDING)
+                .set("sending_since", LocalDateTime.now());
+        if (STATUS_SENDING.equals(mail.getStatus())) {
+            claim.eq("status", STATUS_SENDING)
+                    .and(w -> w.isNull("sending_since").or().lt("sending_since", stuckBefore));
+        } else {
+            // pending / failed：状态真的会变，天然排他
+            claim.eq("status", mail.getStatus());
+        }
+        return mailMapper.update(null, claim) == 1;
     }
 
     /** 把一封还停在 pending / sending 的行标成 failed（提交被拒等场景；不计入重试次数上限的消耗） */
