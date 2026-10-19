@@ -166,8 +166,9 @@ article_trace_back/
 
 > **站长专属接口按 URL 前缀统一拦截**：形如 `/xxx/manage/**` 的路径加进 `notAllowUrl` 即可，
 > 不必逐个方法写权限判断。新增站长接口时优先按这个约定命名。
-> 注意两组规则并不对称——作者查的是「writer ∪ reader」并集，读者只查 `reader`，
-> 所以**加进 `reader` 两组都会命中**。
+> 规则按 **Ant 通配符**匹配（`AntPathMatcher`）——拦子路径必须写 `/xxx/**`，字面量只能拦到精确路径
+> （写 `/review` 拦不住 `/review/summary`）。两组规则的查表范围：**作者只查 writer 表，读者查「writer ∪ reader」并集**
+> （读者权限 ⊂ 作者权限），所以**加进 `reader` 两组都会命中，加进 `writer` 只拦作者不拦读者**。
 >
 > 匹配方式是 `getRequestURI().contains(url)` **子串包含**（不是 Ant 通配），
 > 路径不要写得太短，否则会误伤其他接口。

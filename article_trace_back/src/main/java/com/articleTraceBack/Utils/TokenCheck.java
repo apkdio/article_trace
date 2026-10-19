@@ -1,12 +1,12 @@
 package com.articleTraceBack.Utils;
 
 import io.micrometer.common.util.StringUtils;
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
 
 import java.util.*;
@@ -15,22 +15,14 @@ import java.util.*;
 // 请求拦截器
 // 窝腰验Token
 public class TokenCheck implements AsyncHandlerInterceptor {
+    // 规则按 Ant 通配符语义匹配（配置里写 /xxx/**），字面 contains 对带通配符的规则恒不命中
+    private static final AntPathMatcher MATCHER = new AntPathMatcher();
     @Value("${spring.tokenCheck.notAllowUrl.writer}")
     private String[] writerNotAllow;
     @Value("${spring.tokenCheck.notAllowUrl.reader}")
     private String[] readerNotAllow;
-    private String[] mergedReaderNotAllow;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate stringRedisTemplate;
-
-    /** 合并写手与读者的 URL 拦截规则 */
-    @PostConstruct
-    public void init() {
-        // 去重合并
-        Set<String> set = new LinkedHashSet<>(Arrays.asList(writerNotAllow));
-        Collections.addAll(set, readerNotAllow);
-        mergedReaderNotAllow = set.toArray(new String[0]);
-    }
 
     public TokenCheck(JwtUtil jwtUtil, StringRedisTemplate stringRedisTemplate) {
         this.jwtUtil = jwtUtil;
@@ -72,21 +64,15 @@ public class TokenCheck implements AsyncHandlerInterceptor {
                 return false;
             }
             int type = (int) userInfo.get("type");
-            if (type == 1) {
-                for (String url : mergedReaderNotAllow) {
-                    if (request.getRequestURI().contains(url)) {
-                        response.setStatus(401);
-                        return false;
-                    }
-                }
-            } else if (type == 2) {
-                for (String url : readerNotAllow) {
-                    if (request.getRequestURI().contains(url)) {
-                        response.setStatus(401);
-                        return false;
-                    }
-                }
-            } else if (type != 0) return false;
+            // 未知角色一律拒（token 由服务端签发，正常到不了这里）
+            if (type != 0 && type != 1 && type != 2) {
+                response.setStatus(401);
+                return false;
+            }
+            if (blocked(uri, type, writerNotAllow, readerNotAllow)) {
+                response.setStatus(401);
+                return false;
+            }
             String redisToken = stringRedisTemplate.opsForValue().get(userInfo.get("name").toString());
             if (StringUtils.isBlank(redisToken)) {
                 throw new Exception();
@@ -100,6 +86,26 @@ public class TokenCheck implements AsyncHandlerInterceptor {
             response.setStatus(401);
             return false;
         }
+    }
+
+    /** 角色拦截判定（纯函数以便矩阵用例直测）：作者只被作者表拦，读者被两张表的并集拦，站长不拦 */
+    static boolean blocked(String uri, int type, String[] writerNotAllow, String[] readerNotAllow) {
+        if (type == 1) {
+            return matchesAny(writerNotAllow, uri);
+        }
+        if (type == 2) {
+            return matchesAny(writerNotAllow, uri) || matchesAny(readerNotAllow, uri);
+        }
+        return false;
+    }
+
+    private static boolean matchesAny(String[] patterns, String uri) {
+        for (String pattern : patterns) {
+            if (MATCHER.match(pattern, uri)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // 异步（SSE 等）请求开始并发处理后及时清理，避免 ThreadLocal 随线程回池悬挂

@@ -54,8 +54,9 @@ spring:
     # 不同用户组的访问权限
     excludeUrls: /user/login, /user/register,/user/forgetPass,/error,/user/email/code,/user/captcha
     notAllowUrl:
-      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage,/avatar/manage,/profile/manage,/report/manage,/review
-      reader: /category/**,/article/**,/applyAuthor/manage,/avatar/manage,/profile/manage,/report/manage,/review
+      # 规则按 Ant 通配符匹配：要拦子路径必须写 /xxx/**（字面量 /review 拦不住 /review/summary）
+      writer: /user/accountManage,/user/articleManage,/user/delete/**,/article/assess,/article/manageArticles,/article/count,/user/changeType,/applyAuthor/manage/**,/avatar/manage/**,/profile/manage/**,/report/manage/**,/review/**
+      reader: /category/**,/article/**,/applyAuthor/manage/**,/avatar/manage/**,/profile/manage/**,/report/manage/**,/review/**
   application:
     name: articleTraceBack
     admin:
