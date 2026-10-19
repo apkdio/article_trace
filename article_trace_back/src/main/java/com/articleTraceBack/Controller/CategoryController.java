@@ -57,18 +57,6 @@ public class CategoryController {
         return Result.success(allCategory);
     }
 
-    /** 分类详情 */
-    @GetMapping("/detail/{id}")
-    public Result<Category> findCategoryById(@PathVariable("id") Integer id) {
-        Map<String, Object> error = new HashMap<>();
-        Category detail = categoryService.findById(id);
-        if (detail != null) {
-            return Result.success(detail);
-        }
-        error.put("error", "未找到该类别！");
-        return Result.error(error);
-    }
-
     /** 更新分类（仅创建人） */
     @PatchMapping("/update/{id}")
     public Result<String> updateCategory(@RequestBody @Validated Category category,

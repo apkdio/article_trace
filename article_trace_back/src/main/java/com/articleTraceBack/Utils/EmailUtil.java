@@ -62,32 +62,6 @@ public class EmailUtil {
     }
 
     /**
-     * 发送 HTML 邮件（验证码等富文本场景）。
-     *
-     * @return 是否发送成功
-     */
-    public boolean sendHtml(String to, String subject, String html) {
-        if (isBlank(to)) {
-            log.warn("sendHtml skipped: empty receiver");
-            return false;
-        }
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(resolveFrom());
-            helper.setTo(to);
-            helper.setSubject(withPrefix(subject));
-            helper.setText(html, true);
-            mailSender.send(message);
-            log.info("html mail sent: to={}, subject={}", to, subject);
-            return true;
-        } catch (Exception e) {
-            log.error("send html mail failed: to={}, subject={}", to, subject, e);
-            return false;
-        }
-    }
-
-    /**
     * 发送同时含纯文本与 HTML 两载体的邮件（{@code multipart/alternative}），由客户端择一显示。
     * @param text 纯文本载体（兜底）
     * @param html HTML 载体

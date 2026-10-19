@@ -456,11 +456,6 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public Long getViews(int id) {
-        return articleMapper.getArticleViews(id);
-    }
-
-    @Override
     public List<Article> getViewsTop10() {
         String cacheKey = RedisKeys.ARTICLE_HOT_TOP10;
         List<Article> cached = readHotArticlesCache(cacheKey);

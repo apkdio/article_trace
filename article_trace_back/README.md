@@ -763,7 +763,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 | PATCH | `/user/updatePass` | 修改密码 |
 | PATCH | `/user/update` | 修改昵称 / 个签 / 邮箱；昵称与个签走内容规则（格式类直接拒、内容类落待审、成功起 7 天锁定期）；**个签仅作者与站长** |
 | GET | `/profile/manage/list` | 昵称 / 个签审核列表（站长）|
-| GET | `/profile/manage/pendingCount` | 待审数量（站长，审核中心角标）|
 | PATCH | `/profile/manage/review/{id}` | 审批昵称 / 个签（站长；通过写回并起锁定期，拒绝需给理由）|
 | POST | `/user/forgetPass` | 忘记密码 |
 | GET | `/user/logout` | 登出 |
@@ -790,7 +789,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 |---|---|---|
 | POST | `/category/add` | 新增分类 |
 | GET | `/category` | 分类列表 |
-| GET | `/category/detail/{id}` | 分类详情 |
 | PATCH | `/category/update/{id}` | 更新分类 |
 | DELETE | `/category/delete/{id}` | 删除分类 |
 
@@ -823,7 +821,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 | POST | `/applyAuthor` | 提交作者申请（body 可选 `reason`）|
 | GET | `/applyAuthor/mine` | 我的最新申请状态 |
 | GET | `/applyAuthor/manage/list` | 申请列表（站长）|
-| GET | `/applyAuthor/manage/pendingCount` | 待审数量（站长）|
 | PATCH | `/applyAuthor/manage/review/{id}` | 审批（站长）：`pass=true/false` |
 
 > 审批通过会把申请人提升为作者（type=1）并失效其登录态；提交与结果均通过站内信/邮件通知。
@@ -840,7 +837,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 |---|---|---|
 | GET | `/avatar/mine` | 我的最新一条提交记录（无则 `data` 为 null）|
 | GET | `/avatar/manage/list` | 审核列表（站长）；可选 `status` 筛选 |
-| GET | `/avatar/manage/pendingCount` | 待审数量（站长）|
 | PATCH | `/avatar/manage/review/{id}` | 审批（站长）：`pass=true/false`，拒绝必须给 `rejectReason` |
 
 > 审批通过时先把待审对象从 avatar 桶**复制**到 pic 桶，再写 `user_pic`。
@@ -862,7 +858,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 |---|---|---|
 | `POST` | `/report` | 提交举报（登录即可）。举报人取自登录态，不接受前端传入 |
 | `GET` | `/report/manage/list` | 举报列表（站长），可按 `status` 筛（0 待处理 / 1 已处置 / 2 已驳回）|
-| `GET` | `/report/manage/pendingCount` | 待处理数量（站长，菜单角标用）|
 | `PATCH` | `/report/manage/handle/{id}` | 处置（站长）：`handled=true` 认定违规，`false` 驳回举报 |
 
 **举报只记不改内容**：删评论仍走 `/reader/deleteComment`，下架文章仍走 `/article/assess`，

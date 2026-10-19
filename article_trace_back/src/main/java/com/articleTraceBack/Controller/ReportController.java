@@ -67,15 +67,6 @@ public class ReportController {
         return Result.success(reportService.list(status, pageNum, pageSize));
     }
 
-    /** 待处理数量（站长，用于前端角标） */
-    @GetMapping("/manage/pendingCount")
-    public Result<Integer> pendingCount() {
-        if (!isMaster()) {
-            return Result.error("权限不足！");
-        }
-        return Result.success(reportService.pendingCount());
-    }
-
     /** 处置（站长）：handled=true 认定违规，false 驳回举报。只改举报记录，不动被举报的内容 */
     @PatchMapping("/manage/handle/{id}")
     public Result<String> handle(@PathVariable int id, @RequestParam boolean handled) {

@@ -42,15 +42,6 @@ public class ProfileApplyController {
         return Result.success(profileApplyService.list(status, pageNum, pageSize));
     }
 
-    /** 待审数量（站长，用于审核中心角标与合计） */
-    @GetMapping("/manage/pendingCount")
-    public Result<Integer> pendingCount() {
-        if (!isMaster()) {
-            return Result.error("权限不足！");
-        }
-        return Result.success(profileApplyService.pendingCount());
-    }
-
     /** 审批（站长）：pass=true 通过、把待审值写回 user 并起 7 天锁定期；false 拒绝（需给理由） */
     @PatchMapping("/manage/review/{id}")
     public Result<String> review(@PathVariable int id,

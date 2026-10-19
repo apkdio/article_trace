@@ -64,7 +64,5 @@ public interface ArticleService {
 
     void addViews(String username, int articleId);
 
-    Long getViews(int id);
-
     List<Article> getViewsTop10();
 }

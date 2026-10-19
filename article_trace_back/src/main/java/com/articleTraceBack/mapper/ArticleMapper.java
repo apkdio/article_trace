@@ -52,9 +52,6 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "where a.id = #{id}")
     Article findArticleById(int id);
 
-    @Select("SELECT views FROM article WHERE id = #{id}")
-    Long getArticleViews(int id);
-
     @Select("SELECT id, title, views FROM article WHERE state = 1 ORDER BY views DESC LIMIT 10")
     List<Article> getHotArticlesTop10();
 

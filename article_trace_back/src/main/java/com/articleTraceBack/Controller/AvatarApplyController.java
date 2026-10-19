@@ -52,15 +52,6 @@ public class AvatarApplyController {
         return Result.success(avatarApplyService.list(status, pageNum, pageSize));
     }
 
-    /** 待审数量（站长，用于前端角标） */
-    @GetMapping("/manage/pendingCount")
-    public Result<Integer> pendingCount() {
-        if (!isMaster()) {
-            return Result.error("权限不足！");
-        }
-        return Result.success(avatarApplyService.pendingCount());
-    }
-
     /** 审批（站长）：pass=true 通过并把待审头像设为用户头像，false 拒绝（需给理由） */
     @PatchMapping("/manage/review/{id}")
     public Result<String> review(@PathVariable int id,

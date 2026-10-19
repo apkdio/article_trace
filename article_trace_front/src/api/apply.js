@@ -22,13 +22,6 @@ export function listApplies(status, pageNum = 1, pageSize = 10) {
 }
 
 /**
- * 待审数量（站长）。
- */
-export function pendingApplyCount() {
-    return request.get("/applyAuthor/manage/pendingCount")
-}
-
-/**
  * 审批（站长）：pass=true 通过，false 拒绝。
  */
 export function reviewApply(id, pass, rejectReason) {

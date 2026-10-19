@@ -15,13 +15,6 @@ export function listProfileApplies(status, pageNum = 1, pageSize = 10) {
 }
 
 /**
- * 待审数量（站长）。
- */
-export function pendingProfileCount() {
-    return request.get("/profile/manage/pendingCount")
-}
-
-/**
  * 审批（站长）：pass=true 通过并把待审值写回用户，false 拒绝（需给理由）。
  */
 export function reviewProfileApply(id, pass, rejectReason) {

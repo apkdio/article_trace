@@ -59,8 +59,6 @@ public interface UserService {
 
     boolean changeType(int userId, int type);
 
-    User findUserByNickName(String nickName);
-
     User findUserById(int userId);
 
     /** 按邮箱查用户（找回密码用） */

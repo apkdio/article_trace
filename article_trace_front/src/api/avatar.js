@@ -15,13 +15,6 @@ export function getMyAvatarApply() {
 }
 
 /**
- * 待审数量（站长）。
- */
-export function pendingAvatarCount() {
-    return request.get("/avatar/manage/pendingCount")
-}
-
-/**
  * 审核列表（站长）；status 不传查全部。
  */
 export function listAvatarApplies(status, pageNum = 1, pageSize = 10) {

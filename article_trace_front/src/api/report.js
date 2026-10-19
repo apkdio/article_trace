@@ -22,13 +22,6 @@ export function listReports(status, pageNum = 1, pageSize = 10) {
 }
 
 /**
- * 待处理数量（站长，菜单角标用）。
- */
-export function pendingReportCount() {
-    return request.get("/report/manage/pendingCount")
-}
-
-/**
  * 处置（站长）：handled=true 认定违规，false 驳回举报。
  *
  * 只改举报记录本身；下架文章、删除评论仍走各自原有的接口。
