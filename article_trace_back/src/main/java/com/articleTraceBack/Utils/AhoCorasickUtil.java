@@ -21,12 +21,20 @@ public class AhoCorasickUtil {
 
     /** 添加一个关键词（模式串） */
     public void addKeyword(String keyword) {
+        addKeyword(keyword, keyword);
+    }
+
+    /**
+     * 添加关键词：匹配走 {@code keyword}（归一化后的形式），命中回显 {@code display}（词表里的原词）。
+     * 分开是因为归一化会抹掉空格 / 大小写 / 全角，而站长排查时要按原词回词表里找。
+     */
+    public void addKeyword(String keyword, String display) {
         Node current = root;
         for (char c : keyword.toCharArray()) {
             current = current.children.computeIfAbsent(c, k -> new Node());
         }
         current.output = keyword;
-        current.outputs.add(keyword);
+        current.outputs.add(display);
     }
 
     /** 构建自动机：BFS 建失败指针，构建后方可匹配 */

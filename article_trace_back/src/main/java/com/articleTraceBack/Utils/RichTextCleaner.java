@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Entities;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.safety.Safelist;
 
 import java.util.regex.Pattern;
@@ -12,12 +13,6 @@ import java.util.regex.Pattern;
 // 富文本清洗工具
 
 public class RichTextCleaner {
-
-    // 匹配 data:image/base64 的完整 img 标签（纯文本提取时整段剥掉）
-    private static final Pattern BASE64_IMG_PATTERN = Pattern.compile(
-            "<img[^>]+src\\s*=\\s*['\"]data:image/[^;]+;base64,[^'\"]+['\"][^>]*>",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    );
 
     /** 允许留在正文里的内联图片：只认位图（{@code data:image/svg+xml} 能内嵌脚本，而正文是 {@code v-html} 直渲染）。 */
     private static final Pattern RASTER_DATA_IMAGE = Pattern.compile(
@@ -71,22 +66,26 @@ public class RichTextCleaner {
             return "";
         }
 
-        // 预先移除 base64 图片标签，减轻 Jsoup 解析负担
-        String cleanedHtml = BASE64_IMG_PATTERN.matcher(html).replaceAll("");
-
-        // 用 Jsoup 解析后手动移除 script/style/link/meta/noscript 与 img，最后取纯文本
         Document.OutputSettings outputSettings = new Document.OutputSettings()
                 .prettyPrint(false)   // 不格式化输出，减少空白
                 .escapeMode(Entities.EscapeMode.xhtml); // 可选
 
-        Document doc = Jsoup.parse(cleanedHtml);
+        Document doc = Jsoup.parse(html);
         doc.outputSettings(outputSettings);
 
         // 移除所有脚本和样式标签
         doc.select("script, style, link, meta, noscript").remove();
 
-        // 移除所有图片标签（如果图片内容不需要保留）
-        doc.select("img").remove();
+        // img 的属性值不会进 doc.text()：alt / title 里的文字要并入扫描文本，否则
+        // <img alt="违禁词"> 送审扫不出来、渲染时却看得见（base64 内联图同理，早先正则整段剥掉时也连 alt 一起丢了）
+        for (Element img : doc.select("img")) {
+            String attrText = (img.attr("alt").trim() + " " + img.attr("title").trim()).trim();
+            if (attrText.isEmpty()) {
+                img.remove();
+            } else {
+                img.replaceWith(new TextNode(" " + attrText + " "));
+            }
+        }
 
         // 可选：将 <br> 和块级标签替换为换行符（便于阅读）
         doc.select("br").after("\n");

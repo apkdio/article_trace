@@ -100,4 +100,33 @@ public class RichTextCleanerTest {
     public void testPlainTextPassesThrough() {
         assertEquals("就是一段普通文字", RichTextCleaner.cleanToSafeHtml("就是一段普通文字"));
     }
+
+    /** P1-2：img 的 alt / title 要进扫描文本，否则 <img alt="违禁词"> 送审扫不出、渲染时却可见 */
+    @Test
+    public void testPlainTextIncludesImageAltAndTitle() {
+        String html = "<p>正文</p><img src=\"https://a.com/x.png\" alt=\"zz违禁alt\" title=\"zz违禁title\">";
+        String text = RichTextCleaner.cleanToPlainText(html);
+
+        assertTrue(text.contains("zz违禁alt"), "alt 应并入扫描文本");
+        assertTrue(text.contains("zz违禁title"), "title 应并入扫描文本");
+        assertFalse(text.contains("a.com"), "图片地址本身不该进文本");
+    }
+
+    /** base64 内联图原先被正则整段剥掉，连 alt 一起丢——恰好是绕过通道 */
+    @Test
+    public void testPlainTextIncludesBase64ImageAlt() {
+        String html = "<img src=\"data:image/png;base64,AAAA\" alt=\"zz违禁base64alt\">";
+        String text = RichTextCleaner.cleanToPlainText(html);
+
+        assertTrue(text.contains("zz违禁base64alt"), "base64 图的 alt 也要进扫描文本");
+        assertFalse(text.contains("AAAA"), "base64 数据本身不该进文本");
+    }
+
+    @Test
+    public void testPlainTextDropsImageWithoutAlt() {
+        String html = "<p>前</p><img src=\"https://a.com/x.png\"><p>后</p>";
+        String text = RichTextCleaner.cleanToPlainText(html);
+
+        assertEquals("前 后", text, "无属性的图片整张移除，不留痕迹");
+    }
 }

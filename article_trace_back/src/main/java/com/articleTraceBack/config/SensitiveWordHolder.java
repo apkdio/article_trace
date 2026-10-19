@@ -1,6 +1,7 @@
 package com.articleTraceBack.config;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.TextNormalizer;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +15,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** 敏感词匹配器的持有者：持有 {@code volatile} 引用，业务经 {@link #get()} 取当前实例；匹配器不可变，热更新时整体替换引用即可。 */
 @Slf4j
@@ -84,8 +87,16 @@ public class SensitiveWordHolder {
 
     private AhoCorasickUtil buildFrom(List<String> words) {
         AhoCorasickUtil ac = new AhoCorasickUtil();
-        for (String w : words) {
-            ac.addKeyword(w);
+        // 词表与正文必须同一套归一化：正文侧先过 forMatch 再匹配，词表若只 trim，
+        // 含空格 / 大写 / 全角的词条（如「54 式」「QQ」）在数学上永远命不中。
+        // 归一化后为空的纯符号词条丢弃；同形重复只留第一条
+        Set<String> seen = new HashSet<>();
+        for (String raw : words) {
+            String normalized = TextNormalizer.forMatch(raw);
+            if (normalized.isEmpty() || !seen.add(normalized)) {
+                continue;
+            }
+            ac.addKeyword(normalized, raw);
         }
         ac.build();
         return ac;
