@@ -209,7 +209,9 @@ public class UserServiceImpl implements UserService {
             if (verdict.kind() == ProfileGuard.Verdict.Kind.CONTENT) {
                 String awaiting = user.getNickname();
                 user.setNickname(current.getNickname());
-                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_NICKNAME, awaiting)
+                // baseValue 锚定提交时的旧值：站长批准时只在「昵称仍等于它」的条件下写回
+                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_NICKNAME,
+                                awaiting, current.getNickname())
                         ? "昵称已提交审核，通过后自动生效"
                         : "昵称已有一条待审申请，请等审核结果");
             }
@@ -225,7 +227,8 @@ public class UserServiceImpl implements UserService {
                 if (pendingNote.length() > 0) {
                     pendingNote.append("；");
                 }
-                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_SIGNATURE, awaiting)
+                pendingNote.append(profileApplyService.submit(user.getId(), ProfileApply.TYPE_SIGNATURE,
+                                awaiting, current.getSignature())
                         ? "个签已提交审核，通过后自动生效"
                         : "个签已有一条待审申请，请等审核结果");
             }
@@ -237,7 +240,8 @@ public class UserServiceImpl implements UserService {
             return new ProfileUpdateResult(ProfileUpdateResult.Kind.PENDING, pendingNote.toString(), "pending");
         }
         stringRedisTemplate.opsForValue().set(lockKey, "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
-        // 此前若留着待审，它一旦被批准就会覆盖掉刚改好的值
+        // 撤旧待审必须在 PENDING 提前返回之后：这一轮刚 submit 的行不能被自己删掉。
+        // 竞态（写库已落、旧待审还在时站长批准）由审核侧的 baseValue 条件写回闭合——字段已变就跳过
         profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_NICKNAME);
         profileApplyService.cancelPending(user.getId(), ProfileApply.TYPE_SIGNATURE);
         return new ProfileUpdateResult(ProfileUpdateResult.Kind.UPDATED, null, null);

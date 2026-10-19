@@ -109,4 +109,30 @@ public class ProfileApplyReviewTest {
                         .anyMatch(item -> item.getId().equals(pending.getId())),
                 "待审列表应当包含这条");
     }
+
+    /**
+     * P1-4：用户在待审期间又自己改了昵称——站长此时批准旧待审，**不能**覆盖用户的新值。
+     * 审核侧写回带 baseValue 条件：字段仍等于提交时的旧值才写。
+     */
+    @Test
+    public void approveSkipsWriteBackWhenUserChangedSinceSubmit() {
+        int userId = fixtures.ensureUser(2);
+        ProfileApply pending = submitPending(userId, "微信abc123");
+        String base = pending.getBaseValue();
+
+        // 用户在待审期间直接改了昵称（绕过审核路径：update 走 UserService.updateProfile 的 UPDATED 分支太重，
+        // 这里直接落库模拟「写库已成功」那一刻）
+        User direct = new User();
+        direct.setNickname("我自己刚改的");
+        userMapper.update(direct, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
+                .eq("id", userId));
+
+        assertTrue(profileApplyService.review(pending.getId(), true, null, 1), "审批本身应成功");
+        assertEquals("我自己刚改的", userMapper.selectById(userId).getNickname(),
+                "用户后来自己改的值必须保留，不能被待审值覆盖");
+        assertFalse(stringRedisTemplate.hasKey(RedisKeys.PROFILE_NICKNAME_LOCK + userId),
+                "没有写回就不该起 7 天锁，锁住的是「生效的那个值」");
+        // base 锚点回归：确认条件写回用的就是提交时的旧值
+        assertNotNull(base);
+    }
 }

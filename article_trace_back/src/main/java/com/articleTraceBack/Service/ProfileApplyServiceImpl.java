@@ -43,11 +43,12 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
     }
 
     @Override
-    public boolean submit(int userId, int type, String pendingValue) {
+    public boolean submit(int userId, int type, String pendingValue, String baseValue) {
         ProfileApply apply = new ProfileApply();
         apply.setUserId(userId);
         apply.setType(type);
         apply.setPendingValue(pendingValue);
+        apply.setBaseValue(baseValue);
         apply.setStatus(ProfileApply.STATUS_PENDING);
         apply.setCreateTime(LocalDateTime.now());
         try {
@@ -114,16 +115,27 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
             log.info("profile apply rejected: applyId={}, userId={}", applyId, apply.getUserId());
             return true;
         }
-        // 通过：写回待审值并起锁定期（昵称与个签同一个锁）。用户若在此期间正常改过，
-        // 待审行已被 cancelPending 删掉，上面的 CAS 取不到行、不会覆盖他后来改的值。
+        // 通过：写回待审值并起锁定期（昵称与个签同一个锁）。写回带条件——
+        // 该字段仍是申请时的旧值才写；用户若已自己改过（改库成功的那一刻起）就不覆盖他的新值。
         User user = new User();
         user.setUpdateTime(LocalDateTime.now());
+        String column = apply.getType() == ProfileApply.TYPE_SIGNATURE ? "signature" : "nickname";
         if (apply.getType() == ProfileApply.TYPE_SIGNATURE) {
             user.setSignature(apply.getPendingValue());
         } else {
             user.setNickname(apply.getPendingValue());
         }
-        userMapper.update(user, new UpdateWrapper<User>().eq("id", apply.getUserId()));
+        String baseValue = apply.getBaseValue();
+        UpdateWrapper<User> writeBack = new UpdateWrapper<User>().eq("id", apply.getUserId());
+        // base_value 为 NULL 的历史行无法锚定旧值，只能退化为无条件写回（保持旧行为）
+        if (baseValue != null) {
+            writeBack.eq(column, baseValue);
+        }
+        if (userMapper.update(user, writeBack) != 1) {
+            log.info("profile apply write-back skipped, user changed {} meanwhile: userId={}",
+                    column, apply.getUserId());
+            return true;
+        }
         stringRedisTemplate.opsForValue().set(RedisKeys.PROFILE_NICKNAME_LOCK + apply.getUserId(),
                 "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
         // 通过是「已生效」的轻量告知，场景配成仅站内信

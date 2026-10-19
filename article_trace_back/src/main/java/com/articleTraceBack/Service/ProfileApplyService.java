@@ -9,9 +9,11 @@ public interface ProfileApplyService {
     /**
      * 落一条待审记录。
      *
+     * @param baseValue 提交时该字段的旧值；审核通过时只在「字段仍等于它」的条件下写回，
+     *                  防止批准时覆盖用户后来自己改的新值
      * @return 是否落成功；同一用户同一类型已有待审时返回 false（由 `uk_pending` 唯一索引兜底）
      */
-    boolean submit(int userId, int type, String pendingValue);
+    boolean submit(int userId, int type, String pendingValue, String baseValue);
 
     /** 清掉该用户该类型的待审记录：正常改名成功后，此前那条待审就成了过期数据（批准它会覆盖掉刚改的名字）。 */
     void cancelPending(int userId, int type);

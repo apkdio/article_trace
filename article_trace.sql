@@ -222,6 +222,7 @@ CREATE TABLE `profile_apply` (
   `user_id` int NOT NULL COMMENT '申请人 user.id',
   `type` tinyint NOT NULL COMMENT '资料类型: 1-昵称 2-个签',
   `pending_value` varchar(64) NOT NULL COMMENT '待审的昵称 / 个签文本',
+  `base_value` varchar(64) DEFAULT NULL COMMENT '提交时该字段的旧值；审核通过时只在字段仍等于它的条件下写回（历史行为 NULL 时无条件写回）',
   `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态: 0-待审 1-通过 2-拒绝',
   `reject_reason` varchar(200) DEFAULT NULL COMMENT '拒绝理由',
   `review_user` int DEFAULT NULL COMMENT '审核人 user.id',

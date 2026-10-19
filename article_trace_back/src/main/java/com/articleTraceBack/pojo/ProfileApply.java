@@ -35,6 +35,9 @@ public class ProfileApply {
     /** 待审的昵称 / 个签文本 */
     private String pendingValue;
 
+    /** 提交时该字段的旧值；审核通过时只在字段仍等于它的条件下写回（防批准覆盖用户后来的修改） */
+    private String baseValue;
+
     /** 0 待审 / 1 通过 / 2 拒绝 */
     private Integer status;
 
