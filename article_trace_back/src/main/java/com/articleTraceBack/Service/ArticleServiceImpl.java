@@ -301,10 +301,10 @@ public class ArticleServiceImpl implements ArticleService {
         List<Article> allArticles = articleMapper.findAllArticlesInPublic
                 (pageNum, pageSize, categoryId, state, offset, search, searchType, nickName);
         for (Article article : allArticles) {
-            String extractorContent = TextExtractor.extractor
+            // 截断标记由提取器给出：按 length() 复判在正文含 emoji（非 BMP）时会漏掉省略号
+            TextExtractor.Summary summary = TextExtractor.summarize
                     (rustFsUtil.getContent(article.getContent()), 100);
-            if (extractorContent.length() == 100) extractorContent += "...";
-            article.setContent(extractorContent);
+            article.setContent(summary.truncated() ? summary.text() + "..." : summary.text());
             if (!Objects.equals(article.getCoverImg(), "")) {
                 article.setCoverImgSrc(rustFsUtil.getPciUrl(article.getCoverImg()));
                 article.setCoverThumbSrc(rustFsUtil.getThumbUrl(article.getCoverImg()));

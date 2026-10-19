@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 摘要提取：去标签、去公式段、按长度截断。
@@ -53,5 +54,28 @@ public class TextExtractorTest {
             assertFalse(Character.isHighSurrogate(c) && summary.indexOf(c) == summary.length() - 1,
                     "末尾不得悬挂高位代理项");
         }
+    }
+
+    /**
+     * 回归：截断标记必须由提取器给出——调用方按 {@code length() == maxLength} 复判，
+     * 在正文前 N 个码点含 emoji 时会误判成「没截断」，省略号被吞掉。
+     */
+    @Test
+    public void testSummaryReportsTruncationWithEmoji() {
+        // 前 100 个码点全是 emoji：截断后 length() 是 200，old 判据必然误判
+        String emojiBody = "😀".repeat(120);
+        TextExtractor.Summary truncated = TextExtractor.summarize("<p>" + emojiBody + "</p>", 100);
+        assertTrue(truncated.truncated(), "码点数超限就该报截断（哪怕 length() 是 200）");
+        assertEquals(100, truncated.text().codePointCount(0, truncated.text().length()),
+                "截断后正好 100 个码点");
+        assertFalse(Character.isLowSurrogate(truncated.text().charAt(0)), "不得从代理对中间切开");
+
+        // 恰好 100 个码点不算截断——旧行为会在这里多挂一个省略号
+        TextExtractor.Summary exact = TextExtractor.summarize("<p>" + "😀".repeat(100) + "</p>", 100);
+        assertFalse(exact.truncated(), "恰好等于上限不算截断，不该加省略号");
+
+        // 纯 BMP 文本同样按码点判
+        assertTrue(TextExtractor.summarize("<p>" + "字".repeat(101) + "</p>", 100).truncated());
+        assertFalse(TextExtractor.summarize("<p>" + "字".repeat(100) + "</p>", 100).truncated());
     }
 }
