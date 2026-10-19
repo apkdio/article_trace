@@ -17,17 +17,18 @@ _MULTI_NL_RE = re.compile(r"\n{3,}")
 def html_to_text(raw: str) -> str:
     """把 HTML 片段转成纯文本。
 
+    先解码实体再剥标签：顺序反了的话，&lt;script&gt; 会被解码成 <script> 残留为正文文本。
     对已经是纯文本的输入直接返回（幂等）。
     """
     if not raw:
         return ""
-    if "<" not in raw:
-        return raw
+    text = html.unescape(raw)
+    if "<" not in text:
+        return text.strip()
 
-    text = _TAG_BLOCK_RE.sub("", raw)
+    text = _TAG_BLOCK_RE.sub("", text)
     text = _BLOCK_RE.sub("\n", text)
     text = _TAG_RE.sub("", text)
-    text = html.unescape(text)
     text = _WS_RE.sub(" ", text)
     text = _MULTI_NL_RE.sub("\n\n", text)
     return text.strip()
