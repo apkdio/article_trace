@@ -189,10 +189,12 @@ public class UserController {
                                              HttpServletRequest request,
                                              HttpServletResponse response) {
         Map<String, Object> error = new HashMap<>();
+        // 限流两个维度：clientKey 是 IP+UA 指纹（请求头可伪造，仅辅助），username 才是防爆破的抓手
         String clientKey = IPUtil.mixOf(request);
+        String username = user.getUsername();
 
         // 1. 黑名单：连续失败过多，直接拒绝
-        long blockedSeconds = loginAttemptService.blockRemainingSeconds(clientKey);
+        long blockedSeconds = loginAttemptService.blockRemainingSeconds(username, clientKey);
         if (blockedSeconds > 0) {
             long minutes = (blockedSeconds + 59) / 60;
             error.put("blocked", minutes);
@@ -201,14 +203,13 @@ public class UserController {
         }
 
         // 2. 失败超过阈值后必须出示图形验证码；图形码错误不计入失败次数
-        boolean needCaptcha = loginAttemptService.needCaptcha(clientKey);
+        boolean needCaptcha = loginAttemptService.needCaptcha(username, clientKey);
         if (needCaptcha && !captchaService.verify(user.getCaptchaId(), user.getCaptchaCode())) {
             error.put("captcha", "图形验证码错误或已过期！");
             error.put("needCaptcha", true);
             return Result.error(error);
         }
 
-        String username = user.getUsername();
         String password = user.getPassword();
         int rememberMe = user.getRememberMe();
         User result = userService.findUserByName(username);
@@ -237,22 +238,22 @@ public class UserController {
                 }
                 userService.updateLoginTime(username);
                 // 登录成功立即清零，避免正常用户被历史失败继续累计
-                loginAttemptService.clear(clientKey);
+                loginAttemptService.clear(username, clientKey);
                 Map<String, Object> loginResult = new HashMap<>();
                 loginResult.put("lastLogin", lastLogin);
                 return Result.success(loginResult);
             }
-            return loginFailure(error, clientKey, "password", "密码错误！");
+            return loginFailure(error, username, clientKey, "password", "密码错误！");
         }
-        return loginFailure(error, clientKey, "username", "用户名不存在！");
+        return loginFailure(error, username, clientKey, "username", "用户名不存在！");
     }
 
     /**
      * 记一次登录失败，并把「下次是否需要图形码 / 距离锁定还剩几次」带回前端。
      */
-    private Result<Map<String, Object>> loginFailure(Map<String, Object> error, String clientKey,
-                                                     String field, String message) {
-        long failures = loginAttemptService.recordFailure(clientKey);
+    private Result<Map<String, Object>> loginFailure(Map<String, Object> error, String username,
+                                                     String clientKey, String field, String message) {
+        long failures = loginAttemptService.recordFailure(username, clientKey);
         error.put(field, message);
         error.put("needCaptcha", failures >= LoginAttemptService.CAPTCHA_THRESHOLD);
         error.put("remaining", Math.max(0, LoginAttemptService.BLOCK_THRESHOLD - failures));
