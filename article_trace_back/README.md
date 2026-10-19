@@ -171,8 +171,9 @@ article_trace_back/
 > （写 `/review` 拦不住 `/review/summary`）。两组规则的查表范围：**作者只查 writer 表，读者查「writer ∪ reader」并集**
 > （读者权限 ⊂ 作者权限），所以**加进 `reader` 两组都会命中，加进 `writer` 只拦作者不拦读者**。
 >
-> 匹配方式是 `getRequestURI().contains(url)` **子串包含**（不是 Ant 通配），
-> 路径不要写得太短，否则会误伤其他接口。
+> ⚠️ 前端 `article_trace_front/src/router/index.js` 的 `meta.roles` 是**同一份权限的另一面**（入口显隐与跳转）：
+> 改这里的 `notAllowUrl` 要同步前端 `meta.roles` 与 `TokenCheckTest` 矩阵，三处口径一致；
+> `TokenCheck.blocked` 的 javadoc 与前端守卫的注释互留了指针。
 
 ### 2. 用户模块（UserController / UserServiceImpl）
 
@@ -373,7 +374,7 @@ flowchart LR
 
 **① 发信基础 `EmailUtil`**
 
-- `sendText(to, subject, content)` / `sendHtml(to, subject, html)`
+- `sendText(to, subject, content)`：纯文本单载体
 - `sendMultipart(to, subject, text, html)`：一封邮件同时携带两种载体（`multipart/alternative`），
   由客户端择一显示——支持 HTML 的渲染富文本，纯文本客户端回落到 `text`
 - 发送失败只记日志并返回 `false`，不影响调用方主流程
@@ -993,6 +994,11 @@ python scripts/init_test_db.py
 
 表结构以仓库根目录的 `article_trace.sql` 为唯一来源，不存在第二份需要同步的建库脚本。
 数据库连接可用环境变量覆盖，便于 CI：`TEST_DB_HOST` / `TEST_DB_PORT` / `TEST_DB_USER` / `TEST_DB_PASSWORD` / `TEST_DB_NAME`。
+
+> ⚠️ **本地跑测试要先传口令**：测试配置里的 MySQL / Redis 口令默认是 **占位符**（`test-only-db-pw` 等），
+> 特意写成与开发库不同——clone 后不配就连不上，避免误连开发库。本地执行前先设：
+> `$env:TEST_DB_PASSWORD=<本地 MySQL 口令>` 与 `$env:REDIS_PASSWORD=<本地 Redis 口令>`（或对应系统环境变量），
+> 否则会报 `Access denied for user 'root'@'localhost'`。
 
 > **注意**：本项目的配置有**四份**，新增配置项时要逐个同步，漏一处就会出现「一边能用、另一边静默用默认值」：
 >

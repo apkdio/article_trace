@@ -114,6 +114,12 @@ article_trace_front/
 
 **页面标题**：每个路由带 `meta.title`，`router.afterEach` 直接把它写成浏览器标题（**不加站点后缀**，`index.html` 里留一个兜底标题）；文章详情、门户首页、登录页、404 这几处在页面里覆盖成更具体的内容（文章标题 / 站名 / 登录·注册·重置密码）——页面挂载在 `afterEach` 之后，所以页面写的标题天然赢。
 
+**路由守卫**：受保护路由带 `meta.roles`（文章/分类 `[0,1]`，账号管理、审核中心、举报处理 `[0]`，读者中心 `[0,1,2]`；**未标注 `roles` 的视为公开**）。`router.beforeEach` 做两件事：未登录 → 跳 `Login?redirect=<原路径>`（登录成功后按 `redirect` 回跳）；角色不符 → 跳出错页。store 用动态 `import` 取，避免 `store → request.js → router` 的加载环。
+
+> ⚠️ **它只管入口显隐与跳转，不是安全防线**——真正的权限判定在后端 `TokenCheck`（`spring.tokenCheck.notAllowUrl`）。
+> 两边是**同一份权限的两面**：改 `meta.roles` 必须同步后端 `notAllowUrl`（四份配置）与 `TokenCheckTest` 矩阵，
+> 否则会出现「页面放行、接口 401」或反向闪跳。本文件守卫的注释与 `TokenCheck.blocked` 的 javadoc 互留了指针。
+
 ### 请求封装（utils/request.js）
 
 - Axios 实例 `baseURL = /api`（`withCredentials: true`），开发环境由 Vite 代理转发到后端 `localhost:8080`。
@@ -274,3 +280,8 @@ npm run preview
 
 > 容器内这层的 SSE 关缓冲（`proxy_buffering off`）**不能省**。它逐跳生效，宿主机那层也要各自配一份，
 > 否则 AI 问答的打字机效果会在其中一跳被攒成一批返回。
+
+> **上游用变量式 `proxy_pass` + `resolver 127.0.0.11 valid=10s`**：backend 容器重启会换 IP，静态
+> `proxy_pass http://backend:8080/` 只在启动时解析一次，之后一直 502 到 nginx 重启；变量式让每次请求
+> 重新解析（`valid=10s` 是 DNS 缓存）。代价是 nginx 不再自动剥掉 `location` 前缀，必须显式
+> `rewrite ^/api/(.*)$ /$1 break;`。另外这份配置是 **COPY 进镜像**的——改了要重建 frontend 镜像。
