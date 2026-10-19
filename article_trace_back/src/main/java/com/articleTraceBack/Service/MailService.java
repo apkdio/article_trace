@@ -12,9 +12,10 @@ public interface MailService {
     void send(String toEmail, String subject, String content, String contentHtml);
 
     /**
-     * 重试所有未超上限的失败邮件（失败次数 ≤ {@code notification.mail.maxRetry}）。
+     * 补投扫描：failed 且未超重试上限的，以及 pending / sending 卡住超过 10 分钟的
+     * （进程被杀、线程池拒绝后未及标状态）。
      *
-     * @return 本次提交重试的条数
+     * @return 本次提交补投的条数
      */
     int retryFailed();
 }

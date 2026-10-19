@@ -27,6 +27,9 @@ public class MailServiceImpl implements MailService {
     public static final String STATUS_SENT = "sent";
     public static final String STATUS_FAILED = "failed";
 
+    /** pending / sending 的卡死判定阈值：投递是秒级动作，超过它视为进程中断留下的悬挂行 */
+    private static final int STUCK_MINUTES = 10;
+
     private final NotificationMailMapper mailMapper;
     private final EmailUtil emailUtil;
     private final NotificationProperties properties;
@@ -48,19 +51,27 @@ public class MailServiceImpl implements MailService {
             log.warn("skip mail: empty receiver, subject={}", subject);
             return;
         }
+        NotificationMail mail = new NotificationMail();
+        mail.setToEmail(toEmail);
+        mail.setSubject(subject);
+        mail.setContent(content);
+        mail.setContentHtml(contentHtml == null || contentHtml.isBlank() ? null : contentHtml);
+        mail.setStatus(STATUS_PENDING);
+        mail.setRetryCount(0);
+        mail.setCreateTime(LocalDateTime.now());
         try {
-            NotificationMail mail = new NotificationMail();
-            mail.setToEmail(toEmail);
-            mail.setSubject(subject);
-            mail.setContent(content);
-            mail.setContentHtml(contentHtml == null || contentHtml.isBlank() ? null : contentHtml);
-            mail.setStatus(STATUS_PENDING);
-            mail.setRetryCount(0);
-            mail.setCreateTime(LocalDateTime.now());
             mailMapper.insert(mail);
-            submit(mail.getId());
         } catch (Exception e) {
             log.error("enqueue mail failed: to={}, subject={}", toEmail, subject, e);
+            return;
+        }
+        try {
+            submit(mail.getId());
+        } catch (Exception e) {
+            // 线程池打满或已关闭：标 failed 交给重试扫描。留在 pending 而进程随后退出的话，
+            // 修复前没有任何任务会再捡起它
+            log.error("submit mail task rejected, mark failed: id={}", mail.getId(), e);
+            markFailed(mail.getId(), "submit rejected, see server log");
         }
     }
 
@@ -68,16 +79,20 @@ public class MailServiceImpl implements MailService {
     public int retryFailed() {
         int maxRetry = properties.getMail().getMaxRetry();
         try {
+            LocalDateTime stuckBefore = LocalDateTime.now().minusMinutes(STUCK_MINUTES);
             QueryWrapper<NotificationMail> wrapper = new QueryWrapper<>();
-            wrapper.eq("status", STATUS_FAILED)
-                    .le("retry_count", maxRetry);
+            // 两类要补投：failed 未超限的常规重试；pending/sending 卡住的（进程被杀、
+            // 线程池拒绝后未来得及标状态）——只认 create_time 早于阈值的，避免抢正在投递中的行
+            wrapper.and(w -> w
+                    .eq("status", STATUS_FAILED).le("retry_count", maxRetry)
+                    .or(x -> x.in("status", STATUS_PENDING, STATUS_SENDING).lt("create_time", stuckBefore)));
             List<NotificationMail> list = mailMapper.selectList(wrapper);
             int claimed = 0;
             for (NotificationMail mail : list) {
-                // 条件更新把这条领走：重叠的两次扫描里只有一次能把 failed 改成 sending，
-                // 否则同一封信会被投递两遍。
+                // 条件更新把这条领走：按读取到的当前状态带条件，重叠的两次扫描里
+                // 只有一次能改得动，否则同一封信会被投递两遍。
                 UpdateWrapper<NotificationMail> claim = new UpdateWrapper<>();
-                claim.eq("id", mail.getId()).eq("status", STATUS_FAILED).set("status", STATUS_SENDING);
+                claim.eq("id", mail.getId()).eq("status", mail.getStatus()).set("status", STATUS_SENDING);
                 if (mailMapper.update(null, claim) == 1) {
                     claimed++;
                     submit(mail.getId());
@@ -87,6 +102,18 @@ public class MailServiceImpl implements MailService {
         } catch (Exception e) {
             log.error("retry failed mails error", e);
             return 0;
+        }
+    }
+
+    /** 把一封还停在 pending / sending 的行标成 failed（提交被拒等场景；不计入重试次数上限的消耗） */
+    private void markFailed(Long mailId, String error) {
+        try {
+            UpdateWrapper<NotificationMail> fail = new UpdateWrapper<>();
+            fail.eq("id", mailId).in("status", STATUS_PENDING, STATUS_SENDING)
+                    .set("status", STATUS_FAILED).set("error", error);
+            mailMapper.update(null, fail);
+        } catch (Exception e) {
+            log.error("mark mail failed error: id={}", mailId, e);
         }
     }
 

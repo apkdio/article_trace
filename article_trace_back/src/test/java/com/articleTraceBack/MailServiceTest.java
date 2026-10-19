@@ -100,4 +100,48 @@ public class MailServiceTest {
         }
         return mailMapper.selectById(id);
     }
+
+    /** 卡死的 pending 行（模拟进程在投递前被杀）应被补投扫描捡起 */
+    @Test
+    public void stuckPendingRowIsRescuedByRetryScan() throws Exception {
+        NotificationMail stuck = new NotificationMail();
+        stuck.setToEmail("nobody@example.invalid");
+        stuck.setSubject("P1-6 卡死补投");
+        stuck.setContent("create_time 已超 10 分钟的 pending 行");
+        stuck.setStatus(MailServiceImpl.STATUS_PENDING);
+        stuck.setRetryCount(0);
+        stuck.setCreateTime(LocalDateTime.now().minusMinutes(30));
+        mailMapper.insert(stuck);
+
+        int retried = mailService.retryFailed();
+        assertTrue(retried >= 1, "卡死的 pending 行应被补投扫描提交");
+
+        NotificationMail after = mailMapper.selectById(stuck.getId());
+        assertTrue(MailServiceImpl.STATUS_SENDING.equals(after.getStatus())
+                        || MailServiceImpl.STATUS_SENT.equals(after.getStatus())
+                        || MailServiceImpl.STATUS_FAILED.equals(after.getStatus()),
+                "卡死行应离开 pending（投递结果取决于 SMTP，这里只验证它被捡起）");
+        mailMapper.deleteById(stuck.getId());
+    }
+
+    /** 刚落库的 pending 行（投递还没跑完的正常窗口）不得被扫描抢走 */
+    @Test
+    public void freshPendingRowIsNotRescued() {
+        NotificationMail fresh = new NotificationMail();
+        fresh.setToEmail("nobody@example.invalid");
+        fresh.setSubject("P1-6 新行不抢");
+        fresh.setContent("create_time 是现在");
+        fresh.setStatus(MailServiceImpl.STATUS_PENDING);
+        fresh.setRetryCount(0);
+        fresh.setCreateTime(LocalDateTime.now());
+        mailMapper.insert(fresh);
+
+        mailService.retryFailed();
+
+        NotificationMail after = mailMapper.selectById(fresh.getId());
+        assertTrue(MailServiceImpl.STATUS_PENDING.equals(after.getStatus())
+                        || MailServiceImpl.STATUS_SENT.equals(after.getStatus()),
+                "10 分钟内的 pending 行不该被补投扫描领走");
+        mailMapper.deleteById(fresh.getId());
+    }
 }
