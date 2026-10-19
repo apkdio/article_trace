@@ -112,6 +112,7 @@ rpc:
       ingestKey: "agent:ingest:pending"      # 待入库/更新文章 id 集合
       deleteKey: "agent:delete:pending"      # 待删除文章 id 集合
 sensitive_word:
+  # res/ 是模板基线（部署初始值）；运行期以部署现场那份为准，可直接改、30 分钟热更新
   filePath: ./res/sensitive_words.txt
   cron: "0 */30 * * * ?"
 scheduler:

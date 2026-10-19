@@ -25,7 +25,7 @@
 article_trace_back/
 ├── pom.xml                                  # Maven 依赖管理（含 gRPC + protobuf 插件）
 ├── res/
-│   └── sensitive_words.txt                  # 外部敏感词库（一行一词，支持热更新）
+│   └── sensitive_words_templete.txt         # 外部词库模板（部署时 mv 成 sensitive_words.txt，运行期热更新）
 └── src/main/
     ├── proto/
     │   └── article_agent.proto              # gRPC 契约（与 agent 侧共享，mvn compile 自动生成 stub）
@@ -214,7 +214,7 @@ article_trace_back/
 ### 6. 敏感词过滤（AhoCorasickUtil + SyncSensitiveWordLoader）
 
 - 采用 **Aho-Corasick** 自动机，一次遍历文本即可匹配所有敏感词，效率远高于逐个 `contains`。
-- 词库支持**热更新**：外部词库 `res/sensitive_words.txt`（compose 已挂到容器 `/app/res`），
+- 词库支持**热更新**：外部词库 `res/sensitive_words.txt`（**运行期那份**；仓库提交的是模板 `res/sensitive_words_templete.txt`，部署时 mv 成它），
   **外部优先、缺失或读取失败时降级到 jar 内置词表**（`src/main/resources/sensitive_words.txt`）。
   默认 30 分钟检测一次修改时间，变化则重建自动机；**改词库不用重启、也不用重建镜像**。详见下方「敏感词库（外部优先）」。
 - 文章标题 + 内容（富文本清洗后）与评论均做敏感词校验。
@@ -950,8 +950,9 @@ mvn clean package && java -jar target/article_trace-*.jar
 
 ### 敏感词库（外部优先）
 
-- **外部词库（运行时以它为准）**：`article_trace_back/res/sensitive_words.txt`，一行一词。
+- **模板词库（仓库里提交的就是它）**：`article_trace_back/res/sensitive_words_templete.txt`，一行一词。它**只是模板**：部署（或重置词库）时**手动 mv / cp 成运行期文件名** `sensitive_words.txt`。
   `docker-compose.yml` 已把它挂到容器 `/app/res`，正好是配置项 `sensitive_word.filePath`
+- **运行期以部署现场那份为准**：容器里是 `/app/res/sensitive_words.txt`（compose 挂载 `./res` 而来，部署时由模板 mv 成），手机站是 `/opt/article-trace/res/sensitive_words.txt`。现场可直接改、30 分钟热更新；**运行期与模板不一致属正常**，别用「与仓库 md5 相同」去卡它；但要**定期核对词条规模**，外部文件被写空或截断会**静默削弱过滤能力**。
   （`./res/sensitive_words.txt`，容器工作目录是 `/app`）指向的路径。
   **改这个文件即可生效**：默认 30 分钟内热更新，不用重启、不用重建镜像。
 - **内置词库（兜底）**：`src/main/resources/sensitive_words.txt`，打包进 jar。
