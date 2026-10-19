@@ -351,7 +351,9 @@ flowchart LR
 - **全量对账**（`AgentSyncTask.fullSync`，每天凌晨 1 点）：兜底机制，查询全部 `state=1` 文章重新推送（agent 侧按 article.id 幂等覆盖），并调 `ListIds` 拿回索引清单，**删掉库里已不是「已发布」的幽灵 id**（已删除/下架的文章不会再被问答命中）。库里一篇已发布都没有时同样走清理。
 - **幂等与冲突**：`markIngestPending` / `markDeletePending` 互相移除对方集合中的同 id，保证「后到操作覆盖先到操作」。
 - **旁路容错**：所有 Redis 写入与 RPC 调用均 try-catch + 日志，agent 不可用不影响主业务。
-- **共享密钥**：`rpc.agent.sharedKey`（env `AGENT_SHARED_KEY`）非空时，`AgentAuthInterceptor` 给每个 RPC 附 `x-agent-key` metadata；agent 侧配同一个值才校验，任一侧留空都不拦（便于先发一侧）。
+- **共享密钥**：`rpc.agent.sharedKey`（env `AGENT_SHARED_KEY`）非空时，`AgentAuthInterceptor` 给每个 RPC 附 `x-agent-key` metadata。
+  agent 侧是**单向**判断：自己配了密钥就校验、没配就不校验。所以**部署顺序是先配 Java（客户端）再配 agent（服务端）**——
+  反过来（agent 已配、Java 侧还空着）会让全部 RPC 收到 `UNAUTHENTICATED`，AI 功能整片静默降级、只在日志里看得见。
 
 > **BM25 重建说明**：agent 侧采用「脏标记 + 惰性重建」——每批 ingest 只置脏标记，BM25 索引在下次检索前才重建一次，因此 Java 侧分多批推送**不会**导致多次重建。
 
@@ -416,11 +418,15 @@ notify(...) → mailService.send(to, subject, content)      # 先落库 notifica
                                                           # 四参重载可带 contentHtml（双载体）
             → MailServiceImpl.submit() → mailExecutor.execute(deliver)  # 显式提交线程池（非 @Async）
             → EmailUtil 发信 → 回写 status=sent / failed(失败次数+1)
-MailRetryTask（每 10 分钟）→ 先条件更新把记录领成 sending（failed → sending，避免重叠扫描重复投递）
-                            → 再重投领到手的记录（失败次数 ≤ maxRetry）
+MailRetryTask（每 10 分钟）→ 扫描三类：failed 未超限 / pending 卡住 / sending 卡住（sending_since 超阈值）
+                            → 逐条条件更新领成 sending 并刷新 sending_since（**真实值变更**才算领到）
+                            → 再重投领到手的记录
 ```
 
 - **落库先行**：即使异步任务被丢弃，记录仍在库里，重试任务能补 → 不丢邮件
+- **领取必须排他**：`sending` 行的领取条件带上「`sending_since` 为空或早于阈值」，并把 `sending_since` 刷成当前时刻。
+  只按 `status` 匹配等于「匹配但值不变」的更新，而驱动默认按 CLIENT_FOUND_ROWS 语义返回 1——重叠的两次扫描
+  会把同一封信投两遍（2026-10-19 二轮复核发现并修复）。
 - **重试上限**：默认 2 次重发（首次 + 2 次重试 = 最多 3 次尝试），超限停止并留日志（避免打爆 SMTP 日限额）
 - **邮箱为空则跳过邮件渠道**，只投站内并记日志
 - 测试：`mvn test -Dtest=MailServiceTest -Dmail.to=your@mail.com`

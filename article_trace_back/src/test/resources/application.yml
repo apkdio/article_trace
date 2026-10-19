@@ -139,6 +139,8 @@ rpc:
     enabled: false           # ★ 默认不依赖 agent；需要联调的用例自行 assumeTrue 跳过
     host: localhost
     port: 50051
+    # 共享密钥（两侧同配才校验）：测试默认空，需要联调鉴权时用 AGENT_SHARED_KEY 传
+    sharedKey: ${AGENT_SHARED_KEY:}
     sessionKeyPrefix: "agent:session:user:"
     sync:
       enabled: false

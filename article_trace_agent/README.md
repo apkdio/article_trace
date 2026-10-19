@@ -155,7 +155,9 @@ uv pip install -r requirements.txt  # 安装依赖
 **环境变量 > yaml > 内置默认值**；embedding 未单独指定时跟随 `LLM_*`，因此单端点只填 `LLM_BASE_URL` 即可。
 Docker 部署下这些变量由 `.env` 透传到 agent 容器，见根目录 `.env.example`。
 
-另有两个服务侧变量：`AGENT_SHARED_KEY`（Java→agent 共享密钥，**两边都配好才启用**；留空则接口不鉴权并打启动警告）、
+另有两个服务侧变量：`AGENT_SHARED_KEY`（Java→agent 共享密钥，走 gRPC metadata `x-agent-key`）——**单向判断**：
+agent 侧配了就校验、没配就不校验；所以**先配 Java 侧、再配 agent 侧**，反过来（agent 已配而客户端不带密钥）
+所有 RPC 会被 `UNAUTHENTICATED` 拒。
 `AGENT_BIND`（监听地址，默认 `[::]`，仅内网部署时建议收绑到具体网卡地址）。
 
 ### 5. 生成 stub（仅 proto 变更后需要）
