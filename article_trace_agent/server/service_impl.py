@@ -14,6 +14,7 @@ from tools.vector_store import (
     ingest_article,
     ingest_articles,
     list_collections_info,
+    list_indexed_ids,
 )
 
 logger = get_logger(name="grpc_service")
@@ -153,6 +154,10 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         # 幂等：会话不存在也返回成功；会话 ID 归一成合法 UUID，避免越权删除
         delete_session(ensure_session_id(request.session_id))
         return pb.DeleteSessionReply(ok=True, message="")
+
+    @_guard(pb.ListIdsReply)
+    def ListIds(self, request, context):
+        return pb.ListIdsReply(ok=True, article_ids=list_indexed_ids(), message="")
 
     @_guard(pb.HealthReply)
     def Health(self, request, context):

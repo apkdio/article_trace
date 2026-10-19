@@ -249,22 +249,31 @@ def build_hybrid_index(sparse_retriever=None, force: bool = False) -> int:
 # 统计 / 重置
 # ---------------------------------------------------------------------------
 
+def _indexed_article_ids() -> set:
+    """当前 collection 里去重后的 article_id 集合。"""
+    store = get_vector_store()
+    data = store._collection.get(include=["metadatas"])
+    ids = set()
+    for m in (data.get("metadatas") or []):
+        aid = m.get("article_id") if m else None
+        if isinstance(aid, int):
+            ids.add(aid)
+    return ids
+
+
+def list_indexed_ids() -> list:
+    """已索引文章 id 列表（升序），供 Java 侧全量对账清理幽灵条目。"""
+    return sorted(_indexed_article_ids())
+
+
 def list_collections_info() -> dict:
     """返回 collection 基本统计（chunk 数、去重文章数）。"""
     store = get_vector_store()
     count = store._collection.count()
-    data = store._collection.get(include=["metadatas"])
-    article_ids = set()
-    for m in (data.get("metadatas") or []):
-        if not m:
-            continue
-        aid = m.get("article_id")
-        if isinstance(aid, int):
-            article_ids.add(aid)
     return {
         "collection_name": _get_collection_name(),
         "chunk_count": count,
-        "article_count": len(article_ids),
+        "article_count": len(_indexed_article_ids()),
     }
 
 

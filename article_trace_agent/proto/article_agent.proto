@@ -46,6 +46,9 @@ service ArticleAgentService {
   // 删除会话
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionReply);
 
+  // 列出已索引文章 id（供 Java 侧全量对账清理幽灵条目）
+  rpc ListIds(ListIdsRequest) returns (ListIdsReply);
+
   // 健康/统计
   rpc Health(HealthRequest) returns (HealthReply);
 }
@@ -196,6 +199,18 @@ message DeleteSessionRequest {
 message DeleteSessionReply {
   bool   ok = 1;
   string message = 2;
+}
+
+
+// =============================================================
+// 索引清单（全量对账：Java 侧据此清理库里已不存在的幽灵条目）
+// =============================================================
+message ListIdsRequest {}
+
+message ListIdsReply {
+  bool   ok = 1;
+  repeated int64 article_ids = 2;  // 当前已索引的全部文章 id（去重）
+  string message = 3;
 }
 
 
