@@ -5,6 +5,8 @@
 - ask(query, ...)              → 检索 + LLM 生成，返回 {answer, articles}
 """
 
+import re
+
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from tools.config_tool import load_config
@@ -40,9 +42,16 @@ def _get_retriever():
     return _hybrid_retriever
 
 
+_PUNCT_RE = re.compile(r"[\s，。！？；：、,.!?;:～~·…\-—_]+")
+
+
 def _is_greeting(query: str) -> bool:
-    q = query.strip().lower()
-    return any(w in q for w in _GREETING_WORDS) or any(w in q for w in _THANKS_WORDS)
+    """仅当整句就是一个问候/道谢词时才算闲聊（去标点空白后全匹配，长度上限兜底）。
+
+    子串匹配会把「你好，帮我找X」这类误判成闲聊、跳过检索，故改整句判定。
+    """
+    q = _PUNCT_RE.sub("", (query or "").strip().lower())
+    return bool(q) and len(q) <= 6 and (q in _GREETING_WORDS or q in _THANKS_WORDS)
 
 
 def _chunk_snippet(doc) -> str:
