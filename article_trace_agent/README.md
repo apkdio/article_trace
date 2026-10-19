@@ -78,7 +78,7 @@ article_trace_agent/
 
 ---
 
-## 接口契约（9 个 RPC 方法）
+## 接口契约（10 个 RPC 方法）
 
 完整定义见 [proto/article_agent.proto](proto/article_agent.proto)，摘要如下：
 
@@ -92,6 +92,7 @@ article_trace_agent/
 | `ListSessions` | Java → Python | 列出会话（按更新时间倒序，可按 `session_ids` 过滤） |
 | `GetSessionMessages` | Java → Python | 获取会话历史消息（可限制条数） |
 | `DeleteSession` | Java → Python | 删除会话 |
+| `ListIds` | Java → Python | 列出已索引文章 id（供全量对账清理幽灵条目） |
 | `Health` | Java → Python | 健康探活 + 入库统计 |
 
 要点：
@@ -153,6 +154,9 @@ uv pip install -r requirements.txt  # 安装依赖
 覆盖在 `load_config`（`tools/config_tool.py`）里统一应用，优先级为
 **环境变量 > yaml > 内置默认值**；embedding 未单独指定时跟随 `LLM_*`，因此单端点只填 `LLM_BASE_URL` 即可。
 Docker 部署下这些变量由 `.env` 透传到 agent 容器，见根目录 `.env.example`。
+
+另有两个服务侧变量：`AGENT_SHARED_KEY`（Java→agent 共享密钥，**两边都配好才启用**；留空则接口不鉴权并打启动警告）、
+`AGENT_BIND`（监听地址，默认 `[::]`，仅内网部署时建议收绑到具体网卡地址）。
 
 ### 5. 生成 stub（仅 proto 变更后需要）
 
