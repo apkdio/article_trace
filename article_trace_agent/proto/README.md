@@ -9,6 +9,7 @@
 - 入库按 `article.id` **幂等**（重推即覆盖，不产生重复数据）。
 - `Ask` 为服务端流式（先发命中文章列表，再逐段发答案增量）；`SyncArticles` 为客户端流式（全量/增量灌数据）。
 - `MatchedArticle` 只回摘要片段，不回正文（正文由 Java 按 id 从 RustFS 自取）。
+- Java→agent 的调用鉴权走 metadata `x-agent-key`：**两侧都配好才启用**，任一侧留空都不拦（便于灰度）。
 
 ## 代码生成
 

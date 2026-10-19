@@ -209,9 +209,11 @@ sequenceDiagram
 - [x] 文章级向量库：入库 / 删除 / 分块（按 `article.id` 幂等）
 - [x] 双路召回编排 `hybrid_retriever`
 - [x] 问答编排：检索 → 分组 → LLM 生成
-- [x] gRPC server：实现 9 个 RPC 方法
+- [x] gRPC server：实现 10 个 RPC 方法
 - [x] 配置与系统提示词（agent / rag / chroma / prompts）
 - [x] `requirements.txt` + venv 创建 + stub 生成
 - [x] Java 侧 client + Redis 攒批定时同步（AgentSyncTask：增量 + 全量对账）
 - [x] 批量入库优化（一次删旧、一次写新、一次 embedding，`ok` 语义对齐失败重试）
 - [x] 多会话管理（ListSessions / GetSessionMessages / DeleteSession + Ask 回传 session_id）
+- [x] 输出信任边界（参考资料定界 / 引用来源校验 / LLM 失败不落库 / retrieval_only 不回正文）
+- [x] ListIds 对账接口 + 共享密钥鉴权（`x-agent-key`）+ 可配监听地址
