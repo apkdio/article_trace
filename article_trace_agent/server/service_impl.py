@@ -5,7 +5,7 @@ import article_agent_pb2_grpc as pb_grpc
 
 from tools.article_agent import ask_stream as core_ask_stream
 from tools.config_tool import load_config
-from tools.context_store import delete_session, get_messages, list_sessions
+from tools.context_store import delete_session, ensure_session_id, get_messages, list_sessions
 from tools.log_tool import get_logger
 from tools.vector_store import (
     delete_articles,
@@ -114,7 +114,8 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         return pb.ListSessionsReply(ok=True, sessions=summaries, message="")
 
     def GetSessionMessages(self, request, context):
-        msgs = get_messages(request.session_id, request.limit)
+        # 会话 ID 必须是合法 UUID：非法/空一律归一成随机 id，读不到任何数据（防路径穿越）
+        msgs = get_messages(ensure_session_id(request.session_id), request.limit)
         out = [
             pb.ChatMessage(
                 role=m.get("role", ""),
@@ -126,8 +127,8 @@ class ArticleAgentServicer(pb_grpc.ArticleAgentServiceServicer):
         return pb.GetSessionMessagesReply(ok=True, messages=out, message="")
 
     def DeleteSession(self, request, context):
-        # 幂等：会话不存在也返回成功（Java 侧只需确认可清理映射）
-        delete_session(request.session_id)
+        # 幂等：会话不存在也返回成功；会话 ID 归一成合法 UUID，避免越权删除
+        delete_session(ensure_session_id(request.session_id))
         return pb.DeleteSessionReply(ok=True, message="")
 
     def Health(self, request, context):
