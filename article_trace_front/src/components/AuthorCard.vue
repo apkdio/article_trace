@@ -17,9 +17,7 @@ defineProps({
             <el-avatar :size="80" :src="info.writerPicThumbSrc || logo" class="author-avatar-main"/>
         </div>
         <div class="author-card-body">
-            <div class="writer-nick">{{ info.nickName || defaultName }}
-                <p class="author-username">@{{ info.username }}</p>
-            </div>
+            <div class="writer-nick">{{ info.nickName || defaultName }}</div>
             <!-- 个签：只有作者与站长有，没填就不占位 -->
             <p class="writer-signature" v-if="info.signature">{{ info.signature }}</p>
             <div class="writer-stats-grid">
@@ -73,13 +71,6 @@ defineProps({
             font-size: 18px;
             font-weight: 700;
             color: var(--at-text-main);
-
-            .author-username {
-                font-size: 13px;
-                color: var(--at-text-secondary);
-                margin-top: 5px;
-                font-weight: 400;
-            }
         }
 
         .writer-signature {

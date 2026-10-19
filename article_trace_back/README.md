@@ -809,6 +809,9 @@ CREATE TABLE IF NOT EXISTS `report` (
 | PATCH | `/reader/article/addViews/{id}` | 增加浏览量 |
 | GET | `/reader/article/hotArticles` | 热门文章 Top10 |
 
+> 这些接口未登录可读，但**不回 `username`（登录名）**——昵称 / 个签 / 头像 / 邮箱（联系用）够公开页用了，
+> 登录名与密码是一对，公开等于把爆破目标送出去。`email` 是有意保留的联系方式。
+
 ### 作者申请 `/applyAuthor`
 
 **按使用者分两段路径**：用户侧挂在 `/applyAuthor` 下，站长侧统一走 `/applyAuthor/manage/**`。

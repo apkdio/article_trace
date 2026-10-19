@@ -103,7 +103,6 @@ public class ReaderController {
         writer.setNickName(user.getNickname());
         writer.setSignature(user.getSignature());
         writer.setEmail(user.getEmail());
-        writer.setUsername(user.getUsername());
         return Result.success(writer);
     }
 
@@ -121,7 +120,6 @@ public class ReaderController {
         writer.setNickName(user.getNickname());
         writer.setSignature(user.getSignature());
         writer.setEmail(user.getEmail());
-        writer.setUsername(user.getUsername());
         return Result.success(writer);
     }
 
