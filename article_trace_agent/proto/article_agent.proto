@@ -139,7 +139,7 @@ message MatchedArticle {
   string title = 2;
   string category_name = 3;
   string snippet = 4;        // 命中片段摘要
-  double score = 5;          // 相关度分数（RRF 归一化，仅作排序参考）
+  double score = 5;          // 原始 RRF 分（未归一化，仅作排序参考）
 }
 
 // 流式问答响应：一条流中依次发送 命中文章 → 多个答案增量
