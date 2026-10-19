@@ -50,8 +50,8 @@ export const submitUserLogoService = (userLogo) => {
 export const getUserNowPicSrc = () => {
     return request.get('/user/nowLogo')
 }
-export const getAllAccountsService = () => {
-    return request.get('/user/accountManage')
+export const getAllAccountsService = (pageNum, pageSize) => {
+    return request.get('/user/accountManage', {params: {pageNum, pageSize}})
 }
 
 export const deleteAccountService = (id, masterPass) => {

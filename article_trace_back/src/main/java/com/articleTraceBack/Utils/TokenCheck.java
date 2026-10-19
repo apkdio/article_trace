@@ -88,7 +88,11 @@ public class TokenCheck implements AsyncHandlerInterceptor {
         }
     }
 
-    /** 角色拦截判定（纯函数以便矩阵用例直测）：作者只被作者表拦，读者被两张表的并集拦，站长不拦 */
+    /**
+     * 角色拦截判定（纯函数以便矩阵用例直测）：作者只被作者表拦，读者被两张表的并集拦，站长不拦。
+     * 前端 router/index.js 的 beforeEach（meta.roles）维护着同一份入口分级——改这里或 notAllowUrl 时
+     * 必须同步前端 meta 与 TokenCheckTest 矩阵，三处口径一致，否则出现「页面放行、接口 401」或反向闪跳。
+     */
     static boolean blocked(String uri, int type, String[] writerNotAllow, String[] readerNotAllow) {
         if (type == 1) {
             return matchesAny(writerNotAllow, uri);

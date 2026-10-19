@@ -143,7 +143,7 @@ defineExpose({openNotify, unread})
         </slot>
     </el-badge>
 
-    <el-drawer v-model="notifyDrawer" title="站内通知" size="380px" class="notify-drawer">
+    <el-drawer v-model="notifyDrawer" title="站内通知" size="380px" class="notify-drawer" append-to-body>
         <div class="notify-toolbar">
             <el-radio-group v-model="notifyType" size="small" @change="switchType">
                 <el-radio-button value="all">全部</el-radio-button>

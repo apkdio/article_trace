@@ -84,7 +84,11 @@ const getMasterInfo = async () => {
   }
 
 }
+/** 竞态守卫：只有「最后一次」请求的响应允许落地，迟到的旧响应直接丢弃 */
+let listRequestSeq = 0
+
 const getArticles = async () => {
+  const seq = ++listRequestSeq
   loading.value = true
   searchCondition.value.pageNum = pageNum.value
   searchCondition.value.pageSize = pageSize.value
@@ -97,17 +101,23 @@ const getArticles = async () => {
   searchConditions().clear()
   try {
     const data = await getPublicArticlesService(searchCondition.value)
+    if (seq !== listRequestSeq) return
     if (data.code === 0) {
       articleList.value = data.data.items
       total.value = data.data.total
     } else {
       articleList.value = []
+      total.value = 0
     }
   } catch (e) {
+    if (seq !== listRequestSeq) return
     articleList.value = []
+    total.value = 0
     ElMessage.error("服务器响应失败！")
   } finally {
-    setTimeout(() => loading.value = false, 100)
+    if (seq === listRequestSeq) {
+      setTimeout(() => loading.value = false, 100)
+    }
   }
 }
 
@@ -159,6 +169,7 @@ const clearInf = () => {
     pageNum: null,
     pageSize: null
   }
+  pageNum.value = 1
   getArticles()
 }
 const searchArticleInCategory = (categoryId) => {
@@ -171,6 +182,7 @@ const searchArticleInCategory = (categoryId) => {
     pageNum: null,
     pageSize: null
   }
+  pageNum.value = 1
   getArticles()
   setTimeout(() => {
     window.scrollTo({
@@ -188,6 +200,7 @@ const searchArticleInWriter = (nickName) => {
     pageNum: null,
     pageSize: null
   }
+  pageNum.value = 1
   getArticles()
   setTimeout(() => {
     window.scrollTo({

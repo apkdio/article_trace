@@ -357,7 +357,11 @@ const onCurrentChange = (num) => {
   getArticles()
 }
 
+/** 竞态守卫：只有「最后一次」请求的响应允许落地，迟到的旧响应直接丢弃 */
+let listRequestSeq = 0
+
 const getArticles = async () => {
+  const seq = ++listRequestSeq
   isLoading.value = true
   conditions.value.pageNum = pageNum.value
   conditions.value.pageSize = pageSize.value
@@ -366,11 +370,13 @@ const getArticles = async () => {
     let data;
     if (userType === 0) data = await getArticleWithConditionsMaster(conditions.value)
     else data = await getArticleWithConditions(conditions.value)
+    if (seq !== listRequestSeq) return
     if (data.code === 0) {
       articles.value = data.data.items
       total.value = data.data.total
     } else {
       articles.value = []
+      total.value = 0
     }
   } catch (error) {
     ElMessage.error("数据获取失败！")
@@ -393,6 +399,12 @@ const resetConditions = () => {
 const reset = async () => {
   resetConditions()
   await getArticles()
+}
+
+/** 查询：换了条件就回第 1 页——旧页码在新结果集里大概率是空页 */
+const searchArticles = () => {
+  pageNum.value = 1
+  getArticles()
 }
 
 const revokeCoverPreview = () => {
@@ -590,35 +602,36 @@ const addOrUpdateArticle = async (state) => {
     if (userInfoStore().type !== 0) articleModel.value.state = 2
     else articleModel.value.state = 1
   } else articleModel.value.state = state
-  if (articleModelRef.value.validate()) {
-    if (drawerTitle.value === '添加文章') {
-      try {
-        const resultData = await addArticleService(articleModel.value, pendingCover.value)
-        if (resultData.code === 0) {
-          ElMessage.success("添加成功！")
-          alertSensitiveHit(resultData.data)
-          closeDrawer()
-          await getArticles()
-        } else {
-          handleSubmitError(resultData.message)
-        }
-      } catch (error) {
-        ElMessage.error("添加失败！服务端响应失败！")
+  // validate() 不传回调返回 Promise（对象恒真），必须 await：否则标题空、未选分类照样发请求
+  const valid = await articleModelRef.value.validate().catch(() => false)
+  if (!valid) return
+  if (drawerTitle.value === '添加文章') {
+    try {
+      const resultData = await addArticleService(articleModel.value, pendingCover.value)
+      if (resultData.code === 0) {
+        ElMessage.success("添加成功！")
+        alertSensitiveHit(resultData.data)
+        closeDrawer()
+        await getArticles()
+      } else {
+        handleSubmitError(resultData.message)
       }
-    } else if (drawerTitle.value === '修改文章') {
-      try {
-        const resultData = await updateArticleService(articleModel.value, pendingCover.value)
-        if (resultData.code === 0) {
-          ElMessage.success("修改成功！")
-          alertSensitiveHit(resultData.data)
-          closeDrawer()
-          await getArticles()
-        } else {
-          handleSubmitError(resultData.message)
-        }
-      } catch (error) {
-        ElMessage.error("修改失败！服务端响应失败！")
+    } catch (error) {
+      ElMessage.error("添加失败！服务端响应失败！")
+    }
+  } else if (drawerTitle.value === '修改文章') {
+    try {
+      const resultData = await updateArticleService(articleModel.value, pendingCover.value)
+      if (resultData.code === 0) {
+        ElMessage.success("修改成功！")
+        alertSensitiveHit(resultData.data)
+        closeDrawer()
+        await getArticles()
+      } else {
+        handleSubmitError(resultData.message)
       }
+    } catch (error) {
+      ElMessage.error("修改失败！服务端响应失败！")
     }
   } else {
     ElMessage.error("未知操作！")
@@ -746,7 +759,7 @@ const refreshAfterDelete = async () => {
 
 
         <el-form-item>
-          <el-button type="primary" @click="getArticles()">查询</el-button>
+          <el-button type="primary" @click="searchArticles">查询</el-button>
           <el-button @click="reset()">重置</el-button>
         </el-form-item>
       </el-form>

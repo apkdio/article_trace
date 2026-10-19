@@ -247,9 +247,10 @@ function register() {
 
 function login() {
   errorsList.value = {}
-  isLoading.value = true
   FormRef.value.validate((valid) => {
     if (valid) {
+      // loading 只在表单真的过校验后才亮：写在 validate 外面的话，校验失败它闪一下就灭
+      isLoading.value = true
       const payload = {...FormData.value}
       // 只有被要求时后端才校验图形码
       if (loginNeedCaptcha.value) {
@@ -297,7 +298,6 @@ function login() {
             isLoading.value = false
           })
     }
-    isLoading.value = false
   })
 }
 

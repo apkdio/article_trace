@@ -58,9 +58,13 @@ const submit = async () => {
             ElMessage.success("举报已提交，站长会尽快处理")
             dialogVisible.value = false
         } else {
-            // 「已经举报过了」这类判定在后端（有唯一索引兜底），这里如实显示它的原因
-            ElMessage.error(res.message)
+            // 「已经举报过了」这类判定在后端（有唯一索引兜底），这里如实显示它的原因；
+            // message 是 {error: "..."} 形状，直接弹会显示成 [object Object]
+            ElMessage.error(res.message?.error || '提交失败！')
         }
+    } catch (e) {
+        // 断网/5xx 也要给出提示并复位按钮，否则弹窗开着、用户只会反复点
+        ElMessage.error('服务器响应失败！')
     } finally {
         submitting.value = false
     }

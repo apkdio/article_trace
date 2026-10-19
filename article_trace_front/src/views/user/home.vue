@@ -16,7 +16,9 @@ const hitokoto = ref({
 const getHitokoto = async () => {
   isLoading.value = true;
   try {
-    const {data} = await axios.get('https://v1.hitokoto.cn');
+    // 3 秒超时：axios 默认永不超时，而这里在 getUserInfo 的 finally 里被 await，
+    // 悬挂时整个首页陪它白等——兜底文案要等浏览器自己断开才轮到
+    const {data} = await axios.get('https://v1.hitokoto.cn', {timeout: 3000});
     hitokoto.value = data;
   } catch (error) {
     hitokoto.value = {

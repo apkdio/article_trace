@@ -1,6 +1,6 @@
 <script setup>
 /* 逻辑部分保持不变，仅增加统计数据的 computed */
-import {Delete, Timer, User, Avatar, Top, Bottom} from '@element-plus/icons-vue'
+import {Delete, Timer, User, Top, Bottom} from '@element-plus/icons-vue'
 import {onMounted, ref, computed} from 'vue'
 import {changeType, checkType, getAllAccountsService} from "@/api/user.js";
 import {listApplies, reviewApply} from "@/api/apply.js";
@@ -20,15 +20,6 @@ const pageSize = ref(10) // 默认 10 条更适合管理页
 
 // 作者申请（待审）
 const pendingApplies = ref([])
-
-// 统计逻辑
-const stats = computed(() => {
-  return {
-    total: total.value,
-    admins: accountData.value.filter(a => a.type === 0).length,
-    authors: accountData.value.filter(a => a.type === 1).length
-  }
-})
 
 onMounted(async () => {
   if (!checkType([0])) router.push({name: "ErrorPage"})
@@ -164,11 +155,6 @@ const changeUserType = (id, type) => {
         <el-col :span="6">
           <StatCard label="总注册用户" :value="total" color="purple">
             <template #icon><el-icon><User/></el-icon></template>
-          </StatCard>
-        </el-col>
-        <el-col :span="6">
-          <StatCard label="站长" :value="stats.admins" color="blue">
-            <template #icon><el-icon><Avatar/></el-icon></template>
           </StatCard>
         </el-col>
       </el-row>
