@@ -338,10 +338,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean deleteUser(int id) {
+        // 删行前先取登录名：注销后要清 Redis 令牌，否则旧 Cookie 在 JWT 有效期内仍通过双校验
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            return false;
+        }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id", id);
         boolean deleted = userMapper.delete(queryWrapper) == 1;
         if (deleted) {
+            deleteRedisToken(user.getUsername());
             // 账号注销后，同步清理该用户在 agent 侧的会话数据与归属索引
             agentSessionService.clearAll(String.valueOf(id));
             // 以及其作者申请：留着会变成没有对应用户的悬挂记录，
