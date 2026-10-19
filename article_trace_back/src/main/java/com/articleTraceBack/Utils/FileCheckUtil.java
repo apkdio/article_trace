@@ -2,10 +2,12 @@ package com.articleTraceBack.Utils;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
 
-/** 上传文件的基础校验：MIME 与扩展名必须同时满足。contentType 可被客户端伪造，只查其一会让 {@code x.jsp} 配 {@code image/png} 蒙混过关。 */
+/** 上传文件的基础校验：MIME、扩展名、魔数三者必须同时满足。contentType 与扩展名都可被客户端伪造，只查其一会让 {@code evil.svg} 改名 {@code .gif} 蒙混过关。 */
 public final class FileCheckUtil {
 
     /** 允许的图片扩展名（小写，含点） */
@@ -19,9 +21,60 @@ public final class FileCheckUtil {
     private FileCheckUtil() {
     }
 
-    /** 是否为可接受的图片文件：MIME 与扩展名都要通过（MIME 可伪造，扩展名决定最终对象名）。 */
+    /** 是否为可接受的图片文件：MIME、扩展名与内容魔数都要通过（三者都可伪造，缺一不可）。 */
     public static boolean isAcceptableImage(MultipartFile file) {
-        return file != null && hasImageContentType(file) && hasImageExtension(file);
+        return file != null && hasImageContentType(file) && hasImageExtension(file) && hasImageMagic(file);
+    }
+
+    /**
+     * 内容魔数是否与声明的图片类型一致。
+     *
+     * @param contentType 归一化后的 MIME（不带参数，如 {@code image/png}）
+     */
+    static boolean magicMatches(String contentType, InputStream in) throws IOException {
+        byte[] head = new byte[12];
+        int read = in.readNBytes(head, 0, head.length);
+        if (read < 3) {
+            return false;
+        }
+        return switch (contentType) {
+            // PNG: 89 50 4E 47
+            case "image/png" -> (head[0] & 0xFF) == 0x89 && head[1] == 0x50 && head[2] == 0x4E && head[3] == 0x47;
+            // JPEG: FF D8 FF
+            case "image/jpeg" -> (head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8 && (head[2] & 0xFF) == 0xFF;
+            // GIF: GIF87a / GIF89a
+            case "image/gif" -> head[0] == 0x47 && head[1] == 0x49 && head[2] == 0x46;
+            // RIFF....WEBP
+            case "image/webp" -> read >= 12 && head[0] == 0x52 && head[1] == 0x49
+                    && head[2] == 0x46 && head[3] == 0x46 && head[8] == 0x57 && head[9] == 0x45;
+            // BM
+            case "image/bmp" -> head[0] == 0x42 && head[1] == 0x4D;
+            default -> false;
+        };
+    }
+
+    /** 抛出型魔数校验：MultipartFile 的流只能读一次，这里在校验时完整旁路读出，校验后由调用方用字节重建流 */
+    static boolean hasImageMagic(MultipartFile file) {
+        try (InputStream in = file.getInputStream()) {
+            return magicMatches(normalizeContentType(file), in);
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** 客户端 Content-Type 归一化：去参数、压小写；不属于白名单类型时返回 null */
+    static String normalizeContentType(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null) {
+            return null;
+        }
+        String normalized = contentType.toLowerCase(Locale.ROOT);
+        int semi = normalized.indexOf(';');
+        if (semi >= 0) {
+            normalized = normalized.substring(0, semi);
+        }
+        normalized = normalized.trim();
+        return IMAGE_CONTENT_TYPES.contains(normalized) ? normalized : null;
     }
 
     /** contentType 是否属于图片类型 */

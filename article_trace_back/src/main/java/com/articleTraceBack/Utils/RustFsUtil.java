@@ -1,6 +1,7 @@
 package com.articleTraceBack.Utils;
 
 import lombok.extern.slf4j.Slf4j;
+import com.articleTraceBack.Utils.FileCheckUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,7 +113,9 @@ public class RustFsUtil {
     }
 
     private boolean uploadImage(MultipartFile file, String bucket, String key) {
-        String contentType = file.getContentType();
+        // 对象头 Content-Type 用归一化后的白名单 MIME：客户端原值可带任意参数甚至伪造成别的类型，
+        // 能走到这里说明已过 FileCheckUtil 的魔数校验，按声明类型归一化写入
+        String contentType = FileCheckUtil.normalizeContentType(file);
         long fileSize = file.getSize();
         // 上传原图
         if (!putObject(file, bucket, key, contentType, fileSize)) {
@@ -293,6 +296,13 @@ public class RustFsUtil {
     /** 生成图片临时访问链接（预签名 URL，缓存 3 天） */
     public String getPciUrl(String fileKey) {
         return getPciUrl(fileKey, "image");
+    }
+
+    /** 清掉某份正文的缓存键：保存成功后旧对象已删，键留着只会在 TTL 内白占 Redis */
+    public void evictContentCache(String fileKey) {
+        if (fileKey != null && !fileKey.isBlank()) {
+            stringRedisTemplate.delete(CONTENT_CACHE_PREFIX + fileKey);
+        }
     }
 
     /**

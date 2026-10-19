@@ -166,9 +166,12 @@ public class ArticleServiceImpl implements ArticleService {
         // 走到这里说明 DB 已指向新对象；旧对象删除失败只会留下孤儿，不影响可用性。
         // 只在「更新」分支才需要清理旧对象——新增时本来就没有旧对象。
         if (type != 0) {
-            if (!Objects.equals(oldContentName, fileName)
-                    && !rustFsUtil.delete(oldContentName, "json")) {
-                log.warn("delete old content failed: articleId={}, key={}", article.getId(), oldContentName);
+            // 旧正文的缓存键一起清（缓存的属主是 RustFsUtil，让它自己删）
+            if (!Objects.equals(oldContentName, fileName)) {
+                rustFsUtil.evictContentCache(oldContentName);
+                if (!rustFsUtil.delete(oldContentName, "json")) {
+                    log.warn("delete old content failed: articleId={}, key={}", article.getId(), oldContentName);
+                }
             }
             // 换图或删图（新旧不一致）时，旧封面已无人引用；旧值为 NULL / 空串时无需清理
             if (oldImgName != null && !oldImgName.isEmpty()
@@ -250,19 +253,20 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public boolean deleteById(int id) {
         Article article = articleMapper.selectById(id);
-        String imgName = article.getCoverImg();
-        String contentName = article.getContent();
-        if (rustFsUtil.delete(imgName, "image")
-                && rustFsUtil.delete(contentName, "json")) {
-            stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
-            boolean deleted = articleMapper.deleteById(id) == 1;
-            // 标记待删除：由定时任务统一从 agent 移除索引
-            if (deleted) {
-                markDeletePending(id);
-            }
-            return deleted;
+        if (article == null) {
+            return false;
         }
-        return false;
+        // 先删库行再删对象：反过来的话 DB 删除失败会留下指向已删对象的行，正文永久变空且不可逆。
+        // 这边删对象失败只是孤儿文件，不影响可用性
+        if (articleMapper.deleteById(id) != 1) {
+            return false;
+        }
+        rustFsUtil.delete(article.getCoverImg(), "image");
+        rustFsUtil.delete(article.getContent(), "json");
+        stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
+        // 标记待删除：由定时任务统一从 agent 移除索引
+        markDeletePending(id);
+        return true;
     }
 
     /** 上传封面对象并返回对象名，校验不通过或上传失败返回 null；对象名由服务端生成，客户端文件名只用于取扩展名。 */

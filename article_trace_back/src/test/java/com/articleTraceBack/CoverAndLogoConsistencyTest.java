@@ -71,7 +71,9 @@ public class CoverAndLogoConsistencyTest {
     }
 
     private MockMultipartFile coverImage(String name) {
-        return new MockMultipartFile("cover", name, "image/png", "fake-image".getBytes());
+        // 必须是真 PNG 头：FileCheckUtil 会校验内容魔数，假字节会被正确地拒掉
+        byte[] png = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4};
+        return new MockMultipartFile("cover", name, "image/png", png);
     }
 
     @Test
@@ -182,12 +184,15 @@ public class CoverAndLogoConsistencyTest {
                 "MIME 是图片但扩展名不在白名单，必须拒绝");
         assertTrue(FileCheckUtil.hasImageContentType(disguised), "MIME 本身确实是图片类型");
 
+        // 大小写扩展名 + 真 PNG 内容：都合法才放行
         MockMultipartFile normal = new MockMultipartFile(
-                "cover", "photo.PNG", "image/png", "x".getBytes());
+                "cover", "photo.PNG", "image/png",
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
         assertTrue(FileCheckUtil.isAcceptableImage(normal), "大小写不同的扩展名应当接受");
 
         MockMultipartFile wrongMime = new MockMultipartFile(
-                "cover", "photo.png", "application/octet-stream", "x".getBytes());
+                "cover", "photo.png", "application/octet-stream",
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
         assertFalse(FileCheckUtil.isAcceptableImage(wrongMime), "MIME 不符也应当拒绝");
 
         MockMultipartFile noExt = new MockMultipartFile(

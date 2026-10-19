@@ -63,14 +63,15 @@ public class AhoCorasickUtil {
                     child.fail = root;
                 } else {
                     child.fail = failNode.children.get(ch);
-                    // 合并输出（如果失败指针节点也有输出）
+                    // 合并输出：失败链上的输出继承过来，同一个 display 只留一份
+                    // （旧实现 addAll 了两遍且不去重，被外层 LinkedHashSet 掩盖）
                     if (child.fail.output != null) {
-                        child.outputs.addAll(child.fail.outputs);
+                        for (String out : child.fail.outputs) {
+                            if (!child.outputs.contains(out)) {
+                                child.outputs.add(out);
+                            }
+                        }
                     }
-                }
-                // 如果失败节点有输出，继承到当前节点（方便匹配时直接取）
-                if (child.fail.output != null) {
-                    child.outputs.addAll(child.fail.outputs);
                 }
             }
         }

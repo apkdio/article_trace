@@ -21,6 +21,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -213,5 +214,39 @@ public class ArticleEditAndCacheSafetyTest {
         // 状态不被保存动作改写，仍是审核落下的 2
         assertEquals(ArticleService.STATE_PENDING, articleMapper.selectById(id).getState(),
                 "并发下状态必须停留在审核结果上");
+    }
+
+    /** P1-10：保存成功后，旧正文的缓存键要一并清掉，不能等 TTL 自然过期 */
+    @Test
+    public void editEvictsOldContentCacheKey() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        String oldKey = "zz-test-old4-" + System.nanoTime() + ".json";
+        int id = insertArticle(userId, "zz-test-缓存键清理-" + System.nanoTime(), oldKey);
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-缓存键清理改-" + System.nanoTime());
+        edit.setContent("新正文");
+        edit.setState(ArticleService.STATE_DRAFT);
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", null));
+        verify(rustFsUtil).evictContentCache(oldKey);
+    }
+
+    /** P1-10：删除文章先删库行再删对象；对象删失败也不复活库行 */
+    @Test
+    public void deleteRemovesDbRowBeforeObjects() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        String oldKey = "zz-test-del-" + System.nanoTime() + ".json";
+        int id = insertArticle(userId, "zz-test-删除顺序-" + System.nanoTime(), oldKey);
+
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(false);
+
+        assertTrue(articleService.deleteById(id), "对象删除失败不阻断：库行已删即成功");
+        assertNull(articleMapper.selectById(id), "库行必须已删除");
     }
 }

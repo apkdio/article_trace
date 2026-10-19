@@ -23,9 +23,10 @@ public class TextExtractor {
         // 公式被去掉后会留下连续空白，压成一个空格再截断
         plainText = MATH_SEGMENT.matcher(plainText).replaceAll("").replaceAll("\\s{2,}", " ").trim();
 
-        // 按字符数截取
-        if (plainText.length() > maxLength) {
-            return plainText.substring(0, maxLength);
+        // 按码点截取：substring 按 char 落在代理对中间会把 emoji 截成乱码
+        if (plainText.codePointCount(0, plainText.length()) > maxLength) {
+            int end = plainText.offsetByCodePoints(0, maxLength);
+            return plainText.substring(0, end);
         }
         return plainText;
     }
