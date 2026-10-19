@@ -88,8 +88,9 @@ def _clear_index_dirty() -> None:
 # ---------------------------------------------------------------------------
 
 def _clean_article(article: dict) -> dict:
-    """清洗文章内容（HTML → 纯文本），返回规整后的文章 dict。"""
+    """清洗文章标题与正文（HTML → 纯文本），返回规整后的文章 dict。"""
     art = dict(article)
+    art["title"] = html_to_text(art.get("title") or "")
     art["content"] = html_to_text(art.get("content") or "")
     return art
 
