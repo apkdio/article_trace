@@ -30,7 +30,7 @@ spring:
           refresh:
             adaptive: false
       viewKey: "article:view"
-      password: ${REDIS_PASSWORD:aaabbb123}
+      password: ${REDIS_PASSWORD:test-only-redis-pw}
   mail:
     # 测试不发真邮件（notification.mail.enabled=false），这里全部是占位值，
     # 避免把真实 SMTP 授权码带进版本库。
@@ -60,7 +60,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/article_trace_test
     username: ${TEST_DB_USER:root}
-    password: ${TEST_DB_PASSWORD:aaabbb123}
+    password: ${TEST_DB_PASSWORD:test-only-db-pw}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       auto-commit: true

@@ -31,7 +31,7 @@ DROP TABLE IF EXISTS `article`;
 CREATE TABLE `article` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `title` varchar(30) NOT NULL COMMENT '文章标题',
-  `content` varchar(50) NOT NULL COMMENT '文章内容',
+  `content` varchar(50) NOT NULL COMMENT '正文对象名',
   `cover_img` varchar(128) DEFAULT NULL COMMENT '文章封面',
   `state` int NOT NULL DEFAULT '0' COMMENT '文章状态: 0-草稿 1-已发布 2-待审核 3-已驳回',
   `category_id` int COMMENT '文章分类ID',
@@ -45,6 +45,8 @@ CREATE TABLE `article` (
   UNIQUE KEY `uk_user_title` (`create_user`,`title`),
   KEY `fk_article_category` (`category_id`),
   KEY `fk_article_user` (`create_user`),
+  KEY `idx_article_state_views` (`state`,`views`),
+  KEY `idx_article_state_create` (`state`,`create_time`),
   CONSTRAINT `fk_article_category_id` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_article_user` FOREIGN KEY (`create_user`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -116,6 +118,7 @@ CREATE TABLE `user` (
   `signature` varchar(60) DEFAULT NULL COMMENT '个性签名（仅作者与站长）',
   `type` int NOT NULL,
   PRIMARY KEY (`id`),
+  KEY `idx_user_nickname` (`nickname`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `uk_email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
