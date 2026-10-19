@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,13 +32,16 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
     private final AuthorApplyMapper applyMapper;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final TransactionTemplate transactionTemplate;
 
     public AuthorApplyServiceImpl(AuthorApplyMapper applyMapper,
                                   UserService userService,
-                                  NotificationService notificationService) {
+                                  NotificationService notificationService,
+                                  TransactionTemplate transactionTemplate) {
         this.applyMapper = applyMapper;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
@@ -109,39 +113,60 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
         }
         int applicantId = apply.getUserId();
 
-        // 条件更新：只有仍是「待审」才改得动。
-        // 并发下（两个站长同时审批）只有一个请求的影响行数是 1，
-        // 其余返回 0 → 直接失败，提权与通知都不会执行。
+        if (pass) {
+            // CAS 置 approved 与提权必须在一个事务里：提权失败要整体回滚，回到可重试的待审状态。
+            // 此前 changeType 返回值被丢弃——会出现「记录已通过、人没提权、通知照发」且无法重试。
+            // 通知与令牌失效不进事务：邮件线程异步跑，未提交的事务里它读不到刚落的行。
+            User applicant = userService.findUserById(applicantId);
+            if (applicant == null || !approveAtomically(applyId, reviewerId, applicantId)) {
+                return false;
+            }
+            userService.deleteRedisToken(applicant.getUsername());
+            notificationService.notify(applicantId, SCENE_APPROVED, "作者申请已通过",
+                    "恭喜！你的作者申请已通过，现在可以发布文章了。");
+            log.info("author apply approved: applyId={}, userId={}", applyId, applicantId);
+            return true;
+        }
+
+        // 拒绝：单表 CAS + 通知；通知失败不产生状态不一致，维持无事务
         UpdateWrapper<AuthorApply> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", applyId)
                 .eq("status", AuthorApply.STATUS_PENDING)
-                .set("status", pass ? AuthorApply.STATUS_APPROVED : AuthorApply.STATUS_REJECTED)
+                .set("status", AuthorApply.STATUS_REJECTED)
                 .set("review_user", reviewerId)
-                .set("review_time", LocalDateTime.now());
-        if (!pass) {
-            updateWrapper.set("reject_reason", rejectReason);
-        }
+                .set("review_time", LocalDateTime.now())
+                .set("reject_reason", rejectReason);
         if (applyMapper.update(null, updateWrapper) != 1) {
             log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
             return false;
         }
-
-        if (pass) {
-            // 提升为作者；并使其现有登录态失效（重新登录后拿到新身份）
-            User applicant = userService.findUserById(applicantId);
-            if (applicant != null) {
-                userService.changeType(applicantId, ROLE_AUTHOR);
-                userService.deleteRedisToken(applicant.getUsername());
-            }
-            notificationService.notify(applicantId, SCENE_APPROVED, "作者申请已通过",
-                    "恭喜！你的作者申请已通过，现在可以发布文章了。");
-            log.info("author apply approved: applyId={}, userId={}", applyId, applicantId);
-        } else {
-            String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
-            notificationService.notify(applicantId, SCENE_REJECTED, "作者申请未通过",
-                    "很遗憾，你的作者申请未通过。原因：" + reason);
-            log.info("author apply rejected: applyId={}, userId={}", applyId, applicantId);
-        }
+        String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
+        notificationService.notify(applicantId, SCENE_REJECTED, "作者申请未通过",
+                "很遗憾，你的作者申请未通过。原因：" + reason);
+        log.info("author apply rejected: applyId={}, userId={}", applyId, applicantId);
         return true;
+    }
+
+    /** 通过路径的事务单元：CAS 置 approved + 提权，任一步失败回滚到待审 */
+    private boolean approveAtomically(int applyId, int reviewerId, int applicantId) {
+        return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+            UpdateWrapper<AuthorApply> cas = new UpdateWrapper<>();
+            cas.eq("id", applyId)
+                    .eq("status", AuthorApply.STATUS_PENDING)
+                    .set("status", AuthorApply.STATUS_APPROVED)
+                    .set("review_user", reviewerId)
+                    .set("review_time", LocalDateTime.now());
+            if (applyMapper.update(null, cas) != 1) {
+                log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
+                status.setRollbackOnly();
+                return false;
+            }
+            if (!userService.changeType(applicantId, ROLE_AUTHOR)) {
+                log.warn("promote to author failed, approval rolled back: applyId={}, userId={}", applyId, applicantId);
+                status.setRollbackOnly();
+                return false;
+            }
+            return true;
+        }));
     }
 }
