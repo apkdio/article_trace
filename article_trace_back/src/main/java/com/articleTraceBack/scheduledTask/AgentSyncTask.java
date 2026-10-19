@@ -109,6 +109,11 @@ public class AgentSyncTask {
     /**
      * 全量对账：每天凌晨 1 点，把全部已发布文章重新推送一遍（幂等覆盖，兜底增量同步的丢失），
      * 再按 agent 侧索引清单删掉库里已不是「已发布」的幽灵条目。
+     *
+     * <p><b>顺序要紧</b>：先取索引清单，推送完之后**重取** alive 集再对账。反过来的话
+     * （先快照 alive、再耗时推送、最后对账），窗口内刚被审核通过并入库的文章不在 alive 快照里，
+     * 会被当成幽灵删掉——窗口等于全量推送耗时，大库可达分钟级。现在的顺序让窗口内的新增
+     * 只可能「漏删」（下一轮再收），不会误删。</p>
      */
     @Scheduled(cron = "${rpc.agent.sync.fullSyncCron:0 0 1 * * ?}")
     public void fullSync() {
@@ -116,37 +121,45 @@ public class AgentSyncTask {
             return;
         }
         try {
-            QueryWrapper<Article> wrapper = new QueryWrapper<>();
-            wrapper.eq("state", 1);
-            List<Article> published = articleMapper.selectList(wrapper);
-            List<Integer> ids = new ArrayList<>();
-            for (Article a : published) {
-                ids.add(a.getId());
+            ListIdsReply indexed = agentClient.listIds();
+            if (!indexed.getOk()) {
+                log.warn("full sync: listIds failed, skip ghost cleanup: {}", indexed.getMessage());
             }
+            List<Integer> ids = publishedIds();
             if (!ids.isEmpty()) {
                 ingestInBatches(ids);
                 log.info("full sync: pushed {} published article(s)", ids.size());
             }
             // 就算一篇已发布都没有，也要走清理——库里清空而索引里全是幽灵正是这种情形
-            cleanupGhostIndexes(ids);
+            if (indexed.getOk()) {
+                cleanupGhostIndexes(indexed);
+            }
         } catch (Exception e) {
             log.error("full sync failed", e);
         }
     }
 
-    /** 按 agent 侧已索引 id 清单，删掉库里「已不是已发布」的幽灵条目 */
-    private void cleanupGhostIndexes(List<Integer> publishedIds) {
-        ListIdsReply reply = agentClient.listIds();
-        if (!reply.getOk()) {
-            log.warn("full sync: listIds failed, skip ghost cleanup: {}", reply.getMessage());
-            return;
+    /** 全部「已发布」文章的 id（只取 id 列，不需要整行） */
+    private List<Integer> publishedIds() {
+        QueryWrapper<Article> wrapper = new QueryWrapper<>();
+        wrapper.select("id").eq("state", 1);
+        List<Integer> ids = new ArrayList<>();
+        for (Object value : articleMapper.selectObjs(wrapper)) {
+            if (value instanceof Number number) {
+                ids.add(number.intValue());
+            }
         }
+        return ids;
+    }
+
+    /** 按 agent 侧索引清单清掉库里已不是「已发布」的幽灵条目（alive 集在对账前现取） */
+    private void cleanupGhostIndexes(ListIdsReply indexed) {
         Set<Long> alive = new HashSet<>();
-        for (Integer id : publishedIds) {
+        for (Integer id : publishedIds()) {
             alive.add(id.longValue());
         }
         List<Long> ghosts = new ArrayList<>();
-        for (long indexedId : reply.getArticleIdsList()) {
+        for (long indexedId : indexed.getArticleIdsList()) {
             if (!alive.contains(indexedId)) {
                 ghosts.add(indexedId);
             }

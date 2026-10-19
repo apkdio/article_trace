@@ -85,4 +85,36 @@ public class AgentGhostCleanupTest {
         assertEquals(Set.of((long) draftId, unknownId), Set.copyOf(captor.getValue()),
                 "只应删除「库里已不是已发布」的索引条目，已发布的那篇不能误删");
     }
+
+    /**
+     * 回归：窗口竞态——对账取 alive 与推送之间被审核通过的文章，不能被当成幽灵删掉。
+     * 这里把「审核通过」塞进推送的 mock 里（推送耗时正是原实现的窗口）。
+     */
+    @Test
+    public void fullSyncKeepsArticlePublishedDuringTheWindow() {
+        int userId = fixtures.ensureUser(1);
+        int publishedId = insertArticle(userId, ArticleService.STATE_PUBLISHED);
+        int soonPublishedId = insertArticle(userId, ArticleService.STATE_DRAFT);
+        long unknownId = 123456789L;
+
+        // 推送批次时把「待审稿」置为已发布——模拟管理员在窗口内审核通过
+        given(agentClient.batchIngestArticles(any())).willAnswer(invocation -> {
+            articleMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Article>()
+                    .eq("id", soonPublishedId).set("state", ArticleService.STATE_PUBLISHED));
+            return BatchIngestReply.newBuilder().setOk(true).build();
+        });
+        // 索引清单里它已在（此前发布过、删除意向还没处理）
+        given(agentClient.listIds()).willReturn(ListIdsReply.newBuilder().setOk(true)
+                .addAllArticleIds(List.of((long) publishedId, (long) soonPublishedId, unknownId)).build());
+        given(agentClient.deleteArticles(any())).willReturn(true);
+        given(rustFsUtil.getContent(anyString())).willReturn("<p>正文</p>");
+
+        agentSyncTask.fullSync();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+        verify(agentClient).deleteArticles(captor.capture());
+        assertEquals(List.of(unknownId), captor.getValue(),
+                "窗口内刚发布的文章已不再是幽灵，只应删掉真的不存在的 id");
+    }
 }
