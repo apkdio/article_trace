@@ -40,7 +40,9 @@ services:
       TZ: Asia/Shanghai
     command:
       - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+      # 与现有库/表的排序规则对齐（线上实测服务器与 10 张表都是 0900_ai_ci；
+      # 原先传 unicode_ci 只影响新建对象，但会让新老对象排序规则不一致）
+      - --collation-server=utf8mb4_0900_ai_ci
       - --default-time-zone=+08:00
     ports:
       - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
@@ -243,6 +245,9 @@ services:
       # 站点显示名（浏览器标题与页脚）与 logo 开关
       SITE_DISPLAY_NAME: ${SITE_DISPLAY_NAME:-文迹}
       SITE_LOGO_ENABLED: ${SITE_LOGO_ENABLED:-true}
+      # 昵称/个签禁止的冒充词（逗号分隔）；不传时用代码内联默认值。
+      # 此前 .env 里配了也无效——compose 从没把它透传进来（假开关）
+      PROFILE_IMPERSONATION_WORDS: ${PROFILE_IMPERSONATION_WORDS:-}
       AGENT_HOST: agent
       AGENT_PORT: "50051"
     volumes:
@@ -269,7 +274,9 @@ services:
     restart: unless-stopped
     depends_on:
       backend:
-        condition: service_started
+        # backend 重启会换容器 IP；nginx 用变量式 proxy_pass + resolver 重解析（见 nginx.conf），
+        # 这里等它真的健康再起，省掉启动期那段 502
+        condition: service_healthy
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
 
