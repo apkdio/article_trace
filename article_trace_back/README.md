@@ -778,7 +778,6 @@ CREATE TABLE IF NOT EXISTS `report` (
 |---|---|---|
 | GET | `/article/list` | 我的文章分页 |
 | POST | `/article/add` | 新增文章（`multipart/form-data`：`article` JSON 部分 + 可选 `cover` 文件）|
-| GET | `/article/detail/{id}` | 文章详情 |
 | PATCH | `/article/update/{id}` | 更新文章（同上；不传 `cover` 且 `coverImg` 为空串表示删除封面）|
 | DELETE | `/article/delete` | 删除文章 |
 | GET | `/article/count` | 文章统计 |

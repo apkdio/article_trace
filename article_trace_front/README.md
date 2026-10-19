@@ -53,7 +53,7 @@ article_trace_front/
     │   ├── PageHeader.vue          #   页面标题栏
     │   ├── StatCard.vue            #   统计卡片
     │   ├── TopArticlesList.vue     #   热门文章榜
-    │   ├── AuthorCard.vue          #   作者/站长名片（昵称下方展示个性签名，没填不占位）
+    │   ├── AuthorCard.vue          #   作者/站长名片（个签没填不占位；联系方式只有 email，登录名不展示——后端公开接口已不回 username）
     │   ├── InfoFormShell.vue       #   用户信息/改密表单外壳
     │   ├── NotificationBell.vue    #   站内通知铃铛 + 抽屉（后台与门户页共用）
     │   ├── ReportButton.vue        #   举报入口（按钮 + 理由弹窗，文章 / 评论 / 作者卡三处共用）
