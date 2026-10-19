@@ -1,10 +1,18 @@
 from datetime import datetime
+import hashlib
 import logging
 import logging.handlers
 import os
 import sys
 
 from tools.path_tool import get_abs_path
+
+
+def digest(text) -> str:
+    """日志用：把可能含敏感内容的文本压成「长度#短摘要」，不落原文。"""
+    s = text or ""
+    return "len=%d#%s" % (len(s), hashlib.sha1(s.encode("utf-8")).hexdigest()[:8])
+
 
 # ── ANSI 终端颜色 ─────────────────────────────────────────────────────────
 _COLORS = {

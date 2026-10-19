@@ -12,7 +12,7 @@ from typing import List, Tuple
 
 from langchain_core.documents import Document
 
-from tools.log_tool import get_logger
+from tools.log_tool import digest, get_logger
 from tools.rrf_fusion import reciprocal_rank_fusion
 from tools.sparse_retriever import SparseRetriever
 from tools.vector_store import DenseRetriever, build_hybrid_index, is_index_dirty
@@ -58,5 +58,5 @@ class HybridRetriever:
         dense_results = self.dense.search(query, filter=filter)
         sparse_results = self.sparse.search(query, filter=filter)
         fused = reciprocal_rank_fusion(dense_results, sparse_results)
-        logger.info("[Hybrid] query='%.40s' → %d fused result(s)", query, len(fused))
+        logger.info("[Hybrid] q=%s → %d fused result(s)", digest(query), len(fused))
         return fused

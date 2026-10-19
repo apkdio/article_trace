@@ -18,7 +18,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from tools.config_tool import load_config
 from tools.html_util import html_to_text
 from tools.llm_tool import get_embedding_model
-from tools.log_tool import get_logger
+from tools.log_tool import digest, get_logger
 from tools.path_tool import get_abs_path
 
 logger = get_logger(name="vector_store")
@@ -213,7 +213,7 @@ class DenseRetriever:
         k = top_k if top_k is not None else _rag_cfg.get("retrieval", {}).get("dense_top_k", 10)
         store = get_vector_store()
         results = store.similarity_search_with_relevance_scores(query, k=k, filter=filter)
-        logger.info("[Dense] query='%.50s' filter=%s → %d results", query, filter, len(results))
+        logger.info("[Dense] q=%s filter=%s → %d results", digest(query), filter, len(results))
         return results
 
 

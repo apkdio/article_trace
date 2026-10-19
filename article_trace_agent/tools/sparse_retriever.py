@@ -22,7 +22,7 @@ from langchain_core.documents import Document
 from rank_bm25 import BM25Okapi
 
 from tools.config_tool import load_config
-from tools.log_tool import get_logger
+from tools.log_tool import digest, get_logger
 from tools.path_tool import get_abs_path
 
 logger = get_logger(name="sparse_retriever")
@@ -137,7 +137,7 @@ class SparseRetriever:
             scored = [pair for pair in scored if _matches_filter(pair[0], filter)]
         scored = scored[:k]
         results = [(doc, float(score)) for doc, score in scored]
-        logger.info("[Sparse] query='%s' filter=%s → %d results", query[:50], filter, len(results))
+        logger.info("[Sparse] q=%s filter=%s → %d results", digest(query), filter, len(results))
         for rank, (doc, score) in enumerate(results, 1):
             title = doc.metadata.get("title", "?")
             preview = doc.page_content[:60].replace("\n", " ")

@@ -12,7 +12,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from tools.config_tool import load_config
 from tools.context_store import append_message, ensure_session_id, get_recent
 from tools.llm_tool import chat_once, stream_chat
-from tools.log_tool import get_logger
+from tools.log_tool import digest, get_logger
 from tools.prompts_tool import load_main_prompts
 
 logger = get_logger(name="article_agent")
@@ -184,7 +184,7 @@ def ask(query: str, session_id=None, category_id=None, top_k=None) -> dict:
         temperature=_llm_cfg.get("temperature", 0.3),
     )
     append_message(session_id, "assistant", answer)
-    logger.info("[Ask] query='%.50s' → %d article(s)", q, len(articles))
+    logger.info("[Ask] q=%s → %d article(s)", digest(q), len(articles))
     return {"answer": answer, "articles": articles}
 
 
@@ -260,4 +260,4 @@ def ask_stream(query: str, session_id=None, category_id=None, top_k=None):
             full += chunk
             yield {"articles": [], "delta": chunk, "session_id": session_id}
     append_message(session_id, "assistant", full)
-    logger.info("[AskStream] query='%.50s' → %d article(s)", q, len(articles))
+    logger.info("[AskStream] q=%s → %d article(s)", digest(q), len(articles))
