@@ -23,6 +23,8 @@ _llm_cfg = _agent_cfg.get("llm", {})
 _behavior = _agent_cfg.get("behavior", {})
 _article_cfg = _rag_cfg.get("article", {})
 
+_MAX_TOP_K = 20          # 单次返回文章数上限，防越界请求
+
 _hybrid_retriever = None
 
 _GREETING_WORDS = (
@@ -63,6 +65,17 @@ def _chunk_snippet(doc) -> str:
     return text[:120]
 
 
+def _clamp_top_k(top_k) -> int:
+    """把 top_k 钳到 [1, _MAX_TOP_K]，防越界取值与异常切片。"""
+    default = _article_cfg.get("top_k", 5)
+    if not top_k:
+        return default
+    try:
+        return max(1, min(int(top_k), _MAX_TOP_K))
+    except (TypeError, ValueError):
+        return default
+
+
 def _group_articles(fused, top_k=None) -> list:
     """把融合后的 chunk 按 article_id 分组，返回文章列表（按最佳分块分数降序）。"""
     articles = {}
@@ -80,7 +93,7 @@ def _group_articles(fused, top_k=None) -> list:
                 "score": round(float(score), 6),
             }
     ranked = sorted(articles.values(), key=lambda a: a["score"], reverse=True)
-    top_k = top_k or _article_cfg.get("top_k", 5)
+    top_k = _clamp_top_k(top_k)
     return ranked[:top_k]
 
 
