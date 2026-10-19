@@ -11,6 +11,7 @@ import com.articleTraceBack.pojo.User;
 import com.articleTraceBack.rpc.ArticleAgentClient;
 import com.articleTraceBack.rpc.ArticleProtoMapper;
 import com.articleTraceBack.rpc.gen.BatchIngestReply;
+import com.articleTraceBack.rpc.gen.ListIdsReply;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -22,12 +23,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
  * 知识库定时同步任务：每 5 分钟读 Redis 待处理 id 批量推送到 agent（成功后清空，失败保留重试）。
- * 每天凌晨 1 点全量对账兜底（agent 侧按 article.id 幂等覆盖，重复推送无害）。
+ * 每天凌晨 1 点全量对账：重推已发布文章（幂等覆盖），并按索引清单清理幽灵条目。
  */
 @Slf4j
 @Component
@@ -105,7 +107,8 @@ public class AgentSyncTask {
     }
 
     /**
-     * 全量对账：每天凌晨 1 点，把全部已发布文章重新推送一遍（幂等覆盖，兜底增量同步的丢失）。
+     * 全量对账：每天凌晨 1 点，把全部已发布文章重新推送一遍（幂等覆盖，兜底增量同步的丢失），
+     * 再按 agent 侧索引清单删掉库里已不是「已发布」的幽灵条目。
      */
     @Scheduled(cron = "${rpc.agent.sync.fullSyncCron:0 0 1 * * ?}")
     public void fullSync() {
@@ -116,19 +119,43 @@ public class AgentSyncTask {
             QueryWrapper<Article> wrapper = new QueryWrapper<>();
             wrapper.eq("state", 1);
             List<Article> published = articleMapper.selectList(wrapper);
-            if (published.isEmpty()) {
-                log.info("full sync: no published article, skip");
-                return;
-            }
             List<Integer> ids = new ArrayList<>();
             for (Article a : published) {
                 ids.add(a.getId());
             }
-            ingestInBatches(ids);
-            log.info("full sync: pushed {} published article(s)", ids.size());
+            if (!ids.isEmpty()) {
+                ingestInBatches(ids);
+                log.info("full sync: pushed {} published article(s)", ids.size());
+            }
+            // 就算一篇已发布都没有，也要走清理——库里清空而索引里全是幽灵正是这种情形
+            cleanupGhostIndexes(ids);
         } catch (Exception e) {
             log.error("full sync failed", e);
         }
+    }
+
+    /** 按 agent 侧已索引 id 清单，删掉库里「已不是已发布」的幽灵条目 */
+    private void cleanupGhostIndexes(List<Integer> publishedIds) {
+        ListIdsReply reply = agentClient.listIds();
+        if (!reply.getOk()) {
+            log.warn("full sync: listIds failed, skip ghost cleanup: {}", reply.getMessage());
+            return;
+        }
+        Set<Long> alive = new HashSet<>();
+        for (Integer id : publishedIds) {
+            alive.add(id.longValue());
+        }
+        List<Long> ghosts = new ArrayList<>();
+        for (long indexedId : reply.getArticleIdsList()) {
+            if (!alive.contains(indexedId)) {
+                ghosts.add(indexedId);
+            }
+        }
+        if (ghosts.isEmpty()) {
+            return;
+        }
+        boolean ok = agentClient.deleteArticles(ghosts);
+        log.info("full sync: ghost cleanup removed {} stale index id(s), ok={}", ghosts.size(), ok);
     }
 
     /**

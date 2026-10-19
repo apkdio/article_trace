@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 public class ArticleAgentClient {
 
     private static final long RPC_TIMEOUT_SECONDS = 5L;
+    /** 批量对账类调用（listIds）的 deadline：要遍历整份索引，比常规 RPC 慢 */
+    private static final long RECONCILE_TIMEOUT_SECONDS = 60L;
 
     @Value("${rpc.agent.host:localhost}")
     private String host;
@@ -33,6 +35,10 @@ public class ArticleAgentClient {
     /** agent 总开关：关闭时不建连，所有调用直接返回失败态（主业务不受影响） */
     @Value("${rpc.agent.enabled:true}")
     private boolean enabled;
+
+    /** Java→agent 共享密钥（agent 侧 AGENT_SHARED_KEY）；留空表示不鉴权，两侧配同一个值才生效 */
+    @Value("${rpc.agent.sharedKey:}")
+    private String sharedKey;
 
     private ManagedChannel channel;
     private ArticleAgentServiceGrpc.ArticleAgentServiceBlockingStub blockingStub;
@@ -52,8 +58,14 @@ public class ArticleAgentClient {
         channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
                 .build();
-        blockingStub = ArticleAgentServiceGrpc.newBlockingStub(channel);
-        log.info("ArticleAgentClient initialized: {}:{}", host, port);
+        ArticleAgentServiceGrpc.ArticleAgentServiceBlockingStub stub =
+                ArticleAgentServiceGrpc.newBlockingStub(channel);
+        boolean auth = sharedKey != null && !sharedKey.isBlank();
+        if (auth) {
+            stub = stub.withInterceptors(new AgentAuthInterceptor(sharedKey));
+        }
+        blockingStub = stub;
+        log.info("ArticleAgentClient initialized: {}:{} (auth={})", host, port, auth);
     }
 
     /** 关闭 gRPC channel */
@@ -186,6 +198,25 @@ public class ArticleAgentClient {
         } catch (Exception e) {
             log.error("health rpc failed", e);
             return HealthReply.newBuilder().setOk(false).build();
+        }
+    }
+
+    /**
+     * 列出 agent 侧已索引的文章 id（供全量对账清理幽灵条目）。
+     *
+     * <p>deadline 放宽：这是批量对账调用，agent 要遍历整份索引的 metadata，比常规单条 RPC 慢。</p>
+     */
+    public ListIdsReply listIds() {
+        if (!enabled) {
+            return ListIdsReply.newBuilder().setOk(false).setMessage("agent disabled").build();
+        }
+        try {
+            return blockingStub
+                    .withDeadlineAfter(RECONCILE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .listIds(ListIdsRequest.newBuilder().build());
+        } catch (Exception e) {
+            log.error("listIds rpc failed", e);
+            return ListIdsReply.newBuilder().setOk(false).setMessage(e.getMessage()).build();
         }
     }
 }

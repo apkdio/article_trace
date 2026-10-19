@@ -112,6 +112,8 @@ rpc:
     enabled: ${AGENT_ENABLED:true}        # false 时 agent 全部降级，主业务不受影响
     host: ${AGENT_HOST:agent}
     port: ${AGENT_PORT:50051}
+    # Java→agent 共享密钥：与 agent 容器的 AGENT_SHARED_KEY 同值才启用鉴权，留空不校验
+    sharedKey: ${AGENT_SHARED_KEY:}
     sessionKeyPrefix: "agent:session:user:"
     sync:
       enabled: true

@@ -103,6 +103,8 @@ rpc:
     enabled: true                 # 总开关：false 时 agent 全部降级（不建连、不写同步/会话数据）
     host: ${AGENT_HOST:localhost} # Python Agent gRPC 服务地址
     port: ${AGENT_PORT:50051}     # Python Agent gRPC 端口
+    # Java→agent 共享密钥（agent 侧 AGENT_SHARED_KEY）：两侧配同一个值才启用校验，任一侧留空都不拦
+    sharedKey: ${AGENT_SHARED_KEY:}
     sessionKeyPrefix: "agent:session:user:"  # 用户↔会话归属索引 key 前缀（Redis Set，注销时联动清理）
     sync:
       enabled: true                          # 是否启用知识库定时批量同步

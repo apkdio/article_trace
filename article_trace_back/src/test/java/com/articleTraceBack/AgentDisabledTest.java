@@ -39,6 +39,7 @@ public class AgentDisabledTest {
         assertFalse(agentClient.health().getOk(), "禁用时 health 应返回失败态");
         assertFalse(agentClient.listSessions(List.of("any")).getOk(), "禁用时 listSessions 应返回失败态");
         assertFalse(agentClient.deleteArticles(List.of(1L)), "禁用时 deleteArticles 应返回失败态");
+        assertFalse(agentClient.listIds().getOk(), "禁用时 listIds 应返回失败态");
 
         // 3. 禁用时不写会话索引（避免无消费者地堆积 Redis 数据）
         String userId = "test-disabled-" + UUID.randomUUID();

@@ -42,8 +42,6 @@ public class ArticleServiceImpl implements ArticleService {
     private final StringRedisTemplate stringRedisTemplateArticle;
     @Value("${spring.data.redis.viewKey}")
     private String ARTICLE_PENDING_VIEWS_KEY;
-    @Value("${rpc.agent.enabled:true}")
-    private boolean agentEnabled;
     @Value("${rpc.agent.sync.ingestKey:agent:ingest:pending}")
     private String AGENT_INGEST_KEY;
     @Value("${rpc.agent.sync.deleteKey:agent:delete:pending}")
@@ -415,9 +413,12 @@ public class ArticleServiceImpl implements ArticleService {
 
     /**
      * 标记文章待入库/更新到 agent 知识库（幂等，写入 Redis Set，由定时任务批量处理）。
+     *
+     * <p>刻意**不看 {@code rpc.agent.enabled}**：意向先落队列，agent 关着也照记。否则「agent 关闭期间
+     * 删掉的文章」永远不进删除队列，之后开启 agent 也清不掉索引里的幽灵条目（全量对账是另一道兜底）。</p>
      */
     private void markIngestPending(Integer articleId) {
-        if (!agentEnabled || articleId == null) {
+        if (articleId == null) {
             return;
         }
         String id = String.valueOf(articleId);
@@ -432,9 +433,11 @@ public class ArticleServiceImpl implements ArticleService {
 
     /**
      * 标记文章待从 agent 知识库删除（幂等，写入 Redis Set，由定时任务批量处理）。
+     *
+     * <p>同 {@code markIngestPending}：不看 agent 开关——删除意向丢一次，索引里就永久留一条幽灵。</p>
      */
     private void markDeletePending(Integer articleId) {
-        if (!agentEnabled || articleId == null) {
+        if (articleId == null) {
             return;
         }
         String id = String.valueOf(articleId);

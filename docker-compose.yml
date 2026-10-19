@@ -166,6 +166,8 @@ services:
         required: false
     environment:
       AGENT_PORT: "50051"
+      # Java→agent 共享密钥：与 backend 侧同值才启用校验（agent 侧留空则接口不鉴权并打启动警告）
+      AGENT_SHARED_KEY: ${AGENT_SHARED_KEY:-}
       TZ: Asia/Shanghai
       # LLM / embedding 端点：留空则用挂载的 agent.yaml / chroma.yaml（指向 compose 内 ollama）；
       # Ollama 在另一台机器时，在 .env 设 LLM_BASE_URL 即可（空值会被 config_tool 忽略）。
@@ -250,6 +252,8 @@ services:
       PROFILE_IMPERSONATION_WORDS: ${PROFILE_IMPERSONATION_WORDS:-}
       AGENT_HOST: agent
       AGENT_PORT: "50051"
+      # 同 agent 容器：两侧同值才启用校验，留空则调用不带密钥（agent 侧也不校验）
+      AGENT_SHARED_KEY: ${AGENT_SHARED_KEY:-}
     volumes:
       # ⚠️ 源文件名不能叫 application.yml（根 .gitignore 忽略了它），挂载进容器后仍是标准配置名
       - ./docker/backend/application-container.yml:/app/config/application.yml:ro

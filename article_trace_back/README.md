@@ -61,7 +61,8 @@ article_trace_back/
     │   │       ├── ArticleSensitivityGuard.java # 违禁词判定：草稿不扫、命中转待审、按结果打标
     │   │       └── ArticlePublishPolicy.java #  发布意图 + 角色 → 目标状态（作者只能送审）
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
-    │   │   ├── ArticleAgentClient.java      #   7 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时）
+    │   │   ├── ArticleAgentClient.java      #   8 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时 + 共享密钥）
+    │   │   ├── AgentAuthInterceptor.java    #   给每个 RPC 附 x-agent-key 共享密钥（两侧同配才校验）
     │   │   └── ArticleProtoMapper.java      #   Java 实体 ↔ proto 消息转换
     │   ├── mapper/                          # 数据访问层（MyBatis-Plus）
     │   │   ├── ArticleMapper.java           #   文章自定义 SQL（分页/统计/批量加浏览量）
@@ -306,10 +307,10 @@ agent 是**可选**依赖，由 `rpc.agent.enabled`（默认 `true`）统一控�
 | `ArticleAgentClient` | 不建 gRPC channel；所有 RPC 直接返回失败态，不尝试连接 |
 | `AgentController` | 接口保留但返回明确提示：`/ask` → SSE `error("AI 助手未启用")`；会话接口 → `Result.error("AI 助手未启用")`；`/health` → `{enabled:false, ok:false}` |
 | `AgentSyncTask` | 两个定时任务直接返回，不读取/推送 Redis 待处理集合 |
-| `ArticleServiceImpl` | 文章增删改审核时**不再写入** Redis 待同步集合（避免无消费者地堆积） |
+| `ArticleServiceImpl` | 文章增删改审核时**照常写入** Redis 待同步集合——意向先落队列，agent 关着也照记（删除意向丢一次，索引里就永久留一条幽灵；集合按文章 id 去重，无消费者也不会无界增长） |
 | `AgentSessionService` | 不写会话索引；`clearAll` 仍清掉本地索引残留（不调 RPC） |
 
-> 关闭期间的文章变更不会进入同步队列，重新启用后由「全量对账」（每天凌晨 1 点）兜底补齐。
+> 关闭期间的文章变更照常进同步队列，重新启用后由增量同步消费；即便队列被清掉，全量对账的**幽灵条目清理**（`ListIds`）也能兜回来。
 
 ### 契约方法
 
@@ -323,6 +324,7 @@ agent 是**可选**依赖，由 `rpc.agent.enabled`（默认 `true`）统一控�
 | `ListSessions` | Java → agent | 列出会话（可选按 session_ids 过滤） |
 | `GetSessionMessages` | Java → agent | 获取会话历史消息 |
 | `DeleteSession` | Java → agent | 删除会话 |
+| `ListIds` | Java → agent | 列出已索引文章 id（全量对账据此清理幽灵条目）|
 | `Health` | Java → agent | 健康探活 + 入库统计 |
 
 ### 知识库同步机制（写链路）
@@ -345,15 +347,16 @@ flowchart LR
 
 - **实时标记**（`ArticleServiceImpl`）：`articleAddOrUpdate` / `updateState` / `deleteById` 成功后，只把文章 id `SADD` 到 Redis（`agent:ingest:pending` 或 `agent:delete:pending`），不查正文、不调 RPC。
 - **增量同步**（`AgentSyncTask.syncPendingUpdates`，每 5 分钟）：读 Redis 待处理 id → 先删后增 → 用 id 查 MySQL 元数据 + 读 RustFS 正文 → 组装完整 proto Article → 按 `batchSize` 分批推送 → 全部成功后清 Redis，失败保留重试。
-- **全量对账**（`AgentSyncTask.fullSync`，每天凌晨 1 点）：兜底机制，查询全部 `state=1` 文章重新推送（agent 侧按 article.id 幂等覆盖），防止 Redis 丢失或增量漏推。
+- **全量对账**（`AgentSyncTask.fullSync`，每天凌晨 1 点）：兜底机制，查询全部 `state=1` 文章重新推送（agent 侧按 article.id 幂等覆盖），并调 `ListIds` 拿回索引清单，**删掉库里已不是「已发布」的幽灵 id**（已删除/下架的文章不会再被问答命中）。库里一篇已发布都没有时同样走清理。
 - **幂等与冲突**：`markIngestPending` / `markDeletePending` 互相移除对方集合中的同 id，保证「后到操作覆盖先到操作」。
 - **旁路容错**：所有 Redis 写入与 RPC 调用均 try-catch + 日志，agent 不可用不影响主业务。
+- **共享密钥**：`rpc.agent.sharedKey`（env `AGENT_SHARED_KEY`）非空时，`AgentAuthInterceptor` 给每个 RPC 附 `x-agent-key` metadata；agent 侧配同一个值才校验，任一侧留空都不拦（便于先发一侧）。
 
 > **BM25 重建说明**：agent 侧采用「脏标记 + 惰性重建」——每批 ingest 只置脏标记，BM25 索引在下次检索前才重建一次，因此 Java 侧分多批推送**不会**导致多次重建。
 
 ### 客户端封装
 
-`ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 deadline 并捕获异常；`askStream` 返回服务端流式迭代器；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
+`ArticleAgentClient`（`@Component`）统一管理 gRPC Channel 与 stub，所有方法带 deadline 并捕获异常（`listIds` 是对账类调用，deadline 放宽到 60s）；配置了 `rpc.agent.sharedKey` 时给 stub 挂上 `AgentAuthInterceptor`；`askStream` 返回服务端流式迭代器；`ArticleProtoMapper` 负责 Java `Article` 实体与 proto 消息的双向转换（含状态枚举、时间格式化）。
 
 ### 会话管理（多轮对话）
 
