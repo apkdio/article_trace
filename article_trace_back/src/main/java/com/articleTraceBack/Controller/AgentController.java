@@ -69,6 +69,13 @@ public class AgentController {
         // 在同步线程取用户身份（异步线程里 ThreadLocal 已清理）
         String userId = currentUserId();
         SseEmitter emitter = new SseEmitter(120_000L);
+        // 续聊必须是自己的会话：别人的 sessionId 一旦转发，下面的 remember 会把它绑到调用者名下，
+        // 连后续 messages / delete 的 owns 校验都会放行，等于整条会话被人接管
+        if (userId == null || (req.getSessionId() != null && !req.getSessionId().isBlank()
+                && !agentSessionService.owns(userId, req.getSessionId()))) {
+            askExecutor.execute(() -> sendError(emitter, "会话不存在或无权访问！"));
+            return emitter;
+        }
         askExecutor.execute(() -> streamAsk(emitter, req, userId));
         return emitter;
     }
@@ -181,11 +188,7 @@ public class AgentController {
     /** 消费 agent 的流式响应，按 session / articles / delta 事件逐段推给前端 */
     private void streamAsk(SseEmitter emitter, AgentAskRequest req, String userId) {
         if (!agentClient.isEnabled()) {
-            try {
-                emitter.send(SseEmitter.event().name("error").data("AI 助手未启用"));
-            } catch (Exception ignored) {
-            }
-            emitter.complete();
+            sendError(emitter, "AI 助手未启用");
             return;
         }
         try {
@@ -216,12 +219,17 @@ public class AgentController {
             emitter.complete();
         } catch (Exception e) {
             log.error("agent ask stream failed: userId={}, sessionId={}", userId, req.getSessionId(), e);
-            try {
-                emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
-            } catch (Exception ignored) {
-            }
-            emitter.complete();
+            sendError(emitter, e.getMessage());
         }
+    }
+
+    /** 发一条 error 事件并结束流：提前拦截的失败也走 SSE 通道，前端只需一套处理 */
+    private void sendError(SseEmitter emitter, String message) {
+        try {
+            emitter.send(SseEmitter.event().name("error").data(message));
+        } catch (Exception ignored) {
+        }
+        emitter.complete();
     }
 
     /** 组装 gRPC 请求（query / sessionId / categoryId / topK） */
