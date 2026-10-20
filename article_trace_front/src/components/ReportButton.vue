@@ -4,6 +4,7 @@ import {ElMessage} from 'element-plus'
 import {Warning} from '@element-plus/icons-vue'
 import {submitReport} from "@/api/report.js"
 import {userInfoStore} from "@/stores/userInfo.js";
+import {errorText} from "@/utils/errorText.js";
 import router from "@/router/index.js";
 
 /**
@@ -60,7 +61,7 @@ const submit = async () => {
         } else {
             // 「已经举报过了」这类判定在后端（有唯一索引兜底），这里如实显示它的原因；
             // message 是 {error: "..."} 形状，直接弹会显示成 [object Object]
-            ElMessage.error(res.message?.error || '提交失败！')
+            ElMessage.error(errorText(res.message, '提交失败！'))
         }
     } catch (e) {
         // 断网/5xx 也要给出提示并复位按钮，否则弹窗开着、用户只会反复点

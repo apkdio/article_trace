@@ -3,6 +3,7 @@ import {onMounted, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {CloseBold, Select} from '@element-plus/icons-vue'
 import {listApplies, reviewApply} from '@/api/apply.js'
+import {errorText} from '@/utils/errorText.js'
 
 /**
  * 审核中心 · 作者申请面板。
@@ -64,7 +65,7 @@ const approve = (row) => {
       await load()
       emit('handled')
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     if (action === 'cancel') ElMessage.info('已取消！')
@@ -86,7 +87,7 @@ const reject = (row) => {
       await load()
       emit('handled')
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
     // 校验不通过时 action 不是 'cancel'，别误报「已取消」

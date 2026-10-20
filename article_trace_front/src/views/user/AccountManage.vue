@@ -9,6 +9,7 @@ import defaultAvatar from "@/assets/defaultLogo.jpg";
 import {userInfoStore} from "@/stores/userInfo.js";
 import router from "@/router/index.js";
 import {promptMasterPassword} from "@/utils/confirm.js";
+import {errorText} from "@/utils/errorText.js";
 import PageHeader from "@/components/PageHeader.vue";
 import StatCard from "@/components/StatCard.vue";
 
@@ -58,7 +59,7 @@ const approveApply = async (item) => {
       await getPendingApplies()
       await getAccounts()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   } catch (e) {
     ElMessage.error('服务器响应失败！')
@@ -77,7 +78,7 @@ const rejectApply = async (item) => {
       ElMessage.success('已拒绝该申请')
       await getPendingApplies()
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   } catch (e) {
     // 用户取消

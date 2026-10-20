@@ -2,6 +2,7 @@
 import {onMounted, ref} from 'vue'
 import {getMyApply, submitAuthorApply} from "@/api/apply.js";
 import PageHeader from "@/components/PageHeader.vue";
+import {errorText} from "@/utils/errorText.js";
 import {EditPen} from '@element-plus/icons-vue'
 
 const loading = ref(true)
@@ -16,7 +17,7 @@ const load = async () => {
         if (res.code === 0) {
             apply.value = res.data
         } else {
-            ElMessage.error(res.message || '加载申请状态失败')
+            ElMessage.error(errorText(res.message, '加载申请状态失败'))
         }
     } catch (e) {
         ElMessage.error('加载申请状态失败')
@@ -35,7 +36,7 @@ const submit = async () => {
             reason.value = ''
             await load()
         } else {
-            ElMessage.error(res.message || '提交失败')
+            ElMessage.error(errorText(res.message, '提交失败'))
         }
     } catch (e) {
         ElMessage.error('提交失败')

@@ -2,6 +2,7 @@
 import {nextTick, onMounted, ref} from 'vue'
 import {ChatDotRound, Clock, Close, Delete, Plus} from '@element-plus/icons-vue'
 import {askAgentStream, deleteSession, getAgentHealth, getSessionMessages, listSessions} from "@/api/agent.js";
+import {errorText} from "@/utils/errorText.js";
 
 const open = ref(false)
 const input = ref('')
@@ -114,7 +115,7 @@ async function loadSessions() {
         if (res.code === 0) {
             sessions.value = res.data || []
         } else {
-            ElMessage.error(res.message || '加载会话列表失败')
+            ElMessage.error(errorText(res.message, '加载会话列表失败'))
         }
     } catch (e) {
         ElMessage.error('加载会话列表失败')
@@ -133,7 +134,7 @@ async function switchSession(session) {
         if (res.code === 0) {
             messages.value = (res.data || []).map(m => ({role: m.role, content: m.content}))
         } else {
-            ElMessage.error(res.message || '加载会话记录失败')
+            ElMessage.error(errorText(res.message, '加载会话记录失败'))
         }
     } catch (e) {
         ElMessage.error('加载会话记录失败')
@@ -146,7 +147,7 @@ async function removeSession(session) {
     try {
         const res = await deleteSession(session.sessionId)
         if (res.code !== 0) {
-            ElMessage.error(res.message || '删除会话失败')
+            ElMessage.error(errorText(res.message, '删除会话失败'))
             return
         }
         sessions.value = sessions.value.filter(s => s.sessionId !== session.sessionId)

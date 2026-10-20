@@ -72,6 +72,7 @@ article_trace_front/
     │   ├── auth.js                 #   登录态判断（配合 UserLayout）
     │   ├── articleDraft.js         #   未提交稿件的本地草稿（防抖写入 / 恢复提示 / 清除）
     │   ├── confirm.js              #   通用确认弹窗
+    │   ├── errorText.js            #   把后端的 message 取成可展示字符串（message 常是对象）
     │   ├── date.js                 #   日期处理
     │   ├── upload.js               #   图片校验（原图/产物两级上限）、裁剪口径常量、上传辅助
     │   ├── markdown.js             #   Markdown → HTML（公式段先抽占位符，顺带转义成安全 HTML）

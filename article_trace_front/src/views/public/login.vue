@@ -14,6 +14,7 @@ import {loginCheck} from "@/utils/loginCheck.js";
 import {resetAuthHandled} from "@/utils/session.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
 import {getSiteFeatures} from "@/api/site.js";
+import {errorText} from "@/utils/errorText.js";
 
 
 let isRegister = ref(true)
@@ -213,7 +214,7 @@ function confirmSendCode() {
       captchaDialogVisible.value = false
       startCodeCountdown()
     } else {
-      ElMessage.error(result.message || '发送失败！')
+      ElMessage.error(errorText(result.message, '发送失败！'))
       // 图形码一次性，失败也要换一张
       refreshCaptcha()
     }

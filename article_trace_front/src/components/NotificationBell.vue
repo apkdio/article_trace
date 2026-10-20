@@ -5,6 +5,7 @@
  */
 import {ref, onMounted, onUnmounted} from 'vue'
 import {Bell} from '@element-plus/icons-vue'
+import {errorText} from '@/utils/errorText.js'
 import {
     deleteNotification,
     listNotifications,
@@ -79,7 +80,7 @@ const removeNotify = async (item) => {
     try {
         const res = await deleteNotification(item.id)
         if (res.code !== 0) {
-            ElMessage.error(res.message || '删除失败！')
+            ElMessage.error(errorText(res.message, '删除失败！'))
             return
         }
         if (item.isRead === 0) unread.value = Math.max(0, unread.value - 1)

@@ -5,6 +5,7 @@ import logo from '@/assets/defaultLogo.jpg'
 import {userInfoStore} from "@/stores/userInfo.js";
 import {removeUserLogoService, submitUserLogoService} from "@/api/user.js";
 import {getMyAvatarApply} from "@/api/avatar.js";
+import {errorText} from "@/utils/errorText.js";
 import {checkImageFile, CROP_PRESETS, isAllowedImageType, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE_TEXT} from "@/utils/upload.js";
 import PageHeader from "@/components/PageHeader.vue";
 import ImageCropper from "@/components/ImageCropper.vue";
@@ -147,7 +148,7 @@ const uploadSubmit = async () => {
       // 站长本人免审核，提交即生效。
       ElMessage.success(userInfoStore().type === 0 ? "头像已更新" : "已提交，等待站长审核")
     } else {
-      ElMessage.error(res.message || "提交失败！")
+      ElMessage.error(errorText(res.message, "提交失败！"))
     }
   } catch (err) {
     ElMessage.error("服务器响应失败！")

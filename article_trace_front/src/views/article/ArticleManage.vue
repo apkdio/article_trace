@@ -18,6 +18,7 @@ import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
 import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} from "@/utils/upload.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
+import {errorText} from "@/utils/errorText.js";
 import {markdownToHtml, sanitizeImportedHtml, splitMarkdownTables} from "@/utils/markdown.js";
 import {renderMathIn, renderTex} from "@/utils/mathRender.js";
 import PageHeader from "@/components/PageHeader.vue";
@@ -327,7 +328,7 @@ const quickAddCategory = () => {
     try {
       const res = await addCategory({categoryName, categoryAlias: ""})
       if (res.code !== 0) {
-        ElMessage.error(res.message || "新建失败！")
+        ElMessage.error(errorText(res.message, "新建失败！"))
         return
       }
       // 新增接口不回传 id，刷新列表后按名字找回它并选中
