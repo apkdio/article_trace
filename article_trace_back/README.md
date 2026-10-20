@@ -781,7 +781,7 @@ CREATE TABLE IF NOT EXISTS `report` (
 | PATCH | `/user/update` | 更新信息 |
 | PATCH | `/user/updateUserLogo` | 提交待审头像（进 avatar 桶并建待审记录，**不**直接改 `user_pic`；站长审批通过后才生效）|
 | PATCH | `/user/updatePass` | 修改密码 |
-| PATCH | `/user/update` | 修改昵称 / 个签 / 邮箱；昵称与个签走内容规则（格式类直接拒、内容类落待审、成功起 7 天锁定期）；**个签仅作者与站长** |
+| PATCH | `/user/update` | 修改昵称 / 个签 / 邮箱；昵称与个签走内容规则（格式类直接拒、内容类落待审、成功起 7 天锁定期）；**个签仅作者与站长**。响应：`code=0` + `data.status`（`UPDATED` 已生效 / `PENDING` 邮箱已生效、昵称或个签进了审核队列，`data.message` 给提示语）；格式错、锁定期内、Token 不匹配仍是 `code=1` |
 | GET | `/profile/manage/list` | 昵称 / 个签审核列表（站长）|
 | PATCH | `/profile/manage/review/{id}` | 审批昵称 / 个签（站长；通过写回并起锁定期，拒绝需给理由）|
 | POST | `/user/forgetPass` | 忘记密码 |

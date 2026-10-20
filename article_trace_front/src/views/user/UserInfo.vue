@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { userInfoStore } from "@/stores/userInfo.js";
 import { updateUserInfoService } from "@/api/user.js";
+import { errorText } from "@/utils/errorText.js";
 import { User, Postcard, Message } from '@element-plus/icons-vue'
 import InfoFormShell from "@/components/InfoFormShell.vue";
 
@@ -68,19 +69,19 @@ const updateUserInfo = () => {
       try {
         const result = await updateUserInfoService(userInfo.value)
         if (result.code === 0) {
-          ElMessage.success("修改成功！")
+          if (result.data?.status === 'PENDING') {
+            // 待审不是失败：提示语由后端给，用 info 而不是报错红字
+            ElMessage.info(result.data.message)
+          } else {
+            ElMessage.success("修改成功！")
+          }
           await freshUserInfo()
         }
-        else if(result.code === 1 && ('pending' in result.message)){
-          // 待审不是失败：提示语由后端给，用 info 而不是报错红字
-          ElMessage.info(result.message.pending)
-          await freshUserInfo()
-        }
-        else if(result.code === 1 && ('nickname' in result.message)){
+        else if(result.code === 1 && result.message && ('nickname' in result.message)){
           errorList.value = result.message
         }
         else {
-          ElMessage.error("修改失败！")
+          ElMessage.error(errorText(result.message, "修改失败！"))
         }
       } catch (err) {
         ElMessage.error("服务器响应失败！")

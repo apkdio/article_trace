@@ -301,7 +301,7 @@ public class UserController {
 
     /** 修改昵称 / 邮箱 */
     @PatchMapping("/update")
-    public Result<String> update(@RequestBody @Validated(User.update.class) User user) {
+    public Result<Map<String, String>> update(@RequestBody @Validated(User.update.class) User user) {
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         Map<String, Object> error = new HashMap<>();
         String name = user.getUsername();
@@ -313,12 +313,12 @@ public class UserController {
             try {
                 UserService.ProfileUpdateResult result = userService.updateProfile(user);
                 if (result.kind() == UserService.ProfileUpdateResult.Kind.UPDATED) {
-                    return Result.success();
+                    return Result.success(Map.of("status", "UPDATED"));
                 }
                 if (result.kind() == UserService.ProfileUpdateResult.Kind.PENDING) {
-                    // 待审不是失败：前端按 message.pending 走 info 提示，别弹红字
-                    error.put("pending", result.reason());
-                    return Result.error(error);
+                    // 待审不是失败：邮箱等字段已生效，昵称/个签进了审核队列。
+                    // 仍然分清状态——只回「成功」的话用户会以为昵称已经改了
+                    return Result.success(Map.of("status", "PENDING", "message", result.reason()));
                 }
                 // 被拒 / 锁定期内：挂在昵称字段上，前端就地显示在输入框下方
                 error.put("nickname", result.reason());
