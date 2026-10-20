@@ -201,6 +201,8 @@ article_trace_back/
   - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。
   - 这样用户中途放弃发布**不会在服务端留下无引用对象**（此前"选图即上传"会产生这类垃圾）。
 - **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先按状态机校验当前状态能否流转（`2→1`、`2→3`、`1→3`），再带「当前状态」条件更新 —— 两个站长并发审批时只有先到者成功。
+  - **驳回必须写理由**（`rejectReason` 请求参数，接口与 service 各校验一次空白），理由会展示给作者：`article.reject_reason`，超 200 字截断。通过发布、作者重新保存/重投都会清空它，避免「已发布」还挂着旧理由。
+  - 理由是**服务端算**的：`articleAddOrUpdate` 落库前强制 `reject_reason = null`，作者无法借保存请求把它改掉。
   > **为什么 WHERE 里必须带状态**：MySQL 驱动默认返回的是**匹配行数**而非实际修改行数。若判断「是否抢到」时 WHERE 只带主键，并发下两条更新都会匹配到 1 行，双双被误判成功。
 - **删除**：级联删除 RustFS 图片/内容文件 + 清理 Redis 浏览量 + 删除数据库记录。
 
@@ -629,6 +631,7 @@ SITE_DISPLAY_NAME=文迹小站
 | content | varchar(50) | 内容文件名（实际内容存 RustFS） |
 | cover_img | varchar(128) | 封面文件名 |
 | state | int | 0 草稿 / 1 发布 / 2 待审 / 3 驳回 |
+| reject_reason | varchar(200) | 驳回理由（仅 `state=3` 有效；通过发布或作者重新提交后清空，展示给作者） |
 | category_id | int | 分类外键 |
 | create_user | int | 创建人外键 |
 | create_time / update_time | datetime | 时间戳 |
@@ -797,7 +800,7 @@ CREATE TABLE IF NOT EXISTS `report` (
 | DELETE | `/article/delete` | 删除文章 |
 | GET | `/article/count` | 文章统计 |
 | GET | `/article/manageArticles` | 全站文章分页（站长） |
-| PATCH | `/article/assess` | 审核文章（站长） |
+| PATCH | `/article/assess` | 审核文章（站长）：`state=1` 通过 / `state=3` 驳回，驳回必须带 `rejectReason` |
 
 ### 分类 `/category`
 
