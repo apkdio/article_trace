@@ -30,6 +30,9 @@ public class Article {
     @NotNull(message = "不能为空！")
     private Integer state;//发布状态 驳回 3 | 待审核 2 | 已发布1 | 草稿 0
 
+    /** 驳回理由：state=3 时有效；通过发布或作者重新提交后清空 */
+    private String rejectReason;
+
     @NotNull(message = "不能为空！")
     private Integer categoryId;//文章分类id
 

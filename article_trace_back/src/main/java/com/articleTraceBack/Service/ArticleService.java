@@ -58,7 +58,8 @@ public interface ArticleService {
     /** 站长角色 type */
     int ROLE_MASTER = 0;
 
-    boolean updateState(int id, int state);
+    /** 审核文章：state=1 通过发布，state=3 驳回（必须给理由，会展示给作者） */
+    boolean updateState(int id, int state, String rejectReason);
 
     /** 判断某角色能否把文章状态从 {@code from} 流转到 {@code to}（站长可跳过审核直接发布，判断需带角色维度）。 */
     boolean canTransfer(int from, int to, int roleType);

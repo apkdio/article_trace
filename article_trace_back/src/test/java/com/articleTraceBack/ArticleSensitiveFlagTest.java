@@ -42,7 +42,7 @@ public class ArticleSensitiveFlagTest {
         article.setCreateTime(LocalDateTime.now());
         articleMapper.insert(article);
 
-        assertTrue(articleService.updateState(article.getId(), STATE_PUBLISHED), "2→1 应当成功");
+        assertTrue(articleService.updateState(article.getId(), STATE_PUBLISHED, null), "2→1 应当成功");
         Article after = articleMapper.selectById(article.getId());
         assertEquals(STATE_PUBLISHED, after.getState());
         assertEquals(0, after.getSensitiveHit(), "审核通过后不该再挂命中标记");

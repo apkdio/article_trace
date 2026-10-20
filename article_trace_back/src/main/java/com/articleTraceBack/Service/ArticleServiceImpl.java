@@ -70,6 +70,9 @@ public class ArticleServiceImpl implements ArticleService {
         // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
         // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
         article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
+        // 驳回理由只能由审核动作写入：作者保存时一律清空（重新提交后旧理由就过期了，
+        // 同时挡住请求体里夹带 rejectReason 的注入）
+        article.setRejectReason(null);
 
         // 0为新增，1为更新
         Map<String, Object> content = new HashMap<>();
@@ -137,6 +140,8 @@ public class ArticleServiceImpl implements ArticleService {
                 if (expectedState != null) {
                     cas.eq("state", expectedState);
                 }
+                // 显式清掉旧驳回理由：实体里是 null（MyBatis-Plus 会跳过 null 字段），必须靠 wrapper 的 set
+                cas.set("reject_reason", null);
                 saved = articleMapper.update(article, cas) == 1;
                 if (!saved && articleMapper.selectById(article.getId()) != null) {
                     // 0 行且文章还在 = 别人先改了：交给下面的 catch 回收本次上传，并给出明确提示
@@ -368,7 +373,7 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public boolean updateState(int id, int state) {
+    public boolean updateState(int id, int state, String rejectReason) {
         Article raw = articleMapper.selectById(id);
         if (raw == null || raw.getState() == null) {
             return false;
@@ -376,6 +381,12 @@ public class ArticleServiceImpl implements ArticleService {
         // 审核入口只做「发布 / 驳回」两类动作；「撤回为草稿」属于作者侧操作，不走这里
         if (state != STATE_PUBLISHED && state != STATE_REJECTED) {
             log.warn("article assess rejected non-assess target: id={}, target={}", id, state);
+            return false;
+        }
+        // 驳回必须给理由：作者靠它知道怎么改，空理由等于「不知道为什么被拒」
+        String reason = rejectReason == null ? null : rejectReason.trim();
+        if (state == STATE_REJECTED && (reason == null || reason.isEmpty())) {
+            log.warn("article reject without reason: id={}", id);
             return false;
         }
         // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3
@@ -386,7 +397,9 @@ public class ArticleServiceImpl implements ArticleService {
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
                 .eq("state", raw.getState())   // 条件更新：状态被并发改动过就失败
-                .set("state", state);
+                .set("state", state)
+                // 驳回记理由；通过发布时清掉上一条，避免「已发布」还挂着旧理由
+                .set("reject_reason", state == STATE_REJECTED ? truncate(reason, 200) : null);
         if (state == STATE_PUBLISHED) {
             // 审核完毕的文章不再挂「命中违禁词」标记：当初已判无伤、或那个词早已从词表移除，
             // 再当敏感稿排在待审列表前面毫无意义。命中的词留在 sensitive_words 里，排查与调词表时还要看。
@@ -402,6 +415,14 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
         return updated;
+    }
+
+    /** 按字符数截断（列宽 200），避免超长理由在写库时抛 Data too long */
+    private String truncate(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength);
     }
 
     /** 入库/删除标记的换边合成一条：分两条命令时退出会让同一 id 同时挂在两个集合，或两边都不在。 */

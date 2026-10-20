@@ -299,15 +299,21 @@ public class ArticleController {
         return Result.error(error);
     }
 
-    /** 审核文章：通过（1）或驳回（3）（站长） */
+    /** 审核文章：通过（1）或驳回（3）（站长）；驳回必须给理由，作者会看到 */
     @PatchMapping("/assess")
-    public Result<String> assessArticle(@RequestParam int id, @RequestParam int state) {
+    public Result<String> assessArticle(@RequestParam int id, @RequestParam int state,
+                                        @RequestParam(required = false) String rejectReason) {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         String username = userInfo.get("name").toString();
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
-            if (articleService.updateState(id, state)) {
+            if (state == ArticleService.STATE_REJECTED
+                    && (rejectReason == null || rejectReason.isBlank())) {
+                error.put("error", "驳回理由不能为空！");
+                return Result.error(error);
+            }
+            if (articleService.updateState(id, state, rejectReason)) {
                 return Result.success();
             }
             error.put("error", "更新失败！");

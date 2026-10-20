@@ -793,7 +793,11 @@ const refreshAfterDelete = async () => {
                 <el-tag v-if="scope.row.state === 0" type="primary" disable-transitions>草稿</el-tag>
                 <el-tag v-else-if="scope.row.state === 1" type="success" disable-transitions>发布</el-tag>
                 <el-tag v-else-if="scope.row.state === 2" type="warning" disable-transitions>待审核</el-tag>
-                <el-tag v-else-if="scope.row.state === 3" type="danger" disable-transitions>已驳回</el-tag>
+                <el-tooltip v-else-if="scope.row.state === 3" placement="top"
+                            :disabled="!scope.row.rejectReason"
+                            :content="'驳回理由：' + (scope.row.rejectReason || '')">
+                  <el-tag type="danger" disable-transitions>已驳回</el-tag>
+                </el-tooltip>
                 <el-tag v-else type="info">未知状态</el-tag>
                 <!-- 命中标记只由后端回给站长：作者侧拿不到这个字段，因此不会显示 -->
                 <el-tag v-if="scope.row.sensitiveHit === 1" type="danger" effect="dark" disable-transitions>命中违禁词</el-tag>
@@ -883,6 +887,10 @@ const refreshAfterDelete = async () => {
     <el-drawer v-model="visibleDrawer" :title="drawerTitle" direction="rtl" size="55%"
                class="article-drawer" append-to-body
                :before-close="beforeCloseDrawer">
+      <!-- 被驳回的稿子打开编辑时，把理由摆在最上面：作者改的就是这里 -->
+      <el-alert v-if="drawerTitle === '修改文章' && articleModel.state === 3 && articleModel.rejectReason"
+                type="warning" :closable="false" show-icon style="margin-bottom: 12px"
+                :title="'驳回理由：' + articleModel.rejectReason"/>
       <el-form :model="articleModel" ref="articleModelRef" :rules="articleModelRule" label-position="top">
         <el-row :gutter="20">
           <el-col :span="16">

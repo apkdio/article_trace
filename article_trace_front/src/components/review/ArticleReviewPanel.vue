@@ -69,23 +69,50 @@ const openPreview = async (row) => {
   renderMathIn(previewContentRef.value)
 }
 
-/** 通过 / 驳回共用；命中的违禁词只有站长看得到，这里照实列出来 */
-const assess = (row, state) => {
-  const pass = state === STATE_PUBLISHED
+/** 通过：直接确认 */
+const approve = (row) => {
   ElMessageBox.confirm(
-      pass ? `通过「${row.title}」并立即对外发布？` : `驳回「${row.title}」？作者可修改后重新投稿。`,
-      pass ? '通过审核' : '驳回文章',
-      {type: pass ? 'success' : 'warning', confirmButtonText: pass ? '通过' : '驳回', cancelButtonText: '取消', center: true}
+      `通过「${row.title}」并立即对外发布？`,
+      '通过审核',
+      {type: 'success', confirmButtonText: '通过', cancelButtonText: '取消', center: true}
   ).then(async () => {
-    const res = await assessArticleService(row.id, state)
+    const res = await assessArticleService(row.id, STATE_PUBLISHED)
     if (res.code === 0) {
-      ElMessage.success(pass ? '已通过！' : '已驳回！')
+      ElMessage.success('已通过！')
       await load()
       emit('handled')
     } else {
-      ElMessage.error(res.message || '操作失败！')
+      ElMessage.error(errorText(res.message, '操作失败！'))
     }
   }).catch((action) => {
+    if (action === 'cancel') ElMessage.info('已取消！')
+  })
+}
+
+/** 驳回：必须写理由，理由会展示给作者（作者改完可重投） */
+const reject = (row) => {
+  ElMessageBox.prompt(
+      `驳回「${row.title}」？理由会展示给作者，作者可修改后重新投稿。`,
+      '驳回文章',
+      {
+        confirmButtonText: '提交驳回',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputPlaceholder: '例如：第三节引用缺少出处，请补充后再投',
+        inputValidator: (v) => (v && v.trim().length > 0) || '驳回理由不能为空',
+        center: true,
+      }
+  ).then(async ({value}) => {
+    const res = await assessArticleService(row.id, STATE_REJECTED, value.trim())
+    if (res.code === 0) {
+      ElMessage.success('已驳回！')
+      await load()
+      emit('handled')
+    } else {
+      ElMessage.error(errorText(res.message, '操作失败！'))
+    }
+  }).catch((action) => {
+    // 校验不通过时 action 不是 'cancel'，别误报「已取消」
     if (action === 'cancel') ElMessage.info('已取消！')
   })
 }
@@ -123,8 +150,8 @@ defineExpose({load})
            三个按钮在 200px 里放不下，「驳回」会被挤到第二行 -->
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button type="success" size="small" :icon="Select" @click="assess(row, STATE_PUBLISHED)">通过</el-button>
-          <el-button type="danger" size="small" :icon="CloseBold" @click="assess(row, STATE_REJECTED)">驳回</el-button>
+          <el-button type="success" size="small" :icon="Select" @click="approve(row)">通过</el-button>
+          <el-button type="danger" size="small" :icon="CloseBold" @click="reject(row)">驳回</el-button>
         </template>
       </el-table-column>
       <template #empty>

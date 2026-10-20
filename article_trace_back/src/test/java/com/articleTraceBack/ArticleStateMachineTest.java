@@ -3,13 +3,16 @@ package com.articleTraceBack;
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -65,15 +68,34 @@ public class ArticleStateMachineTest {
     public void testUpdateStateRespectsStateMachine() {
         Integer id = insertArticle(ArticleService.STATE_PENDING);
         try {
-            assertFalse(articleService.updateState(id, 99), "非法目标状态应被拒绝");
-            assertFalse(articleService.updateState(id, 0), "站长不能把待审文章改成草稿");
+            assertFalse(articleService.updateState(id, 99, null), "非法目标状态应被拒绝");
+            assertFalse(articleService.updateState(id, 0, null), "站长不能把待审文章改成草稿");
+            assertFalse(articleService.updateState(id, ArticleService.STATE_REJECTED, "  "),
+                    "驳回不给理由应被拒绝（作者要知道怎么改）");
 
-            assertTrue(articleService.updateState(id, ArticleService.STATE_PUBLISHED), "2→1 审核通过");
-            assertTrue(articleService.updateState(id, ArticleService.STATE_REJECTED), "1→3 追回已发布");
+            assertTrue(articleService.updateState(id, ArticleService.STATE_REJECTED, "第二节引用缺少出处"),
+                    "2→3 驳回");
+            assertEquals("第二节引用缺少出处", articleMapper.selectById(id).getRejectReason(),
+                    "驳回理由要落库，作者列表里能看到");
 
-            assertFalse(articleService.updateState(id, ArticleService.STATE_PUBLISHED), "3→1 应被拒绝");
-            assertFalse(articleService.updateState(999999, ArticleService.STATE_PUBLISHED),
+            assertFalse(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null), "3→1 应被拒绝");
+            assertFalse(articleService.updateState(999999, ArticleService.STATE_PUBLISHED, null),
                     "文章不存在应返回 false");
+        } finally {
+            articleMapper.deleteById(id);
+        }
+    }
+
+    /** 通过发布必须清掉上一条驳回理由，否则「已发布」还挂着旧理由 */
+    @Test
+    public void testPublishClearsRejectReason() {
+        Integer id = insertArticle(ArticleService.STATE_PENDING);
+        try {
+            // 直接落一条旧理由（模拟上一轮驳回留下的），再从待审通过发布
+            articleMapper.update(null, new UpdateWrapper<Article>()
+                    .eq("id", id).set("reject_reason", "旧理由"));
+            assertTrue(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null), "2→1 审核通过");
+            assertNull(articleMapper.selectById(id).getRejectReason(), "通过发布后旧理由应被清空");
         } finally {
             articleMapper.deleteById(id);
         }

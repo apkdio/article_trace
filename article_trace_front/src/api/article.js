@@ -41,9 +41,10 @@ export function getArticleWithConditionsMaster(condition) {
     return request.get("/article/manageArticles", {params: condition})
 }
 
-export function assessArticleService(id, state) {
+/** 审核文章：state=1 通过发布 / 3 驳回（驳回必须带理由，作者会看到） */
+export function assessArticleService(id, state, rejectReason) {
     return request.patch("/article/assess", null, {
-        params: {id: id, state: state}
+        params: {id: id, state: state, rejectReason: rejectReason}
     })
 }
 
