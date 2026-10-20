@@ -5,6 +5,7 @@ import com.articleTraceBack.Utils.BcryptUtils;
 import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.Service.Support.ProfileGuard;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
@@ -370,7 +371,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageBean<User> findAllAccountsWithPage(int pageNum, int pageSize) {
-        int offset = (pageNum - 1) * pageSize;
+        int offset = PageUtil.offset(pageNum, pageSize);
         PageBean<User> usersData = new PageBean<>();
         List<User> users = userMapper.findAllAccountsWithPage(offset, pageSize);
         for (User user : users) {

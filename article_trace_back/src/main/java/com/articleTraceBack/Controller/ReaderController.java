@@ -53,7 +53,7 @@ public class ReaderController {
             searchType = null;
         }
         int totalArticles = articleService.findAllArticlesCountInPublic(categoryId, 1, search, searchType, nickName);
-        int pageTotal = (int) Math.ceil(totalArticles * 1.0 / pageSize);
+        int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
             error.put("error", "无数据！");
             return Result.error(error);
@@ -225,7 +225,7 @@ public class ReaderController {
             error.put("error", "无评论！");
             return Result.error(error);
         }
-        int pageTotal = (int) Math.ceil(totalComments * 1.0 / pageSize);
+        int pageTotal = PageUtil.pageTotal(totalComments, pageSize);
         if (pageNum > pageTotal) pageNum = pageTotal;
         List<Comment> Comments = readerService.findAllComments(pageNum, pageSize, articleId);
         allComments.setTotal(totalComments);

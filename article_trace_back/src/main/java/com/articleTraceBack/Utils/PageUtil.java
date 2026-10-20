@@ -24,4 +24,14 @@ public final class PageUtil {
         }
         return Math.min(pageSize, MAX_PAGE_SIZE);
     }
+
+    /** SQL 偏移量 */
+    public static int offset(int pageNum, int pageSize) {
+        return (pageNum - 1) * pageSize;
+    }
+
+    /** 总页数（向上取整）；空结果集为 0 页 */
+    public static int pageTotal(int total, int pageSize) {
+        return pageSize < 1 ? 0 : (total + pageSize - 1) / pageSize;
+    }
 }

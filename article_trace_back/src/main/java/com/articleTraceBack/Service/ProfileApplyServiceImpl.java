@@ -77,7 +77,7 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
         pageBean.setTotal(total);
         pageBean.setItems(total == 0
                 ? List.of()
-                : profileApplyMapper.selectPageWithUser(status, (pageNum - 1) * pageSize, pageSize));
+                : profileApplyMapper.selectPageWithUser(status, PageUtil.offset(pageNum, pageSize), pageSize));
         return pageBean;
     }
 

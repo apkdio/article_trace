@@ -196,7 +196,7 @@ public class UserController {
         // 1. 黑名单：连续失败过多，直接拒绝
         long blockedSeconds = loginAttemptService.blockRemainingSeconds(username, clientKey);
         if (blockedSeconds > 0) {
-            long minutes = (blockedSeconds + 59) / 60;
+            long minutes = minutesOf(blockedSeconds);
             error.put("blocked", minutes);
             error.put("error", "登录尝试过于频繁，请 " + minutes + " 分钟后再试！");
             return Result.error(error);
@@ -508,7 +508,7 @@ public class UserController {
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
             int total = userService.findAllAccounts();
-            int pageTotal = (int) Math.ceil(total * 1.0 / pageSize);
+            int pageTotal = PageUtil.pageTotal(total, pageSize);
             if (pageTotal == 0) {
                 error.put("error", "无数据！");
                 return Result.error(error);

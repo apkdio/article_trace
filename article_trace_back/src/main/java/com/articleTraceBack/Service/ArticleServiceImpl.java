@@ -3,6 +3,7 @@ package com.articleTraceBack.Service;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.FileCheckUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.config.SensitiveWordHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -207,7 +208,7 @@ public class ArticleServiceImpl implements ArticleService {
     public PageBean<Article> findAllArticlesWithPage(int uid, int pageNum, int pageSize,
                                                      Integer categoryId, Integer state, String search) {
         PageBean<Article> pageBean = new PageBean<>();
-        int offset = (pageNum - 1) * pageSize;
+        int offset = PageUtil.offset(pageNum, pageSize);
         List<Article> allArticles = articleMapper.allArticles(uid, pageNum, pageSize, categoryId, state, offset, search);
         for (Article article : allArticles) {
             article.setContent(readCleanContent(article.getContent()));
@@ -302,7 +303,7 @@ public class ArticleServiceImpl implements ArticleService {
     public PageBean<Article> findAllArticlesInPublic(int pageNum, int pageSize, Integer categoryId,
                                                      Integer state, String search, Integer searchType, String nickName) {
         PageBean<Article> pageBean = new PageBean<>();
-        int offset = (pageNum - 1) * pageSize;
+        int offset = PageUtil.offset(pageNum, pageSize);
         List<Article> allArticles = articleMapper.findAllArticlesInPublic
                 (pageNum, pageSize, categoryId, state, offset, search, searchType, nickName);
         for (Article article : allArticles) {
@@ -329,7 +330,7 @@ public class ArticleServiceImpl implements ArticleService {
     public PageBean<Article> findAllArticlesInMaster(int pageNum, int pageSize, Integer categoryId,
                                                      Integer state, Integer userId, String search, Integer searchType, String nickName) {
         PageBean<Article> pageBean = new PageBean<>();
-        int offset = (pageNum - 1) * pageSize;
+        int offset = PageUtil.offset(pageNum, pageSize);
         List<Article> allArticles = articleMapper.findAllArticlesInMaster
                 (pageNum, pageSize, categoryId, state, userId, offset, search, searchType, nickName);
         for (Article article : allArticles) {

@@ -105,7 +105,7 @@ article_trace_back/
     │   │   ├── EmailUtil.java               #   邮件发送（SMTP，含 multipart 双载体）
     │   │   ├── EmailTemplateUtil.java       #   邮件模板加载与占位符渲染
     │   │   ├── FileCheckUtil.java           #   上传图片校验（MIME 与扩展名都须通过）
-    │   │   ├── PageUtil.java                #   分页参数归一化（页码下限 / 每页条数上限）
+    │   │   ├── PageUtil.java                #   分页参数归一化 + 偏移量/总页数
     │   │   ├── IPUtil.java                  #   客户端 IP 获取
     │   │   └── GlobalExceptionHandler.java  #   全局异常捕获
     │   ├── config/                          # 配置类

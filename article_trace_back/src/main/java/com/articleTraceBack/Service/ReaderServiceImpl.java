@@ -1,6 +1,7 @@
 package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.IPUtil;
+import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.mapper.CommentMapper;
@@ -54,7 +55,7 @@ public class ReaderServiceImpl implements ReaderService {
 
     @Override
     public List<Comment> findAllComments(int pageNum, int pageSize, Integer articleId) {
-        int offset = (pageNum - 1) * pageSize;
+        int offset = PageUtil.offset(pageNum, pageSize);
         List<Comment> comments = commentMapper.findAllComments(offset, pageSize, articleId);
         for (Comment comment : comments) {
             if (!StringUtils.isBlank(comment.getUserPic())) {
