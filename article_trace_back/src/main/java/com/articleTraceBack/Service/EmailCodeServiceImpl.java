@@ -1,5 +1,6 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.Utils.EmailTemplateUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,7 +13,6 @@ import java.security.SecureRandom;
 import java.time.Year;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -100,7 +100,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         if (email == null || email.isBlank() || scene == null || scene.isBlank()) {
             return false;
         }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        String normalized = EmailNormalizer.normalize(email);
         try {
             // 0. 锁定检查：连续失败超阈值后，连「重新获取」也挡住。
             //    只锁 verify 不锁 send 等于没锁——重新发一枚码，计数与作废就都绕过去了。
@@ -161,7 +161,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
                 || scene == null || scene.isBlank()) {
             return CODE_WRONG;
         }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        String normalized = EmailNormalizer.normalize(email);
         try {
             Long result = stringRedisTemplate.execute(VERIFY_SCRIPT,
                     List.of(String.format(KEY_CODE, scene, normalized),
@@ -185,7 +185,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         if (email == null || email.isBlank() || scene == null || scene.isBlank()) {
             return 0;
         }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        String normalized = EmailNormalizer.normalize(email);
         Long ttl = stringRedisTemplate.getExpire(String.format(KEY_LOCK, scene, normalized),
                 TimeUnit.SECONDS);
         return (ttl == null || ttl < 0) ? 0 : ttl;

@@ -2,6 +2,7 @@ package com.articleTraceBack.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
+import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
@@ -93,6 +94,7 @@ public class UserServiceImpl implements UserService {
         LocalDateTime now = LocalDateTime.now();
         user.setCreateTime(now);
         user.setPassword(encoderPass);
+        user.setEmail(EmailNormalizer.normalize(user.getEmail()));
         // 注册不要求填昵称，这里生成一个默认的（昵称允许重复，无需保证唯一）
         if (StringUtils.isBlank(user.getNickname())) {
             user.setNickname(genDefaultNickname());
@@ -119,7 +121,7 @@ public class UserServiceImpl implements UserService {
         User newUser = new User();
         if (type == 0) {
             newUser.setNickname(user.getNickname());
-            newUser.setEmail(user.getEmail());
+            newUser.setEmail(EmailNormalizer.normalize(user.getEmail()));
             // 个签与昵称、邮箱同属「基本资料」；读者没有个签，传 null 时 MyBatis 会跳过该列
             newUser.setSignature(user.getSignature());
         } else if (type == 1) {
@@ -334,7 +336,7 @@ public class UserServiceImpl implements UserService {
             return null;
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("email", email.trim());
+        queryWrapper.eq("email", EmailNormalizer.normalize(email));
         List<User> users = userMapper.selectList(queryWrapper);
         // 邮箱已有唯一约束，limit 1 仅作防御
         return users.isEmpty() ? null : users.getFirst();

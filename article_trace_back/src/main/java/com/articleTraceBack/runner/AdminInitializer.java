@@ -1,6 +1,7 @@
 package com.articleTraceBack.runner;
 
 import com.articleTraceBack.Utils.BcryptUtils;
+import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -67,7 +68,7 @@ public class AdminInitializer implements CommandLineRunner {
         admin.setUsername(adminUsername);
         admin.setPassword(BcryptUtils.encodePass(adminPassword)); // BCrypt 加密
         admin.setCreateTime(LocalDateTime.now());
-        admin.setEmail(adminEmail);
+        admin.setEmail(EmailNormalizer.normalize(adminEmail));
         admin.setNickname(adminNickname);
         admin.setType(0);
         userMapper.insert(admin);
