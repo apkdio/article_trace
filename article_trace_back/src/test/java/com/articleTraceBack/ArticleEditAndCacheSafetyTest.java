@@ -7,6 +7,7 @@ import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -237,10 +238,37 @@ public class ArticleEditAndCacheSafetyTest {
         verify(rustFsUtil).evictContentCache(oldKey);
     }
 
+    /** 编辑提交整行数据：views / create_time 不得被请求体里的旧值回写 */
+    @Test
+    public void saveDoesNotOverwriteViewsOrCreateTime() {
+        int userId = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(userId, "zz-test-写回-" + System.nanoTime(), "zz-test-old5.json");
+        articleMapper.update(null, new UpdateWrapper<Article>().eq("id", id).setSql("views = views + 7"));
+        Article before = articleMapper.selectById(id);
+
+        given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(true);
+        given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
+
+        Article edit = new Article();
+        edit.setId(id);
+        edit.setCreateUser(userId);
+        edit.setTitle("zz-test-写回改-" + System.nanoTime());
+        edit.setContent("新正文");
+        edit.setState(ArticleService.STATE_DRAFT);
+        // 编辑抽屉回传的是打开页面时那一行：期间累加的浏览量、原始创建时间都在里面
+        edit.setViews(0L);
+        edit.setCreateTime(before.getCreateTime().minusDays(3));
+
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", ArticleService.STATE_DRAFT));
+
+        Article after = articleMapper.selectById(id);
+        assertEquals(7L, after.getViews(), "保存不得覆盖期间累加的浏览量");
+        assertEquals(before.getCreateTime(), after.getCreateTime(), "创建时间不得被回写");
+    }
+
     /** P1-10：删除文章先删库行再删对象；对象删失败也不复活库行 */
     @Test
-    public void deleteRemovesDbRowBeforeObjects() {
-        int userId = fixtures.ensureUser(AUTHOR);
+    public void deleteRemovesDbRowBeforeObjects() {        int userId = fixtures.ensureUser(AUTHOR);
         String oldKey = "zz-test-del-" + System.nanoTime() + ".json";
         int id = insertArticle(userId, "zz-test-删除顺序-" + System.nanoTime(), oldKey);
 

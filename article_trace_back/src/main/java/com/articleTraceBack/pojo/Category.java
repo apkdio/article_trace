@@ -1,5 +1,6 @@
 package com.articleTraceBack.pojo;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -28,12 +29,14 @@ public class Category {
     private String categoryAlias;//分类别名
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private Integer createUser;//创建人ID
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Integer lastUpdateUser;//最后更新用户ID
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime createTime;//创建时间
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

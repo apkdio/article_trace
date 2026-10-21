@@ -1,6 +1,7 @@
 package com.articleTraceBack.pojo;
 
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -37,11 +38,14 @@ public class Article {
     private Integer categoryId;//文章分类id
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private Integer createUser;//创建人ID
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime createTime;//创建时间
 
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private Long views;
 
     /** 是否命中违禁词（1 命中）—— 只回给审核方，见 {@link #hideSensitiveDetail} */
