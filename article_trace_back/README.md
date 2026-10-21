@@ -196,7 +196,7 @@ article_trace_back/
   - **命中违禁词时目标状态被强制改成待审(2)**，站长也一样。**草稿例外**：草稿不进敏感词监测（不判、不打标，写入时会把 `sensitive_hit` 清掉），只有送审 / 发布才判定——草稿是还没打算交出去的私有产物，扫了也不进审核队列。判定规则收在 `Service/Support/ArticleSensitivityGuard`（`shouldCheckSensitive` / `applySensitiveVerdict` / `applyMark`，都与 HTTP 无关），用例见 `ArticleSensitivityGuardTest`。
   - **目标状态与当前一致时跳过状态机**（例如已在待审的稿子再保存）：这不是状态流转，否则会误报「当前文章状态不允许该操作！」。状态机本身的语义不变。详见第 6 节。
 - **封面**：**随文章一次性 multipart 提交**（`POST /article/add`、`PATCH /article/update/{id}` 接收 `article` JSON + 可选 `cover` 文件），不再有独立的封面上传端点。
-  - 带文件 → 上传新图，**对象名由服务端生成**；写库成功后旧封面才被删除。
+  - 带文件 → 上传新图，**对象名由服务端生成**（与正文同一口径：`时间戳-用户id-随机后缀`，不用 `username`——它允许含 `/`，会被对象存储当成目录分隔符）；写库成功后旧封面才被删除。
   - 不带文件且 `coverImg` 为空串 → 删除封面（写库成功后删对象）。
   - 不带文件且 `coverImg` 为 null 或其它值 → **回退为库中原值**，客户端无法指定任意 key。
   - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。

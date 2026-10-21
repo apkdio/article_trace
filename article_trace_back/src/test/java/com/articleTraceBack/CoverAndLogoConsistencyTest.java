@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
@@ -25,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -99,6 +99,8 @@ public class CoverAndLogoConsistencyTest {
         Article after = articleMapper.selectById(id);
         assertNotNull(after.getCoverImg());
         assertTrue(after.getCoverImg().endsWith(".png"), "应当是以服务端生成的对象名");
+        assertTrue(after.getCoverImg().matches("\\d+-" + userId + "-[0-9a-f]{8}\\.png"),
+                "对象名应与正文同口径（时间戳-用户id-随机后缀），实际：" + after.getCoverImg());
         assertFalse(after.getCoverImg().contains("attacker"), "不能采用客户端提供的 key");
         // 写库成功后旧封面才被删除
         verify(rustFsUtil).delete(oldKey, "image");
@@ -171,8 +173,11 @@ public class CoverAndLogoConsistencyTest {
         assertFalse(articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME, null),
                 "正文上传失败时整次提交应当失败");
 
-        // 刚上传的封面必须被回收，不留下无引用对象
-        verify(rustFsUtil).delete(contains("zz-test-cover-user"), anyString());
+        // 刚上传的封面必须被回收，不留下无引用对象；对象名按用户 id 归属，不再带 username
+        ArgumentCaptor<String> reclaimed = ArgumentCaptor.forClass(String.class);
+        verify(rustFsUtil).delete(reclaimed.capture(), anyString());
+        assertTrue(reclaimed.getValue().contains("-" + userId + "-"),
+                "回收的封面对象名应带用户 id，实际：" + reclaimed.getValue());
     }
 
     @Test

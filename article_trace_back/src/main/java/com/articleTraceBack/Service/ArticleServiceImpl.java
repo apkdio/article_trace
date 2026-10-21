@@ -91,7 +91,7 @@ public class ArticleServiceImpl implements ArticleService {
         // ---- 封面：有文件就上传新图，没有文件则只接受「清空」或「保持原值」----
         String newCoverKey = null;
         if (cover != null && !cover.isEmpty()) {
-            newCoverKey = uploadCoverObject(cover, username);
+            newCoverKey = uploadCoverObject(cover, article.getCreateUser(), username);
             if (newCoverKey == null) {
                 return false;
             }
@@ -274,13 +274,16 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     /** 上传封面对象并返回对象名，校验不通过或上传失败返回 null；对象名由服务端生成，客户端文件名只用于取扩展名。 */
-    private String uploadCoverObject(MultipartFile cover, String username) {
+    private String uploadCoverObject(MultipartFile cover, Integer userId, String username) {
         if (!FileCheckUtil.isAcceptableImage(cover)) {
             log.warn("reject cover upload: unacceptable image, user={}, name={}, contentType={}",
                     username, cover.getOriginalFilename(), cover.getContentType());
             return null;
         }
-        String fileName = System.currentTimeMillis() + username + FileCheckUtil.extensionOf(cover);
+        // 与正文同一口径：用用户 id 而非 username（username 允许含 /，会被对象存储当成目录分隔符），
+        // 并带随机后缀——只靠毫秒时间戳，同一毫秒的两次保存会撞同一个对象名
+        String fileName = System.currentTimeMillis() + "-" + userId + "-"
+                + UUID.randomUUID().toString().substring(0, 8) + FileCheckUtil.extensionOf(cover);
         return rustFsUtil.upload(cover, "image", fileName) ? fileName : null;
     }
 
