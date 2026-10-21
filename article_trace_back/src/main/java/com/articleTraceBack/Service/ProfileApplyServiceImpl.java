@@ -125,11 +125,24 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
         } else {
             user.setNickname(apply.getPendingValue());
         }
-        String baseValue = apply.getBaseValue();
+        // 以申请提交时的旧值为锚；历史行没有 base_value 时退化为「审核时读到的当前值」，
+        // 仍能挡住读与写之间的并发修改
+        String anchor = apply.getBaseValue();
+        if (anchor == null) {
+            User current = userMapper.selectById(apply.getUserId());
+            if (current == null) {
+                log.info("profile apply user gone, skip write-back: applyId={}, userId={}",
+                        applyId, apply.getUserId());
+                return true;
+            }
+            anchor = apply.getType() == ProfileApply.TYPE_SIGNATURE
+                    ? current.getSignature() : current.getNickname();
+        }
         UpdateWrapper<User> writeBack = new UpdateWrapper<User>().eq("id", apply.getUserId());
-        // base_value 为 NULL 的历史行无法锚定旧值，只能退化为无条件写回（保持旧行为）
-        if (baseValue != null) {
-            writeBack.eq(column, baseValue);
+        if (anchor == null) {
+            writeBack.isNull(column);
+        } else {
+            writeBack.eq(column, anchor);
         }
         if (userMapper.update(user, writeBack) != 1) {
             log.info("profile apply write-back skipped, user changed {} meanwhile: userId={}",

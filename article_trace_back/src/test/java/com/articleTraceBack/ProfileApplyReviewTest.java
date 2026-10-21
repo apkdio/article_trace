@@ -111,6 +111,22 @@ public class ProfileApplyReviewTest {
     }
 
     /**
+     * 历史行没有 base_value（P1-4 之前的申请）：仍要能正常写回，
+     * 锚点退化为审核时读到的当前值，而不是无条件覆盖。
+     */
+    @Test
+    public void legacyApplyWithoutBaseStillWritesBack() {
+        int userId = fixtures.ensureUser(2);
+        ProfileApply pending = submitPending(userId, "微信abc123");
+        profileApplyMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<ProfileApply>()
+                .eq("id", pending.getId()).set("base_value", null));
+
+        assertTrue(profileApplyService.review(pending.getId(), true, null, 1), "审批本身应成功");
+        assertEquals("微信abc123", userMapper.selectById(userId).getNickname(),
+                "没有 base_value 时，用户未改过就应当写回");
+    }
+
+    /**
      * P1-4：用户在待审期间又自己改了昵称——站长此时批准旧待审，**不能**覆盖用户的新值。
      * 审核侧写回带 baseValue 条件：字段仍等于提交时的旧值才写。
      */
