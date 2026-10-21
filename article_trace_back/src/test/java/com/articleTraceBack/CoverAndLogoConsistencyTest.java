@@ -6,6 +6,7 @@ import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
+import com.articleTraceBack.pojo.ArticleSnapshot;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,8 +71,13 @@ public class CoverAndLogoConsistencyTest {
         return a.getId();
     }
 
-    private MockMultipartFile coverImage(String name) {
-        // 必须是真 PNG 头：FileCheckUtil 会校验内容魔数，假字节会被正确地拒掉
+    /** 入口快照：模拟 controller 在请求进入时读到的版本 */
+    private ArticleSnapshot snapshotOf(int id) {
+        Article raw = articleMapper.selectById(id);
+        return new ArticleSnapshot(raw.getState(), raw.getContent(), raw.getCoverImg(), raw.getVersion());
+    }
+
+    private MockMultipartFile coverImage(String name) {        // 必须是真 PNG 头：FileCheckUtil 会校验内容魔数，假字节会被正确地拒掉
         byte[] png = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4};
         return new MockMultipartFile("cover", name, "image/png", png);
     }
@@ -94,7 +100,7 @@ public class CoverAndLogoConsistencyTest {
         // 即便客户端塞了一个可疑的 key，有文件时也一律以服务端生成的对象名为准
         edit.setCoverImg("attacker-supplied-key.png");
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("new.png"), USERNAME, null));
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("new.png"), USERNAME, snapshotOf(id)));
 
         Article after = articleMapper.selectById(id);
         assertNotNull(after.getCoverImg());
@@ -123,7 +129,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setState(ArticleService.STATE_DRAFT);
         edit.setCoverImg("");            // 空串 = 删除封面
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, null));
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id)));
 
         assertEquals("", articleMapper.selectById(id).getCoverImg(), "封面指向应当被清空");
         verify(rustFsUtil).delete(oldKey, "image");
@@ -145,7 +151,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setState(ArticleService.STATE_DRAFT);
         edit.setCoverImg(null);          // 没选新封面
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, null));
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id)));
 
         assertEquals(oldKey, articleMapper.selectById(id).getCoverImg(),
                 "未提交新封面时应当保持原封面，且旧对象不能被删");
@@ -170,7 +176,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setContent("正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertFalse(articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME, null),
+        assertFalse(articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME, snapshotOf(id)),
                 "正文上传失败时整次提交应当失败");
 
         // 刚上传的封面必须被回收，不留下无引用对象；对象名按用户 id 归属，不再带 username
@@ -220,7 +226,7 @@ public class CoverAndLogoConsistencyTest {
         MockMultipartFile bad = new MockMultipartFile(
                 "cover", "evil.jsp", "image/png", "x".getBytes());
 
-        assertFalse(articleService.articleAddOrUpdate(edit, 1, bad, USERNAME, null),
+        assertFalse(articleService.articleAddOrUpdate(edit, 1, bad, USERNAME, snapshotOf(id)),
                 "扩展名不在白名单时应当直接失败");
         verify(rustFsUtil, never()).upload(any(), anyString(), anyString());
         String cover = articleMapper.selectById(id).getCoverImg();
@@ -243,7 +249,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setContent("正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("first.png"), USERNAME, null),
+        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("first.png"), USERNAME, snapshotOf(id)),
                 "原本 cover_img 为 NULL 的文章补封面不应报错");
         assertNotNull(articleMapper.selectById(id).getCoverImg());
     }
@@ -273,7 +279,7 @@ public class CoverAndLogoConsistencyTest {
                 edit.setState(ArticleService.STATE_DRAFT);
                 try {
                     start.await();
-                    if (articleService.articleAddOrUpdate(edit, 1, null, USERNAME, null)) {
+                    if (articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id))) {
                         ok.incrementAndGet();
                     }
                 } catch (ArticleConcurrentEditException e) {

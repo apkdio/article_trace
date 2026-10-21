@@ -14,6 +14,7 @@ import com.articleTraceBack.Utils.TextExtractor;
 import com.articleTraceBack.Utils.TextNormalizer;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
+import com.articleTraceBack.pojo.ArticleSnapshot;
 import com.articleTraceBack.pojo.PageBean;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -67,13 +68,17 @@ public class ArticleServiceImpl implements ArticleService {
     }
     @Override
     public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username,
-                                      Integer expectedState) {
+                                      ArticleSnapshot snapshot) {
         // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
         // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
         article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
         // 驳回理由只能由审核动作写入：作者保存时一律清空（重新提交后旧理由就过期了，
         // 同时挡住请求体里夹带 rejectReason 的注入）
         article.setRejectReason(null);
+        // 更新必须带入口快照；没有版本号就无法判断「我改的是不是读到的那一版」
+        if (type == 1 && (snapshot == null || snapshot.version() == null)) {
+            return false;
+        }
 
         // 0为新增，1为更新
         Map<String, Object> content = new HashMap<>();
@@ -83,10 +88,9 @@ public class ArticleServiceImpl implements ArticleService {
         String fileName = timeStamp + "-" + article.getCreateUser() + "-"
                 + UUID.randomUUID().toString().substring(0, 8) + ".json";
 
-        Article rawArticle = (type == 0) ? null : articleMapper.selectById(article.getId());
-        // 旧对象名：要等写库成功后才删它们
-        String oldContentName = rawArticle == null ? null : rawArticle.getContent();
-        String oldImgName = rawArticle == null ? null : rawArticle.getCoverImg();
+        // 旧对象名来自入口快照：service 不再查库，保护的是「用户读到的那一版」而不是本次请求内部的毫秒窗口
+        String oldContentName = snapshot == null ? null : snapshot.contentKey();
+        String oldImgName = snapshot == null ? null : snapshot.coverKey();
 
         // ---- 封面：有文件就上传新图，没有文件则只接受「清空」或「保持原值」----
         String newCoverKey = null;
@@ -132,15 +136,11 @@ public class ArticleServiceImpl implements ArticleService {
             if (type == 0) {
                 saved = articleMapper.insertOrUpdate(article);
             } else {
-                // content 每次保存都换成新的对象名，正好当版本号：两人同时编辑时后写者更新 0 行，
-                // 而不是静默覆盖先写者的编辑（它的新对象还会成为无人引用的孤儿）。
-                // state 是第二个版本维：CAS 条件用进入接口时读到的旧值（controller 传入），不能重读库——
-                // 重读会拿到并发先写者刚落的新值，校验等于白做。
+                // 版本号是唯一的并发判据：保存、审核都自增，任何「基于旧快照」的写入都会落空。
+                // 对象名与状态不再单独参与——它们各自都有不单调的情况（正文被审核动不了、状态可回到原值）
                 UpdateWrapper<Article> cas = new UpdateWrapper<>();
-                cas.eq("id", article.getId()).eq("content", oldContentName);
-                if (expectedState != null) {
-                    cas.eq("state", expectedState);
-                }
+                cas.eq("id", article.getId()).eq("version", snapshot.version());
+                cas.setSql("version = version + 1");
                 // 显式清掉旧驳回理由：实体里是 null（MyBatis-Plus 会跳过 null 字段），必须靠 wrapper 的 set
                 cas.set("reject_reason", null);
                 saved = articleMapper.update(article, cas) == 1;
@@ -234,6 +234,16 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public int findAllArticlesWithConditions(int uid, Integer categoryId, Integer state, String search) {
         return articleMapper.findAllArticlesWithConditions(uid, categoryId, state, search);
+    }
+
+    @Override
+    public Article findArticleMetaById(int id) {
+        // 轻量读：content 仍是对象名、不读 RustFS，供保存 / 审核在入口构造快照
+        Article article = articleMapper.selectById(id);
+        if (article != null) {
+            Article.hideSensitiveDetail(List.of(article));
+        }
+        return article;
     }
 
     @Override
@@ -378,9 +388,8 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public boolean updateState(int id, int state, String rejectReason) {
-        Article raw = articleMapper.selectById(id);
-        if (raw == null || raw.getState() == null) {
+    public boolean updateState(int id, int state, String rejectReason, ArticleSnapshot snapshot) {
+        if (snapshot == null || snapshot.state() == null || snapshot.version() == null) {
             return false;
         }
         // 审核入口只做「发布 / 驳回」两类动作；「撤回为草稿」属于作者侧操作，不走这里
@@ -397,7 +406,7 @@ public class ArticleServiceImpl implements ArticleService {
         // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3（1→3 是追回误审）。
         // 不能复用 canTransfer：它给站长放行 0→1 与 1→1，会让「通过」把作者刚撤回的草稿直接发布，
         // 重复点通过也会再成功一次
-        int from = raw.getState();
+        int from = snapshot.state();
         boolean legal = (from == STATE_PENDING && (state == STATE_PUBLISHED || state == STATE_REJECTED))
                 || (from == STATE_PUBLISHED && state == STATE_REJECTED);
         if (!legal) {
@@ -406,7 +415,8 @@ public class ArticleServiceImpl implements ArticleService {
         }
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
-                .eq("state", from)   // 条件更新：状态被并发改动过就失败
+                .eq("version", snapshot.version())
+                .setSql("version = version + 1")
                 .set("state", state)
                 // 驳回记理由；通过发布时清掉上一条，避免「已发布」还挂着旧理由
                 .set("reject_reason", state == STATE_REJECTED ? truncate(reason, 200) : null);

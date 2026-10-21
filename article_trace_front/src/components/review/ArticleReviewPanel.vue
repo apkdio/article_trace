@@ -76,7 +76,7 @@ const approve = (row) => {
       '通过审核',
       {type: 'success', confirmButtonText: '通过', cancelButtonText: '取消', center: true}
   ).then(async () => {
-    const res = await assessArticleService(row.id, STATE_PUBLISHED)
+    const res = await assessArticleService(row.id, STATE_PUBLISHED, undefined, row.version)
     if (res.code === 0) {
       ElMessage.success('已通过！')
       await load()
@@ -103,7 +103,7 @@ const reject = (row) => {
         center: true,
       }
   ).then(async ({value}) => {
-    const res = await assessArticleService(row.id, STATE_REJECTED, value.trim())
+    const res = await assessArticleService(row.id, STATE_REJECTED, value.trim(), row.version)
     if (res.code === 0) {
       ElMessage.success('已驳回！')
       await load()

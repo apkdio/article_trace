@@ -34,6 +34,10 @@ public class Article {
     /** 驳回理由：state=3 时有效；通过发布或作者重新提交后清空 */
     private String rejectReason;
 
+    /** 乐观锁版本号：只允许经 wrapper 的 setSql 自增，请求体里的值不参与 SET */
+    @TableField(updateStrategy = FieldStrategy.NEVER, insertStrategy = FieldStrategy.NEVER)
+    private Long version;
+
     @NotNull(message = "不能为空！")
     private Integer categoryId;//文章分类id
 

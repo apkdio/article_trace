@@ -3,6 +3,7 @@ package com.articleTraceBack;
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
+import com.articleTraceBack.pojo.ArticleSnapshot;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,7 +43,9 @@ public class ArticleSensitiveFlagTest {
         article.setCreateTime(LocalDateTime.now());
         articleMapper.insert(article);
 
-        assertTrue(articleService.updateState(article.getId(), STATE_PUBLISHED, null), "2→1 应当成功");
+        assertTrue(articleService.updateState(article.getId(), STATE_PUBLISHED, null,
+                        new ArticleSnapshot(article.getState(), article.getContent(), article.getCoverImg(), 0L)),
+                "2→1 应当成功");
         Article after = articleMapper.selectById(article.getId());
         assertEquals(STATE_PUBLISHED, after.getState());
         assertEquals(0, after.getSensitiveHit(), "审核通过后不该再挂命中标记");

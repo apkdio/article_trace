@@ -183,12 +183,13 @@ article_trace_back/
 - **登出**：`POST /user/logout`，删掉 Redis 中的 Token **并**下发过期 Cookie 让浏览器丢弃它——只删 Redis 的话 Cookie 还在，浏览器下次仍会带着它发请求。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 的 **avatar 桶**并生成一条待审记录，**此时 `user_pic` 一动不动**（用户仍看到旧头像）。站长审批通过后，对象被复制到 pic 桶并写入 `user_pic`，旧头像随即删除；拒绝则丢掉待审对象。**站长改自己的头像免审核**——他是唯一能审的人，审自己没意义；直通路径（`AvatarApplyService.submitDirect`）与审核通过**共用 `promote()`**，搬运/换指向/清旧对象与待审对象一步都不省。
+- **昵称 / 个签审核**：内容类命中转待审，提交时 `profile_apply.base_value` 记下旧值；通过时只在该字段仍等于锚点时才写回，用户已自己改过就跳过且不起锁定期。历史行没有 `base_value` 时以审核时读到的当前值为锚，仍能挡住读与写之间的并发修改。
 - **账号管理（站长）**：分页查看所有账号、变更用户身份（需站长密码）、删除账号（保护默认账号与自身）；删除时会**级联清理该用户的作者申请记录与头像审核记录**（后者由 `avatar_apply` 的外键 `ON DELETE CASCADE` 自动完成），避免留下没有对应用户的悬挂数据。
 
 ### 3. 文章模块（ArticleController / ArticleServiceImpl）
 
 - **新增/更新**：标题 + 内容先做敏感词校验 → 内容以 JSON 形式上传 RustFS 内容桶（文件名 `时间戳-用户ID-随机后缀.json`，后缀用来防同毫秒两次保存撞名）→ 数据库仅存文件名，读取时实时从 RustFS 拉取。
-- **并发编辑走条件更新**：`UPDATE ... WHERE id=? AND content=<读到的旧文件名>`——`content` 每次保存都换新对象名，正好当版本号。两人同时编辑时后写者影响 0 行，回收自己刚上传的对象并回「这篇文章刚被改过，请刷新页面后重新提交」，不会静默覆盖先写者的编辑（也不会留下孤儿正文对象）。
+- **并发编辑走条件更新（version）**：保存与审核的 CAS 都是 `WHERE id=? AND version=<入口快照的版本>`，写入时 `version = version + 1`（浏览量不参与）。两人同时编辑、待审期间作者改稿、状态 `2→3→2` 这类 ABA，后到的一方都会落空：保存回「这篇文章刚被改过，请刷新页面后重新提交」并回收自己刚上传的对象，审核回「文章可能刚被修改，请刷新后重试」。版本由 `ArticleSnapshot` 从请求入口带入（`findArticleMetaById` 是轻量读，不拉正文），service 内不再查库。
   - **新增不接受客户端传入的 `id`**（强制 `setId(null)`），避免借 `insertOrUpdate` 覆盖他人文章。
   - **标题在同一作者内唯一**（`uk_user_title`）：应用层按 `(create_user, title)` 查重，并发冲突由唯一索引兜底并转成友好提示；不同作者可以同名。
   - **标题 1-30 字符，允许中间空格、首尾不能是空格**（`^\S(.*\S)?$` + `@Size`）；`@NotBlank` 顺带堵住「纯空格也能过」。分类名与昵称同此规则，且长度都与数据库列宽对齐（分类名 ≤ 20、分类别名 ≤ 30、昵称 2-20）。
@@ -201,15 +202,16 @@ article_trace_back/
   - 不带文件且 `coverImg` 为 null 或其它值 → **回退为库中原值**，客户端无法指定任意 key。
   - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。
   - 这样用户中途放弃发布**不会在服务端留下无引用对象**（此前"选图即上传"会产生这类垃圾）。
-- **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先按状态机校验当前状态能否流转（`2→1`、`2→3`、`1→3`），再带「当前状态」条件更新 —— 两个站长并发审批时只有先到者成功。
+- **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先校验前置状态（只允许 `2→1`、`2→3`、`1→3`；`0→1` 与 `1→1` 不属于审核动作），再用入口快照的 `version` 条件更新 —— 作者在审阅期间改过稿，审核会落空而不是发布新正文。
+  - `assess` 可带 `version`（前端传审阅那一行的版本）；不带时回退到本次请求入口读到的版本。
   - **驳回必须写理由**（`rejectReason` 请求参数，接口与 service 各校验一次空白），理由会展示给作者：`article.reject_reason`，超 200 字截断。通过发布、作者重新保存/重投都会清空它，避免「已发布」还挂着旧理由。
   - 理由是**服务端算**的：`articleAddOrUpdate` 落库前强制 `reject_reason = null`，作者无法借保存请求把它改掉。
-  > **为什么 WHERE 里必须带状态**：MySQL 驱动默认返回的是**匹配行数**而非实际修改行数。若判断「是否抢到」时 WHERE 只带主键，并发下两条更新都会匹配到 1 行，双双被误判成功。
+  > **为什么 CAS 不会「匹配但没改」**：MySQL 驱动默认按匹配行数返回，只有 WHERE 没有真实值变更时才会有误判。这里每次命中都执行 `version = version + 1`，判据本身就是真实变更；状态、对象名都不再参与并发判断。
 - **删除**：级联删除 RustFS 图片/内容文件 + 清理 Redis 浏览量 + 删除数据库记录。
 
 ### 4. 分类模块（CategoryController / CategoryServiceImpl）
 
-作者创建分类，支持增删改查；**更新与删除均校验「仅创建人可操作」**。分类名全局唯一（`uk_category_name`）。文章关联分类外键，分类删除后文章 `category_id` 置空。
+作者创建分类，支持增删改查；**更新与删除均校验「仅创建人可操作」**。分类名全局唯一（`uk_category_name`）。更新按「进入接口时读到的 `update_time`」条件更新，两个窗口并发改名时后到者落空并提示刷新。文章关联分类外键，分类删除后文章 `category_id` 置空。
 
 ### 5. 评论模块（ReaderController / ReaderServiceImpl）
 
@@ -633,6 +635,7 @@ SITE_DISPLAY_NAME=文迹小站
 | cover_img | varchar(128) | 封面文件名 |
 | state | int | 0 草稿 / 1 发布 / 2 待审 / 3 驳回 |
 | reject_reason | varchar(200) | 驳回理由（仅 `state=3` 有效；通过发布或作者重新提交后清空，展示给作者） |
+| version | bigint | 乐观锁版本号：保存 / 审核每次 +1，浏览量不参与 |
 | category_id | int | 分类外键 |
 | create_user | int | 创建人外键 |
 | create_time / update_time | datetime | 时间戳 |
@@ -801,7 +804,7 @@ CREATE TABLE IF NOT EXISTS `report` (
 | DELETE | `/article/delete` | 删除文章 |
 | GET | `/article/count` | 文章统计 |
 | GET | `/article/manageArticles` | 全站文章分页（站长） |
-| PATCH | `/article/assess` | 审核文章（站长）：`state=1` 通过 / `state=3` 驳回，驳回必须带 `rejectReason` |
+| PATCH | `/article/assess` | 审核文章（站长）：`state=1` 通过 / `state=3` 驳回，驳回必须带 `rejectReason`；可带 `version`（审阅行的版本，不带则用入口读数） |
 
 ### 分类 `/category`
 

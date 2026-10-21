@@ -41,10 +41,13 @@ export function getArticleWithConditionsMaster(condition) {
     return request.get("/article/manageArticles", {params: condition})
 }
 
-/** 审核文章：state=1 通过发布 / 3 驳回（驳回必须带理由，作者会看到） */
-export function assessArticleService(id, state, rejectReason) {
+/**
+ * 审核文章：state=1 通过发布 / 3 驳回（驳回必须带理由，作者会看到）。
+ * version 是审阅时那一行的版本号，后端据此拒绝「审的是旧稿」。
+ */
+export function assessArticleService(id, state, rejectReason, version) {
     return request.patch("/article/assess", null, {
-        params: {id: id, state: state, rejectReason: rejectReason}
+        params: {id: id, state: state, rejectReason: rejectReason, version: version}
     })
 }
 

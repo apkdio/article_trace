@@ -11,6 +11,7 @@ import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Article;
+import com.articleTraceBack.pojo.ArticleSnapshot;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
 import org.springframework.dao.DuplicateKeyException;
@@ -96,6 +97,7 @@ public class ArticleController {
             // 新增不接受客户端 id（防止借 insertOrUpdate 覆盖他人文章）
             article.setId(null);
             // 目标状态由服务端按「草稿 / 提交」意图 + 角色决定，不信任请求体
+            // 作者只能传待审状态，不可直接发布
             Integer target = ArticlePublishPolicy.resolveTargetState(article.getState(), (int) userInfo.get("type"));
             if (target == null) {
                 error.put("state", "非合理值！");
@@ -103,14 +105,16 @@ public class ArticleController {
             }
             // 草稿不扫（见 shouldCheckSensitive）；送审 / 发布命中则一律转待审，站长也不例外——
             // 站长是唯一能改词库的人，只有让命中结果落进他能看见的审核队列，误伤才能反馈回词表。
+            // 先看这篇文章是不是草稿，草稿不做审核
             List<AhoCorasickUtil.Match> matches = ArticleSensitivityGuard.shouldCheckSensitive(target)
                     ? articleService.containsSensitive(cleanContent)
                     : List.of();
+            // 所有角色均需要通过违规检测
             target = ArticleSensitivityGuard.applySensitiveVerdict(target, !matches.isEmpty());
             article.setState(target);
             ArticleSensitivityGuard.applyMark(article, matches);
             try {
-                // expectedState 传「进入接口时」读到的状态：保存与审核并发时，CAS 会让后到的一方落空
+                // 新增没有旧版本可比，快照传 null；版本从 0 开始
                 if (articleService.articleAddOrUpdate(article, 0, cover, username, null)) {
                     return Result.success(savedResult(article, (int) userInfo.get("type")));
                 }
@@ -132,7 +136,7 @@ public class ArticleController {
                                               @RequestPart("article") @Validated Article article,
                                               @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
-        Article art = articleService.findArticleByIdWithEntity(id);
+        Article art = articleService.findArticleMetaById(id);
         if (art == null) {
             error.put("error", "文章不存在！");
             return Result.error(error);
@@ -185,8 +189,12 @@ public class ArticleController {
                 article.setState(target);
                 ArticleSensitivityGuard.applyMark(article, matches);
                 try {
-                    // expectedState 传「进入接口时」读到的状态：保存与审核并发时，CAS 会让后到的一方落空
-                    if (articleService.articleAddOrUpdate(article, 1, cover, username, art.getState())) {
+                    // 快照取「进入接口时」的读数：保存与审核并发时，版本号 CAS 会让后到的一方落空。
+                    // 前端传了加载时的版本就以客户端为准，没传则回退到本次入口读数（兼容旧前端）
+                    Long expectedVersion = article.getVersion() != null ? article.getVersion() : art.getVersion();
+                    ArticleSnapshot snapshot = new ArticleSnapshot(art.getState(), art.getContent(),
+                            art.getCoverImg(), expectedVersion);
+                    if (articleService.articleAddOrUpdate(article, 1, cover, username, snapshot)) {
                         return Result.success(savedResult(article, roleType));
                     }
                 } catch (ArticleConcurrentEditException e) {
@@ -302,7 +310,8 @@ public class ArticleController {
     /** 审核文章：通过（1）或驳回（3）（站长）；驳回必须给理由，作者会看到 */
     @PatchMapping("/assess")
     public Result<String> assessArticle(@RequestParam int id, @RequestParam int state,
-                                        @RequestParam(required = false) String rejectReason) {
+                                        @RequestParam(required = false) String rejectReason,
+                                        @RequestParam(required = false) Long version) {
         Map<String, Object> error = new HashMap<>();
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         String username = userInfo.get("name").toString();
@@ -313,10 +322,19 @@ public class ArticleController {
                 error.put("error", "驳回理由不能为空！");
                 return Result.error(error);
             }
-            if (articleService.updateState(id, state, rejectReason)) {
+            Article meta = articleService.findArticleMetaById(id);
+            if (meta == null) {
+                error.put("error", "文章不存在！");
+                return Result.error(error);
+            }
+            Long expectedVersion = version != null ? version : meta.getVersion();
+            ArticleSnapshot snapshot = new ArticleSnapshot(meta.getState(), meta.getContent(),
+                    meta.getCoverImg(), expectedVersion);
+            if (articleService.updateState(id, state, rejectReason, snapshot)) {
                 return Result.success();
             }
-            error.put("error", "更新失败！");
+            // 版本落空与前置换状态不合法走同一个出口：对站长而言都该刷新列表再看
+            error.put("error", "文章可能刚被修改，请刷新后重试！");
             return Result.error(error);
         }
         error.put("error", "权限不足！");

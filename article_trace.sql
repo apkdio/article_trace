@@ -35,6 +35,7 @@ CREATE TABLE `article` (
   `cover_img` varchar(128) DEFAULT NULL COMMENT '文章封面',
   `state` int NOT NULL DEFAULT '0' COMMENT '文章状态: 0-草稿 1-已发布 2-待审核 3-已驳回',
   `reject_reason` varchar(200) DEFAULT NULL COMMENT '驳回理由（state=3 时有效；通过发布或作者重新提交后清空）',
+  `version` bigint NOT NULL DEFAULT '0' COMMENT '乐观锁版本号：保存/审核每次+1，浏览量不参与',
   `category_id` int COMMENT '文章分类ID',
   `create_user` int NOT NULL COMMENT '创建人ID',
   `create_time` datetime NOT NULL COMMENT '创建时间',
