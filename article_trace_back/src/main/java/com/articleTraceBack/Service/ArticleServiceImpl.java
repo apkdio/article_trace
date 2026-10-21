@@ -185,6 +185,7 @@ public class ArticleServiceImpl implements ArticleService {
             }
         }
 
+        // Agent侧
         // 保存成功后标记待同步：已发布 → 待入库，非发布 → 待删除（避免草稿被检索）
         if (saved) {
             if (article.getState() != null && article.getState() == 1) {
@@ -393,14 +394,19 @@ public class ArticleServiceImpl implements ArticleService {
             log.warn("article reject without reason: id={}", id);
             return false;
         }
-        // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3
-        if (!canTransfer(raw.getState(), state, ROLE_MASTER)) {
-            log.warn("illegal article state transfer rejected: id={}, {} -> {}", id, raw.getState(), state);
+        // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3（1→3 是追回误审）。
+        // 不能复用 canTransfer：它给站长放行 0→1 与 1→1，会让「通过」把作者刚撤回的草稿直接发布，
+        // 重复点通过也会再成功一次
+        int from = raw.getState();
+        boolean legal = (from == STATE_PENDING && (state == STATE_PUBLISHED || state == STATE_REJECTED))
+                || (from == STATE_PUBLISHED && state == STATE_REJECTED);
+        if (!legal) {
+            log.warn("illegal article assess transfer rejected: id={}, {} -> {}", id, from, state);
             return false;
         }
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
-                .eq("state", raw.getState())   // 条件更新：状态被并发改动过就失败
+                .eq("state", from)   // 条件更新：状态被并发改动过就失败
                 .set("state", state)
                 // 驳回记理由；通过发布时清掉上一条，避免「已发布」还挂着旧理由
                 .set("reject_reason", state == STATE_REJECTED ? truncate(reason, 200) : null);

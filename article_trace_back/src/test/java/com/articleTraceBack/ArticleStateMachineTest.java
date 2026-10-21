@@ -86,6 +86,24 @@ public class ArticleStateMachineTest {
         }
     }
 
+    /** 审核入口不得越过「待审」直接发布草稿，也不能对已发布文章重复点通过 */
+    @Test
+    public void testAssessRequiresPendingOrPublishedSource() {
+        Integer draftId = insertArticle(ArticleService.STATE_DRAFT);
+        Integer publishedId = insertArticle(ArticleService.STATE_PUBLISHED);
+        try {
+            assertFalse(articleService.updateState(draftId, ArticleService.STATE_PUBLISHED, null),
+                    "0→1 不属于审核动作：作者撤回的草稿不能靠点「通过」发布");
+            assertFalse(articleService.updateState(publishedId, ArticleService.STATE_PUBLISHED, null),
+                    "1→1 不是流转：重复点通过应被拒绝");
+            assertTrue(articleService.updateState(publishedId, ArticleService.STATE_REJECTED, "追回误审"),
+                    "1→3 追回误审仍应允许");
+        } finally {
+            articleMapper.deleteById(draftId);
+            articleMapper.deleteById(publishedId);
+        }
+    }
+
     /** 通过发布必须清掉上一条驳回理由，否则「已发布」还挂着旧理由 */
     @Test
     public void testPublishClearsRejectReason() {
