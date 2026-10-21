@@ -42,11 +42,17 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public boolean update(Category category, int uid) {
-        UpdateWrapper<Category> updateWrapper = new UpdateWrapper<>();
+    public boolean update(Category category, int uid, LocalDateTime expectedUpdateTime) {
         category.setUpdateTime(LocalDateTime.now());
+        UpdateWrapper<Category> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", category.getId())
                 .set("last_update_user", uid);
+        // 更新时间是秒级精度：只作为「读出后是否被人改过」的判据，不做严格版本控制
+        if (expectedUpdateTime == null) {
+            updateWrapper.isNull("update_time");
+        } else {
+            updateWrapper.eq("update_time", expectedUpdateTime);
+        }
         return categoryMapper.update(category, updateWrapper) == 1;
     }
 

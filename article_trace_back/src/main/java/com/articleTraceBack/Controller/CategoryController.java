@@ -82,14 +82,15 @@ public class CategoryController {
         }
         category.setId(id);
         try {
-            if (categoryService.update(category, uid)) {
+            if (categoryService.update(category, uid, existing.getUpdateTime())) {
                 return Result.success();
             }
         } catch (DuplicateKeyException e) {
             error.put("categoryName", "分类名已存在！");
             return Result.error(error);
         }
-        error.put("error", "更新失败！");
+        // 走到这里说明条件更新落空：进入接口后别人改过这个分类
+        error.put("error", "分类刚被修改，请刷新后重试！");
         return Result.error(error);
     }
 
