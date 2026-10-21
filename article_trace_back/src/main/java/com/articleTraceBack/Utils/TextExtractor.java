@@ -5,6 +5,9 @@ import org.jsoup.Jsoup;
 import java.util.regex.Pattern;
 
 public class TextExtractor {
+
+    private TextExtractor() {
+    }
     /**
      * 公式段：与前端展示端同一套分隔符（见 article_trace_front/src/utils/mathRender.js）。
      *

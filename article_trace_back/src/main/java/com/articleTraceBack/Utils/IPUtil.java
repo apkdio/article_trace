@@ -1,13 +1,15 @@
 package com.articleTraceBack.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
 
-@Component
 public class IPUtil {
+
+    private IPUtil() {
+    }
+
     /** 取客户端真实 IP（兼容反向代理） */
     public static String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");

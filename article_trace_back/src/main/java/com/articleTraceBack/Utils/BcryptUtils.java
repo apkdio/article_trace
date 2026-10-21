@@ -2,12 +2,13 @@ package com.articleTraceBack.Utils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.mindrot.jbcrypt.BCrypt;
-import org.springframework.stereotype.Component;
 
 @Slf4j
-@Component
 // BCrypt加密
 public class BcryptUtils {
+
+    private BcryptUtils() {
+    }
 
     /** 加密密码（BCrypt） */
     public static String encodePass(String rawPassword) {

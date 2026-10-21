@@ -14,6 +14,9 @@ import java.util.regex.Pattern;
 
 public class RichTextCleaner {
 
+    private RichTextCleaner() {
+    }
+
     /** 允许留在正文里的内联图片：只认位图（{@code data:image/svg+xml} 能内嵌脚本，而正文是 {@code v-html} 直渲染）。 */
     private static final Pattern RASTER_DATA_IMAGE = Pattern.compile(
             "^data:image/(png|jpe?g|gif|webp|bmp);(?:charset=[^;]+;)?base64,");

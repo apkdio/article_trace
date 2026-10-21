@@ -2,6 +2,9 @@ package com.articleTraceBack.Utils;
 
 @SuppressWarnings("all")
 public class ThreadLocalUtil {
+    private ThreadLocalUtil() {
+    }
+
     //为每个线程保存一份独立变量；本类用于在请求线程内传递登录用户信息。
     private static final ThreadLocal THREAD_LOCAL = new ThreadLocal();
 
