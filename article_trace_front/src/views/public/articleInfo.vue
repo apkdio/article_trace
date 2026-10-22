@@ -612,7 +612,8 @@ const pushSearch = (type) => {
         color: var(--at-text-main);
 
         :deep(p) {
-          margin-bottom: 1.5em;
+          // 行高 1.9 本身已带约 0.9em 的上下留白；再留 0.1em，段间视觉空白约半行
+          margin-bottom: 0.1em;
         }
 
         // 内联图片（base64）自身不带尺寸约束：不限宽会把正文容器掉变形
