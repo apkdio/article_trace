@@ -214,6 +214,7 @@ defineExpose({openNotify, unread})
     }
 
     .notify-list {
+        position: relative;
         min-height: 120px;
     }
 

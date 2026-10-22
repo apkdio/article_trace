@@ -90,6 +90,7 @@ watch(activeType, () => {
   }
 
   .type-list {
+    position: relative;   /* v-loading 遮罩的定位参照 */
     flex: 0 0 260px;
     background: var(--at-bg-stat);
     border: 1px solid var(--at-border-warm);

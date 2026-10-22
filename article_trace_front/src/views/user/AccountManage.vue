@@ -287,6 +287,7 @@ const changeUserType = (id, type) => {
 
 <style lang="scss" scoped>
 .account-manage-container {
+  position: relative;   /* v-loading 遮罩的定位参照 */
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.5s ease-out;

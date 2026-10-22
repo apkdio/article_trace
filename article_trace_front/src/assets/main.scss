@@ -71,6 +71,13 @@ body {
   position: relative;
 }
 
+/* 遮罩自带 z-index: 2000，会盖住右下角固定的 AI 助手（1000）。它只是页面内的局部遮罩，
+   不该参与全局层级竞争：压到页面层；对话框 / 抽屉自带层叠上下文，里面的遮罩仍在内容之上。
+   用 body 前缀提一级权重——main.scss 先于 Element Plus 的样式加载，同权重会被后者盖掉 */
+body .el-loading-mask {
+  z-index: 5;
+}
+
 /* 通用文章分类标签 */
 .category-chip {
   display: inline-flex;

@@ -51,6 +51,11 @@ defineProps({
         }
     }
 
+    .top-list {
+        /* 遮罩只罩榜单区域，不蔓延到整栏 */
+        position: relative;
+    }
+
     .top-item {
         display: flex;
         align-items: center;

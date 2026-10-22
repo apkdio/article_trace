@@ -215,6 +215,8 @@ article_trace_front/
 ### 页面视图（views/）
 
 > **`v-loading` 的目标必须有定位**：遮罩（`.el-loading-mask`）是绝对定位的，而这份 Element Plus 版本**不会**给加载目标补 `position: relative`（代码里已没有 `el-loading-parent`，只剩 CSS 里那条规则）。目标若是 `static`、祖先也没定位，遮罩就会锚到初始包含块 = **整个视口**（连固定页头一起罩住，看着「太靠上」）。`main.scss` 已给 `.el-main / .el-aside / .el-table` 兜了定位；把 `v-loading` 挂到别的容器上时，记得那个容器也要有定位。
+>
+> **遮罩的层级压在页面层**：Element Plus 给 `.el-loading-mask` 的默认 `z-index` 是 2000，会盖住右下角固定的 AI 助手（`z-index: 1000`）。`main.scss` 用 `body .el-loading-mask` 把它压到 5（用 `body` 前缀提权重，因为 `main.scss` 先于 Element Plus 的样式加载）。对话框 / 抽屉自带层叠上下文，里面的遮罩不受影响。
 
 | 页面 | 功能 |
 |---|---|

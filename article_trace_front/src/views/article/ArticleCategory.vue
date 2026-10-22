@@ -122,7 +122,7 @@ const handleClose = (done) => {
     </PageHeader>
 
 
-    <div v-loading="isLoading" element-loading-text="正在为您加载文章类型列表...">
+    <div class="category-body" v-loading="isLoading" element-loading-text="正在为您加载文章类型列表...">
       <template v-if="!isLoading">
         <el-row :gutter="20" class="stat-section" style="margin-bottom: 16px">
           <el-col :span="6">
@@ -227,6 +227,10 @@ const handleClose = (done) => {
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.5s ease-out;
+}
+
+.category-body {
+  position: relative;   /* v-loading 遮罩的定位参照 */
 }
 
 

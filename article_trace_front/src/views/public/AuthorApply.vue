@@ -107,6 +107,8 @@ onMounted(load)
 
 <style lang="scss" scoped>
 .author-apply {
+    /* 给 v-loading 遮罩一个定位参照，避免锚到整个视口 */
+    position: relative;
     animation: fadeIn 0.5s ease-out;
     min-height: 200px;
 

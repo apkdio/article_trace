@@ -290,6 +290,7 @@ function formatSessionTime(ts) {
 
 <style lang="scss" scoped>
 .agent-chat {
+    /* 浮层高于页面局部遮罩（.el-loading-mask 已压到 5），低于对话框 / 抽屉（2000+） */
     position: fixed;
     right: 24px;
     bottom: 24px;

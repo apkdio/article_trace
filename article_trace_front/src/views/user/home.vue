@@ -187,6 +187,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 /* 容器布局 - 确保内容不撑出滚动条 */
 .dashboard-container {
+  position: relative;   /* v-loading 遮罩的定位参照 */
   display: flex;
   flex-direction: column;
   gap: 20px;

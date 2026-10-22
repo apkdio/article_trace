@@ -40,6 +40,8 @@ defineProps({
 
 <style lang="scss" scoped>
 .sidebar-author-widget {
+    /* 遮罩要罩住这张卡，而不是整个右栏 */
+    position: relative;
     background: var(--at-bg-card);
     border-radius: 12px;
     overflow: hidden;
