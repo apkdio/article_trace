@@ -1,0 +1,19 @@
+article_trace_front/src/views/public/articleInfo.vue
+  s_ab74ea15e793d1::t_753267d6b7d387 615-616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "1933d5f92f96827dfc6f71db99e6fa98668dad8d",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": null
+    }
+  }
+}
