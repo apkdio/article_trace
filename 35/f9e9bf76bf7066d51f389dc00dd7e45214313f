@@ -1,0 +1,19 @@
+article_trace_front/src/views/public/articleInfo.vue
+  s_ab74ea15e793d1::t_098c0fcae8bcc9 615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "35f9e9bf76bf7066d51f389dc00dd7e45214313f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
