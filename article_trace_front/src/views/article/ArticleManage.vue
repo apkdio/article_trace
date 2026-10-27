@@ -806,7 +806,7 @@ const refreshAfterDelete = async () => {
             </template>
           </el-table-column>
 
-          <el-table-column label="文章标题（点击预览）" width="360">
+          <el-table-column label="文章标题（点击预览）" min-width="360">
             <template #default="{row}">
               <span class="table-article-title" @click="openPreview(row)">{{ row.title }}</span>
             </template>
