@@ -82,6 +82,7 @@ onMounted(async () => {
 })
 
 const getData = async () => {
+  let writerName = null
   try {
     const data = await getArticleDetail(props.id)
     if (data.code === 0) {
@@ -89,15 +90,30 @@ const getData = async () => {
       // 公式在客户端渲染：存在对象里的是 LaTeX 原文，渲染结果不进存储、也不过后端白名单
       await nextTick()
       renderMathIn(contentRef.value)
-      const writerData = await getWriterInfoService(data.data.createUserName)
-      if (writerData.code === 0) {
-        writerInfo.value = writerData.data
-      }
+      writerName = data.data.createUserName
     }
   } catch (e) {
     ElMessage.error("服务器响应失败！")
   } finally {
+    // 正文到手就撤主区遮罩：作者卡有自己的 writerLoading，不该拖着正文一起等
     loading.value = false
+  }
+  loadWriter(writerName)
+}
+
+const loadWriter = async (username) => {
+  if (!username) {
+    writerLoading.value = false
+    return
+  }
+  try {
+    const writerData = await getWriterInfoService(username)
+    if (writerData.code === 0) {
+      writerInfo.value = writerData.data
+    }
+  } catch (e) {
+    // 作者信息失败不影响正文阅读
+  } finally {
     writerLoading.value = false
   }
 }
