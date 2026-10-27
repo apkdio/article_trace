@@ -189,6 +189,7 @@ article_trace_back/
 
 ### 3. 文章模块（ArticleController / ArticleServiceImpl）
 
+- **列表排序**：文章管理的「发布时间」列可点表头在升 / 降序间切换；排序参数 `timeOrder`（1 升序 / -1 降序）由前端随筛选、翻页一起带上，只有「重置」或刷新页面才清。默认顺序不变（作者列表按「最后改动」倒序；站长列表在筛待审时命中违禁词的排前面）；显式按发布时间排序时覆盖默认顺序，公开首页的排序逻辑不动。
 - **新增/更新**：标题 + 内容先做敏感词校验 → 内容以 JSON 形式上传 RustFS 内容桶（文件名 `时间戳-用户ID-随机后缀.json`，后缀用来防同毫秒两次保存撞名）→ 数据库仅存文件名，读取时实时从 RustFS 拉取。
 - **并发编辑走条件更新（version）**：保存与审核的 CAS 都是 `WHERE id=? AND version=<入口快照的版本>`，写入时 `version = version + 1`（浏览量不参与）。两人同时编辑、待审期间作者改稿、状态 `2→3→2` 这类 ABA，后到的一方都会落空：保存回「这篇文章刚被改过，请刷新页面后重新提交」并回收自己刚上传的对象，审核回「文章可能刚被修改，请刷新后重试」。版本由 `ArticleSnapshot` 从请求入口带入（`findArticleMetaById` 是轻量读，不拉正文），service 内不再查库。
   - **新增不接受客户端传入的 `id`**（强制 `setId(null)`），避免借 `insertOrUpdate` 覆盖他人文章。
@@ -799,12 +800,12 @@ CREATE TABLE IF NOT EXISTS `report` (
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/article/list` | 我的文章分页 |
+| GET | `/article/list` | 我的文章分页；可带 `timeOrder`（1 发布时间升序 / -1 降序，不带为默认「最后改动」倒序） |
 | POST | `/article/add` | 新增文章（`multipart/form-data`：`article` JSON 部分 + 可选 `cover` 文件）|
 | PATCH | `/article/update/{id}` | 更新文章（同上；不传 `cover` 且 `coverImg` 为空串表示删除封面）|
 | DELETE | `/article/delete` | 删除文章 |
 | GET | `/article/count` | 文章统计 |
-| GET | `/article/manageArticles` | 全站文章分页（站长） |
+| GET | `/article/manageArticles` | 全站文章分页（站长）；同样支持 `timeOrder`，显式排序时不再把命中违禁词的待审稿排前面 |
 | PATCH | `/article/assess` | 审核文章（站长）：`state=1` 通过 / `state=3` 驳回，驳回必须带 `rejectReason`；可带 `version`（审阅行的版本，不带则用入口读数） |
 
 ### 分类 `/category`

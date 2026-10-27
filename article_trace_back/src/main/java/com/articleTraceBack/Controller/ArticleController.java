@@ -50,10 +50,12 @@ public class ArticleController {
             @RequestParam(defaultValue = "5") int pageSize,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer state,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer timeOrder) {
         Map<String, Object> error = new HashMap<>();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
+        timeOrder = normalizeTimeOrder(timeOrder);
         Map<String, Object> userInfo = ThreadLocalUtil.get();
         int uid = (int) userInfo.get("id");
         int totalArticles = articleService.findAllArticlesWithConditions(uid, categoryId, state, search);
@@ -66,7 +68,7 @@ public class ArticleController {
             pageNum = pageTotal;
         }
         PageBean<Article> allArticles = articleService.findAllArticlesWithPage(uid, pageNum,
-                pageSize, categoryId, state, search);
+                pageSize, categoryId, state, search, timeOrder);
         allArticles.setTotal(totalArticles);
         return Result.success(allArticles);
     }
@@ -212,6 +214,11 @@ public class ArticleController {
         }
     }
 
+    /** 发布时间排序：1 升序 / -1 降序，其余值按默认顺序 */
+    private Integer normalizeTimeOrder(Integer timeOrder) {
+        return (timeOrder != null && (timeOrder == 1 || timeOrder == -1)) ? timeOrder : null;
+    }
+
     /** 保存成功后的回执：告知前端落到了哪个状态；命中词只回给站长，避免作者拿词表逐条试探。 */
     private Map<String, Object> savedResult(Article article, int roleType) {
         boolean hit = article.getSensitiveHit() != null && article.getSensitiveHit() == 1;
@@ -279,10 +286,12 @@ public class ArticleController {
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer state,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Integer searchType) {
+            @RequestParam(required = false) Integer searchType,
+            @RequestParam(required = false) Integer timeOrder) {
         Map<String, Object> error = new HashMap<>();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
+        timeOrder = normalizeTimeOrder(timeOrder);
         if (searchType != null && search == null) {
             searchType = null;
         }
@@ -299,7 +308,7 @@ public class ArticleController {
                 pageNum = pageTotal;
             }
             PageBean<Article> allArticles = articleService.findAllArticlesInMaster(pageNum,
-                    pageSize, categoryId, state, userId, search, searchType, null);
+                    pageSize, categoryId, state, userId, search, searchType, null, timeOrder);
             allArticles.setTotal(totalArticles);
             return Result.success(allArticles);
         }

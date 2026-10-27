@@ -207,10 +207,11 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public PageBean<Article> findAllArticlesWithPage(int uid, int pageNum, int pageSize,
-                                                     Integer categoryId, Integer state, String search) {
+                                                     Integer categoryId, Integer state, String search,
+                                                     Integer timeOrder) {
         PageBean<Article> pageBean = new PageBean<>();
         int offset = PageUtil.offset(pageNum, pageSize);
-        List<Article> allArticles = articleMapper.allArticles(uid, pageNum, pageSize, categoryId, state, offset, search);
+        List<Article> allArticles = articleMapper.allArticles(uid, pageNum, pageSize, categoryId, state, offset, search, timeOrder);
         for (Article article : allArticles) {
             article.setContent(readCleanContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {
@@ -342,11 +343,12 @@ public class ArticleServiceImpl implements ArticleService {
 
     /** 站长后台：全站文章分页（联查分类与作者） */
     public PageBean<Article> findAllArticlesInMaster(int pageNum, int pageSize, Integer categoryId,
-                                                     Integer state, Integer userId, String search, Integer searchType, String nickName) {
+                                                     Integer state, Integer userId, String search, Integer searchType,
+                                                     String nickName, Integer timeOrder) {
         PageBean<Article> pageBean = new PageBean<>();
         int offset = PageUtil.offset(pageNum, pageSize);
         List<Article> allArticles = articleMapper.findAllArticlesInMaster
-                (pageNum, pageSize, categoryId, state, userId, offset, search, searchType, nickName);
+                (pageNum, pageSize, categoryId, state, userId, offset, search, searchType, nickName, timeOrder);
         for (Article article : allArticles) {
             article.setContent(readCleanContent(article.getContent()));
             if (!Objects.equals(article.getCoverImg(), "")) {

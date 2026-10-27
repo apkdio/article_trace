@@ -29,6 +29,7 @@ const categories = ref([])
 const articles = ref([])
 const isLoading = ref(true)
 const conditionRef = ref({})
+const tableRef = ref()
 const errorList = ref({})
 const pageNum = ref(1)
 const total = ref(0)
@@ -286,7 +287,8 @@ const conditions = ref({
   categoryId: null,
   state: null,
   search: null,
-  searchType: 0
+  searchType: 0,
+  timeOrder: null   // 1 发布时间升序 / -1 降序 / null 默认；翻页与筛选都保留，重置才清
 })
 
 onMounted(() => {
@@ -392,10 +394,14 @@ const getArticles = async () => {
 
 /** 只清条件与分页、不发请求：抽屉开关这类「不该动列表」的场景用它 */
 const resetConditions = () => {
-  conditions.value = {pageNum: null, pageSize: null, categoryId: null, state: null, search: null, searchType: 0}
+  conditions.value = {
+    pageNum: null, pageSize: null, categoryId: null, state: null, search: null, searchType: 0, timeOrder: null
+  }
   pageNum.value = 1
   pageSize.value = 5
   if (conditionRef.value) conditionRef.value.resetFields()
+  // 表头的排序箭头也要一起清，否则会出现「数据是默认序、箭头还亮着」
+  tableRef.value?.clearSort()
 }
 
 /** 搜索框的「重置」按钮：清空条件后重新查询 */
@@ -406,6 +412,17 @@ const reset = async () => {
 
 /** 查询：换了条件就回第 1 页——旧页码在新结果集里大概率是空页 */
 const searchArticles = () => {
+  pageNum.value = 1
+  getArticles()
+}
+
+/** 发布时间排序：只认升/降两态，翻页与筛选都带着走；重置时由 resetConditions 清掉 */
+const onSortChange = ({prop, order}) => {
+  if (prop !== 'createTime') return
+  const next = order === 'ascending' ? 1 : order === 'descending' ? -1 : null
+  // clearSort() 也会触发一次事件；状态没变就别重复请求
+  if (conditions.value.timeOrder === next) return
+  conditions.value.timeOrder = next
   pageNum.value = 1
   getArticles()
 }
@@ -768,8 +785,8 @@ const refreshAfterDelete = async () => {
       </el-form>
     </div>
     <div class="table-wrapper" v-loading="isLoading" element-loading-text="正在为您加载文章列表...">
-      <template v-if="!isLoading">
-        <el-table :data="articles" style="width: 100%" class="modern-table">
+        <el-table ref="tableRef" :data="articles" style="width: 100%" class="modern-table"
+                  @sort-change="onSortChange">
           <el-table-column label="封面图" width="200">
             <template #default="scope">
               <div class="pic_box">
@@ -836,7 +853,8 @@ const refreshAfterDelete = async () => {
             </template>
           </el-table-column>
 
-          <el-table-column label="发布时间" width="260">
+          <el-table-column label="发布时间" prop="createTime" width="260" sortable="custom"
+                           :sort-orders="['ascending', 'descending']">
             <template #default="scope">
               <div class="time-column">
                 <div class="main-time">
@@ -884,7 +902,6 @@ const refreshAfterDelete = async () => {
               @current-change="onCurrentChange"
           />
         </div>
-      </template>
     </div>
 
     <el-drawer v-model="visibleDrawer" :title="drawerTitle" direction="rtl" size="55%"

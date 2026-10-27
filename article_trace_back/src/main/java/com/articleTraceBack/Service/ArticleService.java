@@ -24,7 +24,7 @@ public interface ArticleService {
     Article findArticleByUserAndTitle(int userId, String articleTitle);
     List<AhoCorasickUtil.Match> containsSensitive(String content);
     PageBean<Article> findAllArticlesWithPage(int uid, int pageNum, int pageSize,
-                                              Integer categoryId, Integer state, String search);
+                                              Integer categoryId, Integer state, String search, Integer timeOrder);
 
     boolean findArticleById(int id);
 
@@ -51,7 +51,7 @@ public interface ArticleService {
 
     PageBean<Article> findAllArticlesInMaster(int pageNum, int pageSize,
                                               Integer categoryId, Integer state, Integer userId,
-                                              String search, Integer searchType, String nickName);
+                                              String search, Integer searchType, String nickName, Integer timeOrder);
 
     /** 文章状态：0 草稿 / 1 已发布 / 2 待审核 / 3 已驳回 */
     int STATE_DRAFT = 0;

@@ -11,7 +11,7 @@ import java.util.Map;
 
 public interface ArticleMapper extends BaseMapper<Article> {
 
-    @Select("select a.*,IFNULL(c.category_name,'未分类') as categoryName,u.nickname as createUserName " +
+    @Select("<script>select a.*,IFNULL(c.category_name,'未分类') as categoryName,u.nickname as createUserName " +
             "from article a left join user u on a.create_user = u.id " +
             "left join category c on a.category_id = c.id " +
             "where u.id = #{uid} " +
@@ -23,15 +23,18 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "and (#{state} is null or a.state = #{state}) " +
             "and (#{search} is null or a.title like concat('%',#{search},'%')) " +
             "order by " +
-            "case " +
-            "when a.update_time is not null then a.update_time " +
-            "else a.create_time " +
-            "end desc " +
-            "limit #{offset},#{pageSize}")
+            // 显式按发布时间排序时覆盖默认的「最后改动」序；只认 1 / -1，其余走默认
+            "<choose>" +
+            "<when test='timeOrder != null and timeOrder == 1'>a.create_time asc</when>" +
+            "<when test='timeOrder != null and timeOrder == -1'>a.create_time desc</when>" +
+            "<otherwise>case when a.update_time is not null then a.update_time else a.create_time end desc</otherwise>" +
+            "</choose> " +
+            "limit #{offset},#{pageSize}" +
+            "</script>")
     List<Article> allArticles(@Param("uid") int uid, @Param("pageNum") int pageNum,
                               @Param("pageSize") int pageSize, @Param("categoryId") Integer categoryId,
                               @Param("state") Integer state, @Param("offset") int offset,
-                              @Param("search") String search);
+                              @Param("search") String search, @Param("timeOrder") Integer timeOrder);
 
     @Select("select count(*)" +
             "from article a left join user u on a.create_user = u.id where u.id = #{uid} " +
@@ -107,19 +110,22 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} = 1 and u.nickname like concat('%',#{search},'%')))" +
             "order by " +
-            // 只有筛「待审核」时命中违禁词的才排前面：审核动作集中在这个视图，
-            // 其余视图（全部 / 已发布…）保持原时间序，免得看起来像排序坏了。
-            // 分页在前端做不了这层排序，必须在这里排。
+            // 显式按发布时间排序优先；未指定时保留原口径：待审视图命中违禁词的排前面，
+            // 其余视图按「最后改动」倒序
+            "<choose>" +
+            "<when test='timeOrder != null and timeOrder == 1'>a.create_time asc</when>" +
+            "<when test='timeOrder != null and timeOrder == -1'>a.create_time desc</when>" +
+            "<otherwise>" +
             "<if test='state != null and state == 2'>a.sensitive_hit desc,</if>" +
-            "case " +
-            "when a.update_time is not null then a.update_time " +
-            "else a.create_time " +
-            "end desc " +
+            "case when a.update_time is not null then a.update_time else a.create_time end desc" +
+            "</otherwise>" +
+            "</choose> " +
             "limit #{offset},#{pageSize}" +
             "</script>")
     List<Article> findAllArticlesInMaster(int pageNum, int pageSize,
                                           Integer categoryId, Integer state, Integer userId,
-                                          Integer offset, String search, Integer searchType, String nickName);
+                                          Integer offset, String search, Integer searchType, String nickName,
+                                          Integer timeOrder);
 
     @Select("select a.*,IFNULL(c.category_name,'未分类') as categoryName,u.nickname as createUserName " +
             "from article a left join user u on a.create_user = u.id " +
