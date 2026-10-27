@@ -1,0 +1,48 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_ab74ea15e793d1::t_9a0788faf8ebf9 210-211,214
+  s_ab74ea15e793d1::t_b27a74a201eaa2 346
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_1934862b2c6d20 53-54,58,71
+  s_ab74ea15e793d1::t_d6b3d162b066da 217-221
+  s_ab74ea15e793d1::t_90c80615ee0c52 311
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleService.java
+  s_ab74ea15e793d1::t_9c474e023382a1 27
+  s_ab74ea15e793d1::t_50a6f89905109a 54
+article_trace_back/src/main/java/com/articleTraceBack/mapper/ArticleMapper.java
+  s_ab74ea15e793d1::t_0decff1ae19536 14,26-33,37
+  s_ab74ea15e793d1::t_2721cae2e93dcd 113-118,120-122,127-128
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_cf64b26b4c445a 192
+  s_ab74ea15e793d1::t_92f3eac6b4c7fc 803
+  s_ab74ea15e793d1::t_87d246462d61de 808
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_874f3dfc8debb0 422-425
+  s_ab74ea15e793d1::t_cabce7dd12f18f 788-789,856-857
+  s_ab74ea15e793d1::t_824d6702be0bed 419-421,426-429
+  s_ab74ea15e793d1::t_1fdca3329d40e0 290-291
+  s_ab74ea15e793d1::t_c73b74fc113700 397-399,403-404
+  s_ab74ea15e793d1::t_2222ca3475fad9 32
+article_trace_back/src/test/java/com/articleTraceBack/ArticleListSortTest.java
+  s_ab74ea15e793d1::t_5472d12a030bf2 99
+  s_ab74ea15e793d1::t_2f8b149ecb05b9 93-94
+  s_ab74ea15e793d1::t_0f07699b90b21c 101-102
+  s_ab74ea15e793d1::t_9cef323a26ea6d 59-63,68-70
+  s_ab74ea15e793d1::t_ffceb014fa89e3 55-56,66,74,78,82
+  s_ab74ea15e793d1::t_9c5a4ebfcfdeba 1-54,57-58,64-65,67,71-73,75-77,79-81,83-92,95-98,100,103-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "cef0b7cac59860ad017b930b50992c8af7ef1336",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "DeepSeek-V4.1-Flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
