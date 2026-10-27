@@ -61,14 +61,14 @@ export const userInfoStore
         }
 
         function fetchCategories() {
-            getAllCategories().then(result => {
+            return getAllCategories().then(result => {
                 categories.value = result.data.length
             }).catch((err) => {
                 return Promise.reject(err)
             })
         }
         function fetchArticlesCount() {
-            request.get("/article/count").then(result => {
+            return request.get("/article/count").then(result => {
                 allArticles.value = result.data.totalArticles
                 waitTotal.value = result.data.waitAccessTotal
                 accessTotal.value = result.data.accessTotal

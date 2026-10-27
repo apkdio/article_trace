@@ -22,13 +22,11 @@ const pageSize = ref(10) // 默认 10 条更适合管理页
 // 作者申请（待审）
 const pendingApplies = ref([])
 
-onMounted(async () => {
+onMounted(() => {
   if (!checkType([0])) router.push({name: "ErrorPage"})
-  await getAccounts()
+  // 账号列表与待审申请互不依赖：各自加载，账号页遮罩只跟账号列表
+  getAccounts()
   getPendingApplies()
-  setTimeout(() => {
-    isLoading.value = false
-  },100)
 })
 
 const getPendingApplies = async () => {
@@ -86,6 +84,7 @@ const rejectApply = async (item) => {
 }
 
 const getAccounts = async () => {
+  isLoading.value = true
   try {
     const data = await getAllAccountsService(pageNum.value, pageSize.value)
     if (data.code === 0) {
@@ -96,6 +95,8 @@ const getAccounts = async () => {
     }
   } catch (error) {
     ElMessage.error("数据获取失败！")
+  } finally {
+    setTimeout(() => isLoading.value = false, 100)
   }
 }
 

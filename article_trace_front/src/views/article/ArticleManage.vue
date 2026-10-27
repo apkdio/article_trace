@@ -291,8 +291,11 @@ const conditions = ref({
 
 onMounted(() => {
   if (!checkType([0, 1])) router.push({name: "ErrorPage"})
-  if (checkPersonInfo()) getCategories()
-  else {
+  if (checkPersonInfo()) {
+    // 分类下拉与文章列表互不依赖：分类失败不能把列表的遮罩一直挂在 loading
+    getCategories()
+    getArticles()
+  } else {
     confirmCompleteProfile(router)
   }
 })
@@ -301,7 +304,6 @@ const getCategories = async () => {
   try {
     const data = await getAllCategories()
     categories.value = data.data
-    await getArticles()
   } catch (error) {
     ElMessage.error("数据获取失败！")
   }

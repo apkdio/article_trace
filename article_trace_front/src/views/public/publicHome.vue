@@ -48,25 +48,38 @@ const topArticles = ref()
 const siteName = ref('文迹')
 const logoEnabled = ref(true)
 
-onMounted(async () => {
-  const features = await getSiteFeatures()
-  siteName.value = features.displayName
-  logoEnabled.value = features.logoEnabled
-  document.title = `${siteName.value} - 在这里，每一份文章都有价值！`
+const loadSiteFeatures = async () => {
+  try {
+    const features = await getSiteFeatures()
+    siteName.value = features.displayName
+    logoEnabled.value = features.logoEnabled
+    document.title = `${siteName.value} - 在这里，每一份文章都有价值！`
+  } catch (e) {
+    // 站点配置只影响站名与 logo，失败时沿用默认值
+  }
+}
+
+const checkLogin = async () => {
   try {
     await loginCheckPublic()
   } catch (e) {
-    if(e.message === "not login") return
+    if (e.message === "not login") return
     if (!isAuthHandled())
       ElMessage.warning("登录已失效！")
     userInfoStore().clearUserInfo()
     markAuthHandled()
   } finally {
     if (userInfoStore().username !== "") isLogin.value = true
-    await getTopArticles()
-    await getArticles()
-    await getMasterInfo()
   }
+}
+
+onMounted(() => {
+  // 四个模块各自加载、各自撤遮罩：任何一个慢或失败都不拖住其它模块
+  loadSiteFeatures()
+  checkLogin()
+  getTopArticles()
+  getArticles()
+  getMasterInfo()
 })
 
 const getMasterInfo = async () => {

@@ -53,10 +53,14 @@ const commentEnabled = ref(true)
 const siteName = ref('文迹')
 const logoEnabled = ref(true)
 onMounted(async () => {
-  const features = await getSiteFeatures()
-  commentEnabled.value = features.commentEnabled
-  siteName.value = features.displayName
-  logoEnabled.value = features.logoEnabled
+  try {
+    const features = await getSiteFeatures()
+    commentEnabled.value = features.commentEnabled
+    siteName.value = features.displayName
+    logoEnabled.value = features.logoEnabled
+  } catch (e) {
+    // 站点配置只影响页头与评论开关，失败时沿用默认值，不拖住正文
+  }
 })
 
 const searchCondition = ref({
@@ -70,15 +74,13 @@ const commentModel = ref({
   content: "",
   userId: null
 })
-onMounted(async () => {
+onMounted(() => {
   addViewService(props.id)
-  await getData()
-  await getTopArticles()
-  if (articleInfo.value) {
-    document.title = articleInfo.value.title ? articleInfo.value.title : "无标题"
-  }
+  // 正文、作者、热榜、评论各自加载、各自撤遮罩，谁也不等谁
+  getData()
+  getTopArticles()
+  getComments()
   if (userInfoStore().username !== "") isLogin.value = true
-  await getComments()
 })
 
 const getData = async () => {
@@ -87,6 +89,7 @@ const getData = async () => {
     const data = await getArticleDetail(props.id)
     if (data.code === 0) {
       articleInfo.value = data.data
+      document.title = data.data.title ? data.data.title : "无标题"
       // 公式在客户端渲染：存在对象里的是 LaTeX 原文，渲染结果不进存储、也不过后端白名单
       await nextTick()
       renderMathIn(contentRef.value)

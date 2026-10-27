@@ -6,7 +6,7 @@ import {userInfoStore} from "@/stores/userInfo.js";
 import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
 
-const isLoading = ref(true);
+const pageLoading = ref(true);
 
 const hitokoto = ref({
   hitokoto: "",
@@ -14,10 +14,8 @@ const hitokoto = ref({
 })
 
 const getHitokoto = async () => {
-  isLoading.value = true;
   try {
-    // 3 秒超时：axios 默认永不超时，而这里在 getUserInfo 的 finally 里被 await，
-    // 悬挂时整个首页陪它白等——兜底文案要等浏览器自己断开才轮到
+    // 3 秒超时：axios 默认永不超时。这段只是装饰性文案，失败或慢都不该拖住整页遮罩
     const {data} = await axios.get('https://v1.hitokoto.cn', {timeout: 3000});
     hitokoto.value = data;
   } catch (error) {
@@ -25,8 +23,6 @@ const getHitokoto = async () => {
       hitokoto: "与其感慨路难行，不如现在就出发。",
       from: "文迹 @2026"
     };
-  } finally {
-    isLoading.value = false;
   }
 }
 const getUserInfo = async () => {
@@ -39,28 +35,30 @@ const getUserInfo = async () => {
   } catch (error) {
     ElMessage.error("获取用户信息失败！")
   } finally {
-    await getHitokoto()
+    // 只等页面自己的统计与分类；每日一句独立加载，到了再显示
+    pageLoading.value = false
   }
 }
 onMounted(() => {
   getUserInfo()
+  getHitokoto()
 })
 </script>
 
 <template>
   <div
       class="dashboard-container"
-      v-loading="isLoading"
+      v-loading="pageLoading"
       element-loading-text="文迹数据加载中..."
       element-loading-background="rgba(245, 242, 235, 0.7)"
   >
-    <template v-if="!isLoading">
+    <template v-if="!pageLoading">
       <!-- 保持原有结构，动画是通过 CSS animation 实现的 -->
       <div class="top-section">
         <h2 class="welcome-title">欢迎回来，追寻文字之迹！</h2>
         <div class="hitokoto-box">
           <span class="quote-mark left">"</span>
-          <p class="hitokoto-text">{{ hitokoto.hitokoto }}</p>
+          <p class="hitokoto-text">{{ hitokoto.hitokoto || '正在为你取一句…' }}</p>
           <span class="quote-mark right">"</span>
           <div class="hitokoto-from">— 「 {{ hitokoto.from }} 」</div>
         </div>
