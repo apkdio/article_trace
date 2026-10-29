@@ -147,6 +147,7 @@ notification:
     report-rejected: inbox
     report-notice: inbox
     email-code: mail
+    session-expire: inbox        # 登录到期提醒（铃铛轮询触发）
   defaultChannel: inbox          # 未配置场景的默认渠道
   mail:
     enabled: true                # 邮件渠道总开关（关闭后 mail/both 降级为仅站内）

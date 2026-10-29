@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.NotificationService;
+import com.articleTraceBack.Service.Support.SessionExpiryNotifier;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.PageBean;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /** 站内信接口。接收方一律取登录态，不接受前端传 userId，避免越权读取他人消息。 */
@@ -21,9 +23,12 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final SessionExpiryNotifier sessionExpiryNotifier;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService,
+                                  SessionExpiryNotifier sessionExpiryNotifier) {
         this.notificationService = notificationService;
+        this.sessionExpiryNotifier = sessionExpiryNotifier;
     }
 
     /** 我的站内信分页（倒序）；type 可选：system / apply，不传或 all 查全部 */
@@ -38,14 +43,20 @@ public class NotificationController {
         return Result.success(notificationService.listByReceiver(userId, type, pageNum, pageSize));
     }
 
-    /** 未读数（前端角标） */
+    /** 未读数（前端角标）；铃铛轮询兼作会话检查，快到期时顺带发站内信提醒 */
     @GetMapping("/unreadCount")
-    public Result<Integer> unreadCount() {
+    public Result<Map<String, Object>> unreadCount() {
         Integer userId = currentUserId();
         if (userId == null) {
             return Result.error("未登录！");
         }
-        return Result.success(notificationService.unreadCount(userId));
+        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        Object name = userInfo == null ? null : userInfo.get("name");
+        long expiresIn = sessionExpiryNotifier.notifyIfNeeded(userId, name == null ? null : name.toString());
+        Map<String, Object> data = new HashMap<>();
+        data.put("count", notificationService.unreadCount(userId));
+        data.put("expiresIn", expiresIn);
+        return Result.success(data);
     }
 
     /** 标记单条已读 */

@@ -148,6 +148,7 @@ notification:
     report-rejected: inbox
     report-notice: inbox
     email-code: mail
+    session-expire: inbox
   defaultChannel: inbox
   mail:
     enabled: true

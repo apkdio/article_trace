@@ -267,7 +267,12 @@ function login() {
           userInfoStore().setLastLogin(result.data.lastLogin)
           setTimeout(() => {
             FormRef.value.resetFields()
-            router.push({name: "PublicHome"})
+            // 会话过期跳来的会带 redirect：登录后回到原页面，而不是一律回首页
+            const redirect = router.currentRoute.value.query.redirect
+            const target = typeof redirect === 'string'
+                && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : null
+            if (target) router.replace(target)
+            else router.push({name: "PublicHome"})
             isLoading.value = false
           }, 800)
         } else {

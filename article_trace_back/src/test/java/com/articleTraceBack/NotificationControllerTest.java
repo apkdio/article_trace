@@ -60,10 +60,10 @@ public class NotificationControllerTest {
         notificationService.notify(TEST_USER_ID, "author-apply-approved", "标题1", "内容1");
         notificationService.notify(TEST_USER_ID, "author-apply-rejected", "标题2", "内容2");
 
-        // 未读数
-        Result<Integer> unread = notificationController.unreadCount();
+        // 未读数（响应里还带了会话剩余时长，供前端做到期提醒）
+        Result<Map<String, Object>> unread = notificationController.unreadCount();
         assertEquals(0, unread.getCode());
-        assertEquals(2, unread.getData());
+        assertEquals(2, unread.getData().get("count"));
 
         // 列表
         Result<PageBean<Notification>> list = notificationController.list(null, 1, 10);
@@ -73,13 +73,13 @@ public class NotificationControllerTest {
         // 单条已读 → 未读数 -1
         int firstId = list.getData().getItems().get(0).getId();
         assertEquals(0, notificationController.read(firstId).getCode());
-        assertEquals(1, notificationController.unreadCount().getData());
+        assertEquals(1, notificationController.unreadCount().getData().get("count"));
 
         // 全部已读
         Result<Integer> readAll = notificationController.readAll();
         assertEquals(0, readAll.getCode());
         assertEquals(1, readAll.getData(), "应影响 1 条未读");
-        assertEquals(0, notificationController.unreadCount().getData());
+        assertEquals(0, notificationController.unreadCount().getData().get("count"));
     }
 
     @Test

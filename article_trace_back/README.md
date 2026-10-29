@@ -416,6 +416,8 @@ flowchart LR
 | `delete(receiverId, id)` | 删除单条（以「id + receiver_id」双条件限定，删不到别人的）|
 | `cleanupExpired(keepDays)` | 清理超过 N 天的站内信（定时任务调用）|
 
+**登录到期提醒**（`Service/Support/SessionExpiryNotifier`）：前端铃铛每 60 秒轮询 `/notification/unreadCount`，后端顺带读一次会话剩余 TTL，在 **6 小时 / 1 小时** 两档各发一条站内信（场景 `session-expire`，仅 inbox）。剩余不足 1 小时时只发 1 小时档；去重标记按「token 哈希 + 档位」写 Redis（TTL 跟随会话），多标签页并发轮询也只发一条，重新登录换 token 后会重新提醒。站内信标题统一以「【登录提醒】」开头，正文提示未保存草稿留在本地。
+
 **调用方不感知成败**：全流程 try-catch，失败只记日志，绝不影响主业务。
 
 **③ 邮件投递链路**
@@ -489,6 +491,7 @@ notification:
     report-rejected: inbox
     report-notice: inbox
     email-code: mail
+    session-expire: inbox      # 登录到期提醒：铃铛轮询时检查剩余 TTL，6h / 1h 各提醒一次
   defaultChannel: inbox              # 未配置场景的默认渠道
 
 > **类型合并（2026-09-23）**：站内信类型由 `system / apply / avatar / report` 合并为 `system / audit / report`
@@ -918,7 +921,7 @@ CREATE TABLE IF NOT EXISTS `report` (
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/notification/list` | 我的站内信分页（倒序）；可选 `type` 筛选（`system` / `apply`，不传或 `all` 查全部）|
-| GET | `/notification/unreadCount` | 未读数（前端角标） |
+| GET | `/notification/unreadCount` | 未读数 + 会话剩余秒数：`{count, expiresIn}`；铃铛轮询兼作到期检查（见「登录到期提醒」） |
 | PATCH | `/notification/read/{id}` | 标记单条已读 |
 | PATCH | `/notification/readAll` | 全部标记已读 |
 | DELETE | `/notification/{id}` | 删除单条（仅限本人）|

@@ -538,9 +538,16 @@ watch(() => [articleModel.value.title, articleModel.value.categoryId, articleMod
 
 // 关页 / 刷新前，把还压在防抖里的最后几个字补写一次
 window.addEventListener('beforeunload', writeDraft)
+// 会话过期会被跳去登录：先把编辑中的内容落草稿，回来还能恢复
+const flushDraftOnExpire = () => {
+  cancelDraftSave()
+  writeDraft()
+}
+window.addEventListener('auth:expired', flushDraftOnExpire)
 onBeforeUnmount(() => {
   cancelDraftSave()
   window.removeEventListener('beforeunload', writeDraft)
+  window.removeEventListener('auth:expired', flushDraftOnExpire)
 })
 
 /** 「几分钟前」：草稿提示里用，超过一天就直接给时间 */

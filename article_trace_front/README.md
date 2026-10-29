@@ -125,7 +125,8 @@ article_trace_front/
 
 - Axios 实例 `baseURL = /api`（`withCredentials: true`），开发环境由 Vite 代理转发到后端 `localhost:8080`。
 - **没有请求拦截器**：令牌放在 HttpOnly Cookie 里，由浏览器自动携带，前端拿不到也不该拿。以前往 `Authorization` 头里塞 Token，等于把凭证暴露给同源 JS，XSS 一打就丢。
-- 响应拦截器统一处理：401 时提示「登录已失效」、清除用户信息并跳转首页。去重标记在 `utils/session.js`——并发请求会同时拿到 401，不拦一下会弹一串提示、跳转多次；它刻意用模块级变量而非 pinia persist，因为必须随页面刷新重置。
+- 响应拦截器统一处理：401 时提示「登录已过期，请重新登录」、清除用户信息，并跳 `Login?redirect=<当前路径>`；登录成功后按 `redirect` 回跳原页面，不再一律回首页。跳转前会派发 `auth:expired` 事件，文章管理页收到后立刻把编辑中的内容落本地草稿。去重标记在 `utils/session.js`——并发请求会同时拿到 401，不拦一下会弹一串提示、跳转多次；它刻意用模块级变量而非 pinia persist，因为必须随页面刷新重置。
+- **登录到期提醒**：铃铛轮询 `/notification/unreadCount` 的响应带 `expiresIn`；后端在剩余 6h / 1h 时各发一条「【登录提醒】」站内信（每 token 每档一次），前端在剩余 10 分钟内再弹一次一次性警告。这样即使没看铃铛，也不会在毫无准备的情况下被登出。
 
 ### 登录态判断
 

@@ -30,9 +30,14 @@ instance.interceptors.response.use(
             if (err.response.status === 401) {
                 if (!isAuthHandled()) {
                     markAuthHandled()
-                    ElMessage.warning("登录已失效！")
+                    ElMessage.warning("登录已过期，请重新登录")
                     userInfoStore().clearUserInfo()
-                    router.push({name: "PublicHome"})
+                    // 编辑器等页面收到后先把未提交内容落草稿，登录完回来还能恢复
+                    window.dispatchEvent(new CustomEvent('auth:expired'))
+                    const current = router.currentRoute.value
+                    if (current.name !== 'Login') {
+                        router.push({name: 'Login', query: {redirect: current.fullPath}})
+                    }
                 }
                 return Promise.reject(err)
             }

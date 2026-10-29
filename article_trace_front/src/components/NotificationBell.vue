@@ -28,12 +28,25 @@ const notifyType = ref('all')
 const POLL_INTERVAL_MS = 60 * 1000
 let pollTimer = null
 let unreadInitialized = false
+// 10 分钟内的到期提示只弹一次；剩余时长回升（重新登录）后允许再提示
+let expiryWarned = false
 
 const loadUnread = async ({notifyOnIncrease = false} = {}) => {
     try {
         const res = await unreadCount()
         if (res.code !== 0) return
-        const next = res.data || 0
+        const payload = res.data
+        const next = typeof payload === 'number' ? payload : (payload?.count ?? 0)
+        const expiresIn = payload && typeof payload === 'object' ? payload.expiresIn : null
+        if (expiresIn > 0 && expiresIn <= 600 && !expiryWarned) {
+            expiryWarned = true
+            ElMessage.warning({
+                message: '登录将在 10 分钟内过期，请保存工作后重新登录',
+                duration: 8000
+            })
+        } else if (expiresIn > 600) {
+            expiryWarned = false
+        }
         if (notifyOnIncrease && unreadInitialized && next > unread.value) {
             ElMessage({
                 message: `你有 ${next - unread.value} 条新的站内通知`,
