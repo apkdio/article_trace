@@ -161,6 +161,7 @@ article_trace_front/
 
 - **铃铛 + 未读角标**：挂载时拉一次 `GET /notification/unreadCount`，未读为 0 时隐藏角标；
 - **实时提醒**：每 60 秒轮询一次未读数，出现新增时轻提示（首次加载不提示，避免刚进页面就弹）；
+- **登录到期检查**：轮询响应里的 `expiresIn` 是会话剩余秒数；后端在剩余 6h / 1h 时各发一条「【登录提醒】」站内信（每 token 每档一次），前端在剩余 ≤10 分钟时再弹一次警告；
 - **抽屉列表**：点击铃铛打开 `el-drawer`，调 `GET /notification/list` 分页展示，可按类型筛选（全部 / 系统 / 作者申请 / 头像审核 / 举报）；
 - **已读**：点击单条调 `PATCH /notification/read/{id}`，角标即时递减；「全部已读」调 `PATCH /notification/readAll`；
 - **删除**：单条调 `DELETE /notification/{id}`，删掉当前页最后一条时自动回退一页；

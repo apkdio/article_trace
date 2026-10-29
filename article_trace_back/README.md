@@ -59,7 +59,8 @@ article_trace_back/
     │   │   └── Support/                     # 层内支撑：规则 / 策略类，不是「接口 + 实现」那种 Service
     │   │       ├── ProfileGuard.java        #   昵称 / 个签内容规则（格式类直接拒、内容类落待审）
     │   │       ├── ArticleSensitivityGuard.java # 违禁词判定：草稿不扫、命中转待审、按结果打标
-    │   │       └── ArticlePublishPolicy.java #  发布意图 + 角色 → 目标状态（作者只能送审）
+    │   │       ├── ArticlePublishPolicy.java #  发布意图 + 角色 → 目标状态（作者只能送审）
+    │   │       └── SessionExpiryNotifier.java #  登录到期提醒（6h / 1h 两档，按 token 去重）
     │   ├── rpc/                             # gRPC 客户端（调用 agent）
     │   │   ├── ArticleAgentClient.java      #   8 个 RPC 方法封装（另含 isEnabled/init/shutdown；容错 + 超时 + 共享密钥）
     │   │   ├── AgentAuthInterceptor.java    #   给每个 RPC 附 x-agent-key 共享密钥（两侧同配才校验）
