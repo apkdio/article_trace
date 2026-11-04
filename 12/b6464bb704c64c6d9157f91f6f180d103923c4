@@ -1,0 +1,26 @@
+article_trace_front/src/router/index.js
+  s_ab74ea15e793d1::t_99d40ad9abc53d 110
+article_trace_front/src/components/UserLayout.vue
+  s_ab74ea15e793d1::t_87b04eda4db890 79
+article_trace_front/src/views/user/ReviewCenter.vue
+  s_ab74ea15e793d1::t_5869fb7f7000b5 163-172
+  s_ab74ea15e793d1::t_87380043b5b9ff 179,185,187-194
+article_trace_front/README.md
+  s_ab74ea15e793d1::t_4b984e65daa0f5 120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "12b6464bb704c64c6d9157f91f6f180d103923c4",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
