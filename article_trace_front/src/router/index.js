@@ -107,7 +107,8 @@ const routes = [
                 path: "/review/center",
                 component: reviewCenter,
                 name: "ReviewCenter",
-                meta: {noTransition: true, title: "审核中心", roles: [0]}
+                // plainBg：内容区与页面同底色，不再是一张独立白卡（审核中心左右两栏都要贴合背景）
+                meta: {noTransition: true, title: "审核中心", roles: [0], plainBg: true}
             }
         ],
     },

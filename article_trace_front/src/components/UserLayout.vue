@@ -1,5 +1,6 @@
 <script setup>
 import {ref, onMounted} from 'vue'
+import {useRoute} from 'vue-router'
 import {CaretBottom, HomeFilled, SwitchButton} from '@element-plus/icons-vue'
 import avatar from '@/assets/defaultLogo.jpg'
 import {checkTime} from '@/utils/timeCheck.js'
@@ -15,6 +16,7 @@ defineProps({
 })
 
 const timeCheck = ref()
+const route = useRoute()
 
 const logout = (command) => {
     switch (command) {
@@ -74,7 +76,7 @@ const logout = (command) => {
             </el-header>
 
             <el-main>
-                <div class="router-content">
+                <div class="router-content" :class="{'plain-bg': route.meta.plainBg}">
                     <router-view></router-view>
                 </div>
             </el-main>
@@ -209,6 +211,12 @@ const logout = (command) => {
             padding: 24px;
             overflow: auto;
             position: relative;
+
+            /* 页面自己声明与整页同色（如审核中心）：去掉白卡观感，与背景连成一片 */
+            &.plain-bg {
+                background: var(--at-bg-page);
+                border-color: transparent;
+            }
         }
     }
 

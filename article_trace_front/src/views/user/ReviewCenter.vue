@@ -166,10 +166,20 @@ watch(activeType, () => {
   .panel-area {
     flex: 1;
     min-width: 0;
-    background: var(--at-bg-card);
+    /* 路由已声明 plainBg：面板与页面同底色，不再叠一张白卡 */
+    background: transparent;
     border: 1px solid var(--at-border-warm);
     border-radius: 12px;
     padding: 16px;
+
+    /* 内嵌面板的表格也跟页面底色走，否则浅底上还会压一块纯白 */
+    :deep(.el-table) {
+      --el-table-bg-color: var(--at-bg-page);
+      --el-table-tr-bg-color: var(--at-bg-page);
+      --el-table-header-bg-color: var(--at-bg-stat);
+      --el-table-row-hover-bg-color: var(--at-bg-tint);
+      --el-table-border-color: var(--at-border-warm);
+    }
   }
 
   // 四个子面板统一的入场过渡。刻意不用 <transition>：
