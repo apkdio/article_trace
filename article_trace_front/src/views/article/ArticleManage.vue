@@ -87,6 +87,27 @@ const onQuillReady = () => {
   quillReady.value = true
   applyTableMatcher()
   applyToolbarTitles()
+  applyInlineCodeExit()
+}
+
+/**
+ * 光标停在行内代码的右边缘时，按「代码外」继续输入。
+ * Quill 的待输入格式取自左边字符，从 `` `abc` `` 里右移出来会重新继承 code，
+ * 导致继续输入仍落在代码框里；这里在选区变化时主动把它清掉。
+ * 只处理 code：加粗 / 斜体按 Quill 默认（右移后继续加粗）更符合预期。
+ */
+const applyInlineCodeExit = () => {
+  const quill = currentQuill()
+  if (!quill) return
+  quill.on('selection-change', (range) => {
+    if (!range || range.length !== 0 || range.index <= 0) return
+    const before = quill.getFormat(range.index - 1)
+    // 取右边那个字符的格式：getFormat(index) 在边界上会算成左叶子，永远带 code
+    const after = quill.getFormat(range.index, 1) || {}
+    if (before.code && !after.code) {
+      quill.format('code', false)
+    }
+  })
 }
 const currentQuill = () => {
   if (!quillReady.value || !quillEditorRef.value) return null
@@ -169,7 +190,7 @@ const rememberCursor = () => {
     return
   }
   const range = quill.getSelection(true)
-  insertIndex = range ? range.index : quill.getLength()
+  insertIndex = range ? range.index : Math.max(0, quill.getLength() - 1)
 }
 
 const updateFormulaPreview = () => {
@@ -189,7 +210,7 @@ const openFormulaDialog = () => {
 const insertPlainText = (text) => {
   const quill = currentQuill()
   if (!quill) return
-  const index = insertIndex === null ? quill.getLength() : insertIndex
+  const index = insertIndex === null ? Math.max(0, quill.getLength() - 1) : insertIndex
   quill.insertText(index, text, 'user')
   quill.setSelection(index + text.length, 0, 'silent')
 }
@@ -210,6 +231,81 @@ const openMarkdownDialog = () => {
   markdownDialog.value = true
 }
 
+/** 插入点是否已经在行首（前一字符是换行或位于文档开头） */
+const atLineStart = (quill, index) => index <= 0 || quill.getText(index - 1, 1) === '\n'
+
+/** 块级内容不能从行中间开始，否则 Quill 会把所在的整行变成代码块 / 标题 */
+const ensureLineStart = (quill, index) => {
+  if (atLineStart(quill, index)) return index
+  quill.insertText(index, '\n', 'user')
+  return index + 1
+}
+
+/** 块级格式；其余都算行内格式 */
+const BLOCK_FORMATS = ['header', 'list', 'code-block', 'blockquote', 'indent', 'align']
+
+/**
+ * 插入后把光标从行内格式（行内代码 / 加粗 / 颜色等）里摘出来：
+ * 光标默认继承前一个字符的格式，不清掉的话继续输入仍会落在 `` `...` `` 里。
+ * 块级格式（标题 / 列表 / 代码块）保留——在代码块末尾继续写本来就该是代码。
+ */
+const clearInlineFormatAt = (quill, index) => {
+  if (index <= 0) return
+  const inherited = quill.getFormat(index - 1) || {}
+  const inlineKeys = Object.keys(inherited).filter(key => !BLOCK_FORMATS.includes(key))
+  if (inlineKeys.length === 0) return
+  // formatText(index, 0, …) 只改文档、不改光标待输入格式；quill.format 才作用于当前选区
+  quill.setSelection(index, 0, 'silent')
+  inlineKeys.forEach(key => quill.format(key, false))
+}
+
+/**
+ * 把一段 Markdown 转出的 Delta 插到光标处，并明确落好选区。
+ * - 单段落、无块级格式：就地插行内内容，不切断当前行；
+ * - 标题 / 列表 / 引用 / 代码块 / 多段：先断行再整块插入，光标停在该块末尾。
+ *
+ * @return 插入结束后的索引（供后续片段继续插入）
+ */
+const insertMarkdownDelta = (quill, index, delta) => {
+  const hasBlockFormat = (op) => op.attributes
+      && Object.keys(op.attributes).some(key => BLOCK_FORMATS.includes(key))
+
+  // marked 会在段落 / 代码块后多带换行，Quill 的 convert 只会去掉一个。
+  // 先把没有块级格式的尾随换行全部去掉，否则单段文本会被当成块插入，切断当前行。
+  const trimmed = new Delta((delta.ops || []).map(op => ({...op})))
+  while (trimmed.ops.length > 0) {
+    const last = trimmed.ops[trimmed.ops.length - 1]
+    if (typeof last.insert !== 'string' || !last.insert.endsWith('\n') || hasBlockFormat(last)) break
+    const rest = last.insert.slice(0, -1)
+    if (rest) last.insert = rest
+    else trimmed.ops.pop()
+  }
+
+  const hasNewline = trimmed.ops.some(op => typeof op.insert === 'string' && op.insert.includes('\n'))
+  const isPlainInline = !trimmed.ops.some(hasBlockFormat) && !hasNewline
+
+  if (isPlainInline) {
+    // 单段行内内容：插在光标处，不切断当前行
+    quill.updateContents(new Delta().retain(index).concat(trimmed), 'user')
+    const end = index + trimmed.length()
+    quill.setSelection(end, 0, 'silent')
+    clearInlineFormatAt(quill, end)
+    return end
+  }
+
+  // 块级内容：先保证从行首开始，否则代码块 / 标题会把所在整行套上格式
+  const start = ensureLineStart(quill, index)
+  const last = trimmed.ops[trimmed.ops.length - 1]
+  const endsWithNewline = last && typeof last.insert === 'string' && last.insert.endsWith('\n')
+  const block = endsWithNewline ? trimmed : trimmed.concat(new Delta().insert('\n'))
+  quill.updateContents(new Delta().retain(start).concat(block), 'user')
+  // 停在最后一段的行尾：继续输入接在块内，回车才另起一段
+  const end = start + block.length() - 1
+  quill.setSelection(Math.max(start, end), 0, 'silent')
+  clearInlineFormatAt(quill, Math.max(start, end))
+  return start + block.length()
+}
+
 const insertMarkdown = (replaceAll) => {
   const html = markdownToHtml(markdownText.value)
   if (!html.trim()) {
@@ -221,16 +317,18 @@ const insertMarkdown = (replaceAll) => {
   if (replaceAll) {
     quill.setContents([], 'user')
   }
-  let index = replaceAll ? 0 : (insertIndex === null ? quill.getLength() : insertIndex)
-  // 表格走只读嵌入块（Quill 会把 <table> 摊平），其余照旧粘贴；每插一段按正文长度把游标往后挪
+  // 文档末尾是 Quill 的收尾换行，默认落点要取它前面
+  let index = replaceAll ? 0 : (insertIndex === null ? Math.max(0, quill.getLength() - 1) : insertIndex)
   splitMarkdownTables(html).forEach((segment) => {
-    const before = quill.getLength()
     if (segment.type === 'table') {
-      quill.insertEmbed(index, 'tableEmbed', sanitizeImportedHtml(segment.html), 'user')
+      // 表格是只读嵌入块，同样先保证从行首开始，避免和当前行粘在一起
+      const start = ensureLineStart(quill, index)
+      quill.insertEmbed(start, 'tableEmbed', sanitizeImportedHtml(segment.html), 'user')
+      index = start + 1
+      quill.setSelection(index, 0, 'silent')
     } else {
-      quill.clipboard.dangerouslyPasteHTML(index, segment.html, 'user')
+      index = insertMarkdownDelta(quill, index, quill.clipboard.convert(segment.html))
     }
-    index += quill.getLength() - before
   })
   markdownDialog.value = false
   markdownText.value = ''

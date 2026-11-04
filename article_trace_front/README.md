@@ -202,7 +202,7 @@ article_trace_front/
 
 这几件事都**不改存储格式**：正文仍是 HTML，后端与 jsoup 白名单一行未动（只读表格块也过得了白名单，用例 `RichTextCleanerTableTest`）。
 
-- **Markdown 导入**：工具栏「M↓」→ 粘贴 → 转成正文（`utils/markdown.js`，`marked` + 公式段先抽占位符，否则公式里的 `_` `*` `\` 会被当排版标记）。两个按钮：插入到光标处 / 替换整篇正文；转换结果仍会过后端白名单
+- **Markdown 导入**：工具栏「M↓」→ 粘贴 → 转成正文（`utils/markdown.js`，`marked` + 公式段先抽占位符，否则公式里的 `_` `*` `\` 会被当排版标记）。两个按钮：插入到光标处 / 替换整篇正文；**插入时按内容类型分流**——单段行内内容直接接在光标处、不切断当前行；标题 / 列表 / 引用 / 代码块 / 多段先断行再整块插入（代码块不会再把所在行整行套成代码块），插入后光标停在内容末尾。**插入完会清掉光标的行内格式**（行内代码 / 加粗 / 颜色等），否则继续输入会仍留在 `` `...` `` 里；标题 / 列表 / 代码块这类块级格式保留。光标停在**行内代码的右边缘**时（刚插入完、或从代码里左移再右移回来）也按「代码外」输入——Quill 默认继承左边字符的格式，不移出就会重新变成 code；这条规则挂在 `selection-change` 上，判的是「左边是 code、右边那个字符不是 code」，代码内部输入仍是 code转换结果仍会过后端白名单
 - **公式**：工具栏「∑」→ 写 LaTeX，**对话框里实时预览** → 插入。块级 `$$..$$`、行内 `\(..\)`
 - **字号 6 档**：14 / 16 / 18 / 20 / 24 / 28px，class 驱动（`ql-size-14px` …）——后端白名单已放行 `class`，所以**后端零改动**；档位值在 `ArticleManage.vue` 的 `SIZE_OPTIONS` 与 `assets/quill-content.scss` 两处，必须成对改
 - **工具栏怎么接**：配置走 `quill-editor` 的 **`:toolbar` prop**（传对象时它会被原样当作 `modules.toolbar`，`container` + `handlers` 都挂这），**不要塞给 `:modules`**——那个 prop 是「按 `{name, module}` 注册第三方模块」的意思，传配置会让 `new Quill()` 直接起不来：编辑区空白、控制台报 `The quill editor hasn't been instantiated yet`。**下拉的文案只能靠 `[data-value]` 的 CSS**：`toolbar.js` 的 `addSelect` 会把配置项直接当 `<option>` 的 `value`，**只认字符串**——写 `{value, label}` 会得到 `value="[object Object]"` 且没有文字，每一项都落到 snow 兜底的 `content:'Normal'`（表现为「字号全是 normal」「像是有两个字号工具」）。所以档位写纯字符串（`['14px', …, false]`），文案在 `ArticleManage.vue` 的样式块里按 `[data-value]` 补（含中文标题 1–4、「未设值 = 正文」），**档位值要与脚本里的 `SIZE_OPTIONS` 一致**。另外 Quill 自己给 `formula` / `clean` 画了 SVG（`ui/icons.js`），**别再叠 `::before` 字符**（只有 `markdown` 需要自己画）；按钮的悬浮说明也要自己加（`applyToolbarTitles()`）
