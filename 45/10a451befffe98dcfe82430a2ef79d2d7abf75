@@ -1,0 +1,27 @@
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_3e6915a75f15bb 213-222,242-248,270,272-274,276,283,286-287,299-300,303-307
+  s_ab74ea15e793d1::t_52eedc7eea4cd5 223-233,239-241,250
+  s_ab74ea15e793d1::t_981e9f125ae43c 234-238
+  s_ab74ea15e793d1::t_666e8940b5577f 249,251-269,275,277-282,285
+  s_ab74ea15e793d1::t_f964a20c33f733 172
+  s_ab74ea15e793d1::t_f7597a8c99a1ac 271,284
+  s_ab74ea15e793d1::t_bac4d914a775f4 309
+article_trace_front/README.md
+  s_ab74ea15e793d1::t_6559876633973e 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "4510a451befffe98dcfe82430a2ef79d2d7abf75",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": null
+    }
+  }
+}
