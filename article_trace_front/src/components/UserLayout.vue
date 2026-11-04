@@ -76,7 +76,7 @@ const logout = (command) => {
             </el-header>
 
             <el-main>
-                <div class="router-content" :class="{'plain-bg': route.meta.plainBg}">
+                <div class="router-content">
                     <router-view></router-view>
                 </div>
             </el-main>
@@ -211,12 +211,6 @@ const logout = (command) => {
             padding: 24px;
             overflow: auto;
             position: relative;
-
-            /* 页面自己声明与整页同色（如审核中心）：去掉白卡观感，与背景连成一片 */
-            &.plain-bg {
-                background: var(--at-bg-page);
-                border-color: transparent;
-            }
         }
     }
 

@@ -117,7 +117,7 @@ article_trace_front/
 
 **路由守卫**：受保护路由带 `meta.roles`（文章/分类 `[0,1]`，账号管理、审核中心、举报处理 `[0]`，读者中心 `[0,1,2]`；**未标注 `roles` 的视为公开**）。`router.beforeEach` 做两件事：未登录 → 跳 `Login?redirect=<原路径>`（登录成功后按 `redirect` 回跳）；角色不符 → 跳出错页。store 用动态 `import` 取，避免 `store → request.js → router` 的加载环。
 
-**`meta.plainBg`**：内容区不再用默认的白卡底（`.router-content` 的 `--at-bg-card`），而是与整页同色 `--at-bg-page`，边框也隐藏。审核中心用它让左右两栏和页面背景连成一片；内嵌面板的表格同步把 `--el-table-bg-color` 等变量指到页面底色，否则浅底上还会压一块纯白。
+**审核中心的底色**：与文章管理 / 分类管理一致——外层 `.router-content` 用默认卡片底（`--at-bg-card`）与边框；左侧类型栏用 `--at-bg-stat`，右侧面板不上色、只留边框，内嵌表格沿用站内口径（行 `--at-bg-card`、表头 `--at-bg-stat`、悬浮 `#f9f7f2`）。
 
 > ⚠️ **它只管入口显隐与跳转，不是安全防线**——真正的权限判定在后端 `TokenCheck`（`spring.tokenCheck.notAllowUrl`）。
 > 两边是**同一份权限的两面**：改 `meta.roles` 必须同步后端 `notAllowUrl`（四份配置）与 `TokenCheckTest` 矩阵，

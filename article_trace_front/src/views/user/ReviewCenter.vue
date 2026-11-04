@@ -160,25 +160,38 @@ watch(activeType, () => {
 
     .type-refresh {
       width: 100%;
+      /* el-button 默认纯白，在暖色侧栏上会变成一条突兀的白条 */
+      background: var(--at-bg-card);
+      border-color: var(--at-border-warm);
+      color: var(--at-text-regular);
+
+      &:hover {
+        background: var(--at-bg-tint);
+        border-color: var(--at-celadon);
+        color: var(--at-celadon);
+      }
     }
   }
 
   .panel-area {
     flex: 1;
     min-width: 0;
-    /* 路由已声明 plainBg：面板与页面同底色，不再叠一张白卡 */
+    /* 与文章管理同底：面板不再上色，露出外层的内容卡片，只留边框分隔 */
     background: transparent;
     border: 1px solid var(--at-border-warm);
     border-radius: 12px;
     padding: 16px;
 
-    /* 内嵌面板的表格也跟页面底色走，否则浅底上还会压一块纯白 */
+    /* 内嵌表格跟站内其他表格同一口径：卡片底、浅色表头 */
     :deep(.el-table) {
-      --el-table-bg-color: var(--at-bg-page);
-      --el-table-tr-bg-color: var(--at-bg-page);
-      --el-table-header-bg-color: var(--at-bg-stat);
-      --el-table-row-hover-bg-color: var(--at-bg-tint);
-      --el-table-border-color: var(--at-border-warm);
+      --el-table-bg-color: var(--at-bg-card);
+      --el-table-tr-bg-color: var(--at-bg-card);
+      --el-table-row-hover-bg-color: #f9f7f2;
+      --el-table-border-color: var(--at-divider-warm);
+
+      .el-table__header th {
+        background-color: var(--at-bg-stat);
+      }
     }
   }
 
