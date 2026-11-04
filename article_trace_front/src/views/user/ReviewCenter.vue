@@ -83,6 +83,9 @@ watch(activeType, () => {
 
 <style lang="scss" scoped>
 .review-center-container {
+  /* 与文章管理 / 分类管理同一个页面入场：整页上移 10px + 淡入 */
+  animation: fadeIn 0.5s ease-out;
+
   .review-body {
     display: flex;
     gap: 20px;
