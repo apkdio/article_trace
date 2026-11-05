@@ -1,10 +1,11 @@
 <script setup>
 import {ref, onMounted} from 'vue'
 import {useRoute} from 'vue-router'
-import {CaretBottom, HomeFilled, SwitchButton} from '@element-plus/icons-vue'
+import {CaretBottom, HomeFilled, SwitchButton, Sunny, Moon} from '@element-plus/icons-vue'
 import avatar from '@/assets/defaultLogo.jpg'
 import {checkTime} from '@/utils/timeCheck.js'
 import {userInfoStore} from '@/stores/userInfo.js'
+import {themeStore} from '@/stores/theme.js'
 import router from '@/router/index.js'
 import {logout as doLogout} from '@/utils/auth.js'
 import UserTypeTag from '@/components/UserTypeTag.vue'
@@ -35,9 +36,7 @@ const logout = (command) => {
             <div class="el-aside__logo"></div>
             <el-menu
                 :default-active="defaultActive"
-                active-text-color="#2b7a78"
                 background-color="transparent"
-                text-color="#57534c"
                 :router="true"
                 unique-opened
                 class="custom-menu"
@@ -57,6 +56,13 @@ const logout = (command) => {
                     <p class="label">上次登录时间</p>
                     <p class="value">{{ userInfoStore().lastLogin }}</p>
                 </div>
+                <el-tooltip
+                    effect="light"
+                    :content="themeStore().isDark ? '切换亮色模式' : '切换暗黑模式'"
+                    placement="bottom"
+                >
+                    <el-button :icon="themeStore().isDark ? Sunny : Moon" circle class="header-theme-toggle" @click="themeStore().toggleTheme"/>
+                </el-tooltip>
                 <!-- 铃铛与通知抽屉由组件统一提供，外观沿用默认的图标样式 -->
                 <NotificationBell class="header-notify"/>
                 <el-dropdown placement="bottom-end" @command="logout">
@@ -111,11 +117,11 @@ const logout = (command) => {
             :deep(.el-menu-item), :deep(.el-sub-menu__title) {
                 margin: 2px 10px;
                 border-radius: 6px;
-                height: 48px !important;
-                line-height: 48px !important;
+                height: 48px;
+                line-height: 48px;
                 display: flex;
                 align-items: center;
-                color: var(--at-text-regular) !important;
+                color: var(--at-text-regular);
 
                 span {
                     display: inline-block;
@@ -126,22 +132,22 @@ const logout = (command) => {
             }
 
             :deep(.el-menu--inline) {
-                background-color: rgba(44, 42, 38, 0.035) !important;
+                background-color: var(--at-bg-stat);
                 border-radius: 6px;
                 margin: 0 10px;
                 padding: 0;
                 overflow: hidden;
 
                 .el-menu-item {
-                    padding-left: 48px !important;
+                    padding-left: 48px;
                     margin: 0;
                 }
             }
 
             :deep(.el-menu-item) {
                 &.is-active {
-                    background-color: var(--at-bg-card) !important;
-                    color: var(--at-celadon) !important;
+                    background-color: var(--at-bg-card);
+                    color: var(--at-celadon);
                     font-weight: 600;
                     box-shadow: 0 2px 8px rgba(44, 42, 38, 0.05);
                 }
@@ -225,6 +231,10 @@ const logout = (command) => {
 }
 
 // 铃铛样式已移入 NotificationBell，这里只负责在本布局里的间距
+.header-theme-toggle {
+    margin-right: 14px;
+}
+
 .header-notify {
     margin-right: 16px;
 

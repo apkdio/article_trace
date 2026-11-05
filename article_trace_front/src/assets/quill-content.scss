@@ -124,6 +124,23 @@
     }
   }
 
+  /* 正文插图：暗色模式下默认轻微压暗防眩光，悬停恢复原画 */
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    display: block;
+    margin: 20px auto;
+    filter: var(--at-img-filter);
+    transition: filter 0.25s ease, transform 0.25s ease;
+    cursor: zoom-in;
+
+    &:hover {
+      filter: none !important;
+      transform: scale(1.008);
+    }
+  }
+
   /* 只读表格块：Quill 1.3 没有表格格式，Markdown 导入的表格整块嵌在正文里（ArticleManage.vue 的 TableEmbed）*/
   .ql-table-embed,
   table {

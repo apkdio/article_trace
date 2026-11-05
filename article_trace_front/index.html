@@ -5,6 +5,19 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文迹</title>
+    <script>
+      (function() {
+        try {
+          const raw = localStorage.getItem('article_trace_theme');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.isDark) {
+              document.documentElement.classList.add('dark');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

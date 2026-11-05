@@ -44,8 +44,8 @@ article_trace_front/
     │   ├── confirmDeleteAccount.js #   账号注销确认
     │   └── site.js                 #   站点功能开关（免登录探测：注册/评论/申请/站名/logo）
     ├── assets/                     # 静态资源
-    │   ├── main.scss               #   全局样式与宣纸竹青主题变量
-    │   ├── quill-content.scss      #   正文排版（对齐/缩进/字号/引用/代码块/表格）在展示侧的样式
+    │   ├── main.scss               #   全局样式、宣纸竹青与沉香金珀昼夜设计令牌
+    │   ├── quill-content.scss      #   正文排版（对齐/缩进/字号/引用/代码块/表格/暗色防眩光）在展示侧的样式
     │   └── *.jpg / *.png           #   封面/Logo/背景图
     ├── components/                 # 公共组件
     │   ├── UserLayout.vue          #   用户中心布局（侧边栏 + header）
@@ -63,6 +63,7 @@ article_trace_front/
     │   └── index.js                # 路由配置（公共区/读者中心/作者后台）
     ├── stores/                     # Pinia 状态仓库
     │   ├── userInfo.js             #   用户信息（令牌不存这里）
+    │   ├── theme.js                #   明暗主题状态（亮色/暗黑持久化）
     │   └── searchConditions.js     #   搜索条件
     ├── utils/                      # 工具函数
     │   ├── request.js              #   Axios 实例 + 拦截器（401 自动登出）

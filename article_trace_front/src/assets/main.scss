@@ -21,25 +21,88 @@
   --at-bg-card: #fdfcf9;
   --at-bg-stat: #f5f3ee;
   --at-bg-tint: #f0ece3;
+  --at-row-hover: #f9f7f2;
   --at-border-warm: #e5e0d4;
   --at-divider-warm: #ece7dc;
   --at-text-main: #2c2a26;
   --at-text-regular: #57534c;
   --at-text-secondary: #8a847a;
+  --at-text-inverse: #ffffff;
   --at-celadon: #2b7a78;
   --at-celadon-hover: #236462;
   --at-celadon-dark: #1f5c5a;
   --at-celadon-tag-bg: #e3f1ef;
   --at-celadon-tag-border: #bedcd8;
+  --at-banner-master: linear-gradient(135deg, #2b7a78 0%, #3a6073 100%);
+  --at-rank-top3-bg: #2b7a78;
+  --at-rank-top3-color: #ffffff;
+  --at-shadow-card: 0 2px 12px rgba(44, 42, 38, 0.03);
+  --at-shadow-dropdown: 0 6px 20px rgba(44, 42, 38, 0.08);
+  --at-img-filter: none;
+  --at-logo-filter: none;
 
-  /* 覆写 Element Plus 主色为竹青色系，使按钮、Tag、输入框焦点与分页自然对齐 */
-  --el-color-primary: #2b7a78 !important;
-  --el-color-primary-light-3: #579b99 !important;
-  --el-color-primary-light-5: #7cb5b3 !important;
-  --el-color-primary-light-7: #aad0ce !important;
-  --el-color-primary-light-8: #c5e0de !important;
-  --el-color-primary-light-9: #e6f2f1 !important;
-  --el-color-primary-dark-2: #1f5c5a !important;
+  /* 覆写 Element Plus 亮色主色为竹青色系 */
+  --el-color-primary: #2b7a78;
+  --el-color-primary-light-3: #579b99;
+  --el-color-primary-light-5: #7cb5b3;
+  --el-color-primary-light-7: #aad0ce;
+  --el-color-primary-light-8: #c5e0de;
+  --el-color-primary-light-9: #e6f2f1;
+  --el-color-primary-dark-2: #1f5c5a;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --at-bg-page: #171615;
+  --at-bg-aside: #1f1d1b;
+  --at-bg-header: #211f1d;
+  --at-bg-card: #272522;
+  --at-bg-stat: #1e1c1a;
+  --at-bg-tint: #322f2b;
+  --at-row-hover: #2c2a26;
+  --at-border-warm: #3f3b35;
+  --at-divider-warm: #2f2c27;
+  --at-text-main: #eeeae2;
+  --at-text-regular: #b2aba0;
+  --at-text-secondary: #7f796f;
+  --at-text-inverse: #171615;
+  --at-celadon: #c8965a;
+  --at-celadon-hover: #d8a468;
+  --at-celadon-dark: #dfaa6d;
+  --at-celadon-tag-bg: #2c251c;
+  --at-celadon-tag-border: #463928;
+  --at-banner-master: linear-gradient(135deg, #2d2419 0%, #382d21 100%);
+  --at-rank-top3-bg: linear-gradient(135deg, #c8965a 0%, #edd59e 100%);
+  --at-rank-top3-color: #171615;
+  --at-shadow-card: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --at-shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --at-img-filter: brightness(0.85) contrast(0.92);
+  --at-logo-filter: invert(1) brightness(0.95);
+
+  /* 覆写 Element Plus 暗黑主色为金箔流金色系 */
+  --el-color-primary: #c8965a;
+  --el-color-primary-light-3: #d8a468;
+  --el-color-primary-light-5: #e4b882;
+  --el-color-primary-light-7: #edd0a8;
+  --el-color-primary-light-8: #f3dfc2;
+  --el-color-primary-light-9: #342a1e;
+  --el-color-primary-dark-2: #a57842;
+
+  /* 映射 Element Plus 基础暗黑变量，使未定制组件自动接轨暗黑模式 */
+  --el-bg-color: var(--at-bg-card);
+  --el-bg-color-page: var(--at-bg-page);
+  --el-bg-color-overlay: var(--at-bg-card);
+  --el-text-color-primary: var(--at-text-main);
+  --el-text-color-regular: var(--at-text-regular);
+  --el-text-color-secondary: var(--at-text-secondary);
+  --el-text-color-placeholder: var(--at-text-secondary);
+  --el-border-color: var(--at-border-warm);
+  --el-border-color-light: var(--at-divider-warm);
+  --el-border-color-lighter: var(--at-divider-warm);
+  --el-fill-color: var(--at-bg-stat);
+  --el-fill-color-light: var(--at-bg-stat);
+  --el-fill-color-blank: var(--at-bg-card);
 }
 
 html {
@@ -50,6 +113,7 @@ body {
   margin: 0;
   background-color: var(--at-bg-page);
   color: var(--at-text-main);
+  -webkit-text-fill-color: initial;
   /**
    * 压过 Element Plus 的滚动条补偿。
    *
@@ -76,6 +140,12 @@ body {
    用 body 前缀提一级权重——main.scss 先于 Element Plus 的样式加载，同权重会被后者盖掉 */
 body .el-loading-mask {
   z-index: 5;
+}
+
+/* 全站 Logo 图在暗黑模式下自动取反黑白 */
+html.dark .logo-img,
+html.dark .el-aside__logo {
+  filter: invert(1) brightness(0.95);
 }
 
 /* 通用文章分类标签 */
@@ -119,23 +189,23 @@ body .el-loading-mask {
   .btn-prev,
   .btn-next,
   .el-pager li {
-    background-color: var(--at-bg-tint) !important;
-    color: var(--at-text-regular) !important;
+    background-color: var(--at-bg-tint);
+    color: var(--at-text-regular);
     border-radius: 4px;
 
     &:hover:not(:disabled):not(.is-active) {
-      color: var(--at-celadon) !important;
+      color: var(--at-celadon);
     }
 
     &.is-active {
-      background-color: var(--at-celadon) !important;
-      color: #ffffff !important;
+      background-color: var(--at-celadon);
+      color: var(--at-text-inverse);
       font-weight: 700;
     }
 
     &:disabled {
-      background-color: var(--at-bg-stat) !important;
-      color: #c0bbb0 !important;
+      background-color: var(--at-bg-stat);
+      color: var(--at-text-secondary);
     }
   }
 }
