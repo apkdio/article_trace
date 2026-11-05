@@ -74,6 +74,10 @@
 - **作者申请**：读者提交 → 通知站长 → 审批提权 → 通知申请人；每 12 小时检查一次待审积压并邮件提醒站长（`author-apply.remindCron`）。
 - **AI 检索问答**：独立的 Python RAG 微服务（gRPC 契约，可用共享密钥 `x-agent-key` 鉴权），支持文章索引增量/全量同步、幽灵条目对账与多轮会话；Java 侧有总开关，关闭时整体降级、不影响主服务。
 
+**界面与体验**
+
+- **明暗主题**：亮色「宣纸竹青」/ 暗色「沉香金珀」两套令牌，门户、文章详情与后台顶栏都可切换，选择持久化到本地；暗色下正文插图自动压暗防眩光（悬停恢复原画）、Logo 反色。Element Plus 的暗色变量一并映射，未单独定制的组件自动跟随。
+
 ## 技术栈
 
 - **后端**：Spring Boot 3.5 · Java 21 · MyBatis-Plus · MySQL 8 · Redis · RustFS(S3) · JWT · BCrypt · Spring Mail · easy-captcha · jsoup · gRPC / Protobuf
