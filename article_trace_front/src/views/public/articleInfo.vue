@@ -687,7 +687,7 @@ const pushSearch = (type) => {
         width: 100%;
         height: 80px;
         z-index: 10;
-        background: rgba(253, 252, 249, 0.75);
+        background: var(--at-mask-bg);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
