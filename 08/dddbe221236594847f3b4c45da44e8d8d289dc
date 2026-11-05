@@ -1,0 +1,33 @@
+article_trace_front/src/views/user/AccountManage.vue
+  s_e6c88f1ab3893a::t_67c292d3da02e0 310,319,334,340,347,354
+  s_e6c88f1ab3893a::t_ef6757e39cbc24 380,386,394,404,409
+  s_e6c88f1ab3893a::t_4410580a904044 419
+article_trace_front/src/views/article/ArticleCategory.vue
+  s_e6c88f1ab3893a::t_c8d02f3e5a0ae1 297
+article_trace_front/src/views/user/UserInfo.vue
+  s_e6c88f1ab3893a::t_e27d1a7a855707 164,171
+article_trace_front/src/assets/main.scss
+  s_e6c88f1ab3893a::t_693e677ad5408b 187-201
+article_trace_front/src/components/NotificationBell.vue
+  s_e6c88f1ab3893a::t_a07eca0de9760e 238,261,276,286
+article_trace_front/src/views/user/ReviewCenter.vue
+  s_e6c88f1ab3893a::t_a5b30a098de4eb 192
+article_trace_front/src/views/user/UserResetPassword.vue
+  s_e6c88f1ab3893a::t_c91df5c68958c3 125,132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "08dddbe221236594847f3b4c45da44e8d8d289dc",
+  "prompts": {},
+  "sessions": {
+    "s_e6c88f1ab3893a": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_7k39pamrsvig",
+        "model": "gemini-3.8-flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
