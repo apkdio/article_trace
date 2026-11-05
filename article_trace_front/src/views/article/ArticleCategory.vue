@@ -294,7 +294,7 @@ const handleClose = (done) => {
 :deep(.modern-table) {
   --el-table-bg-color: var(--at-bg-card);
   --el-table-tr-bg-color: var(--at-bg-card);
-  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-row-hover-bg-color: var(--at-row-hover);
   --el-table-border-color: var(--at-divider-warm);
 
   .el-table__header th {

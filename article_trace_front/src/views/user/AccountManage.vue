@@ -307,7 +307,7 @@ const changeUserType = (id, type) => {
 
   .apply-title {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--at-text-main);
   }
 
   .apply-item {
@@ -316,7 +316,7 @@ const changeUserType = (id, type) => {
     justify-content: space-between;
     gap: 16px;
     padding: 10px 0;
-    border-bottom: 1px solid #f2f3f5;
+    border-bottom: 1px solid var(--at-divider-warm);
 
     &:last-child {
       border-bottom: none;
@@ -331,27 +331,27 @@ const changeUserType = (id, type) => {
   .apply-user {
     font-size: 14px;
     font-weight: 600;
-    color: #303133;
+    color: var(--at-text-main);
 
     .apply-username {
       margin-left: 4px;
       font-size: 12px;
       font-weight: 400;
-      color: #909399;
+      color: var(--at-text-secondary);
     }
   }
 
   .apply-reason {
     margin-top: 4px;
     font-size: 13px;
-    color: #606266;
+    color: var(--at-text-regular);
     word-break: break-word;
   }
 
   .apply-time {
     margin-top: 4px;
     font-size: 12px;
-    color: #a8abb2;
+    color: var(--at-text-secondary);
   }
 
   .apply-actions {
@@ -377,13 +377,13 @@ const changeUserType = (id, type) => {
 
     .username {
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--at-text-main);
       font-size: 14px;
     }
 
     .nickname {
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--at-text-secondary);
       margin-top: 2px;
     }
   }
@@ -391,7 +391,7 @@ const changeUserType = (id, type) => {
 
 .email-text {
   font-size: 13px;
-  color: #64748b;
+  color: var(--at-text-regular);
 }
 
 /* 活跃轨迹 */
@@ -401,12 +401,12 @@ const changeUserType = (id, type) => {
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: #475569;
+    color: var(--at-text-regular);
   }
 
   .time-sub {
     font-size: 11px;
-    color: #b2becd;
+    color: var(--at-text-secondary);
     margin-top: 4px;
     padding-left: 19px;
   }
@@ -416,7 +416,7 @@ const changeUserType = (id, type) => {
 :deep(.modern-table) {
   --el-table-bg-color: var(--at-bg-card);
   --el-table-tr-bg-color: var(--at-bg-card);
-  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-row-hover-bg-color: var(--at-row-hover);
   --el-table-border-color: var(--at-divider-warm);
 
   .el-table__header th {

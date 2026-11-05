@@ -161,14 +161,14 @@ const updateUserInfo = () => {
   /* 标签加粗，提升可读性 */
   :deep(.el-form-item__label) {
     font-weight: 600;
-    color: #444;
+    color: var(--at-text-main);
     padding-bottom: 8px !important;
   }
 
   /* 输入框聚焦效果优化 */
   :deep(.el-input__wrapper) {
     transition: all 0.3s;
-    box-shadow: 0 0 0 1px #dcdfe6 inset;
+    box-shadow: 0 0 0 1px var(--at-border-warm) inset;
 
     &.is-focus {
       box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;

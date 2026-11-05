@@ -184,6 +184,21 @@ html.dark .el-aside__logo {
   }
 }
 
+/* 全局表格暗黑与亮色自适应兜底：消除白色 hover */
+.el-table {
+  --el-table-bg-color: var(--at-bg-card);
+  --el-table-tr-bg-color: var(--at-bg-card);
+  --el-table-header-bg-color: var(--at-bg-stat);
+  --el-table-row-hover-bg-color: var(--at-row-hover);
+  --el-table-border-color: var(--at-divider-warm);
+  --el-table-header-text-color: var(--at-text-regular);
+  --el-table-text-color: var(--at-text-main);
+
+  .el-table__body tr:hover > td.el-table__cell {
+    background-color: var(--at-row-hover) !important;
+  }
+}
+
 /* 原生朴素风格的分页器配色跟进宣纸竹青 */
 .el-pagination.is-background {
   .btn-prev,

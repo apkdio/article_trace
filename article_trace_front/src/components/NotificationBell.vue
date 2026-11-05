@@ -235,7 +235,7 @@ defineExpose({openNotify, unread})
         padding: 40px 0;
         text-align: center;
         font-size: 13px;
-        color: #909399;
+        color: var(--at-text-secondary);
     }
 
     .notify-item {
@@ -258,7 +258,7 @@ defineExpose({openNotify, unread})
             align-items: center;
             gap: 6px;
             font-size: 14px;
-            color: #303133;
+            color: var(--at-text-main);
         }
 
         .notify-dot {
@@ -273,7 +273,7 @@ defineExpose({openNotify, unread})
             margin-top: 4px;
             font-size: 13px;
             line-height: 1.5;
-            color: #606266;
+            color: var(--at-text-regular);
             word-break: break-word;
         }
 
@@ -283,7 +283,7 @@ defineExpose({openNotify, unread})
             justify-content: space-between;
             margin-top: 4px;
             font-size: 12px;
-            color: #a8abb2;
+            color: var(--at-text-secondary);
         }
     }
 
