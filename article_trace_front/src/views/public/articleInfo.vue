@@ -529,14 +529,18 @@ const pushSearch = (type) => {
   .main-wrapper {
     margin-top: 100px;
     gap: 20px;
-    align-items: flex-start;
+    /* 两栏同高：右侧热门榜比文章卡片长时，卡片跟着撑到底，不留半截 */
+    align-items: stretch;
   }
 
   // 左侧内容区
   .article-container {
     padding: 0;
+    display: flex;
+    flex-direction: column;
 
     .content-card-wrapper {
+      flex: 1 1 auto;
       background: var(--at-bg-card);
       border-radius: 12px;
       padding: 28px 40px;
