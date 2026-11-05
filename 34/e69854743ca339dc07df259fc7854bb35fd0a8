@@ -1,0 +1,30 @@
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_b9d48b197befff 868-871
+  s_ab74ea15e793d1::t_f26fab4539223e 350-355,570,580-583,587-588,592,595-596
+  s_ab74ea15e793d1::t_00b7d164ede404 2
+  s_ab74ea15e793d1::t_e69733ac718ecf 845,847-848,853-854,860
+  s_ab74ea15e793d1::t_45cb80dbe68d34 873-874
+  s_ab74ea15e793d1::t_389da69f8ffdb8 841-842,846
+  s_ab74ea15e793d1::t_450684421039e8 864
+  s_ab74ea15e793d1::t_aa88a6620dfaf3 586,589-591,593-594
+  s_ab74ea15e793d1::t_a9df556410c985 895,898
+  s_ab74ea15e793d1::t_934adab2caddba 840,843-844,849-852,855-859,861-863,865-867,872,875-894,896-897,899-901
+  s_ab74ea15e793d1::t_8887be22226d18 584-585
+  s_ab74ea15e793d1::t_72bf08561bc90f 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "34e69854743ca339dc07df259fc7854bb35fd0a8",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
