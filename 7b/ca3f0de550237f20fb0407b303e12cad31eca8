@@ -1,0 +1,42 @@
+article_trace_front/src/assets/main.scss
+  s_e6c88f1ab3893a::t_2dc6db4d59ceba 45-51,55-56,84-105
+  s_e6c88f1ab3893a::t_5aef6f031df84e 146-148
+  s_e6c88f1ab3893a::t_e5df3d08b08fad 145,149-150
+  s_e6c88f1ab3893a::t_bcc2339409d865 116
+  s_e6c88f1ab3893a::t_32780ee37f1727 192-193,197,201-202,207-208
+  s_e6c88f1ab3893a::t_3835c835c54b6f 81
+  s_e6c88f1ab3893a::t_7688ef8342a54a 24,30,36-41,44,52-54,57-80,82-83
+  s_e6c88f1ab3893a::t_e2d15977c4376f 42
+article_trace_front/src/components/UserLayout.vue
+  s_e6c88f1ab3893a::t_ba89640ce8158c 120-121,124,135,142,149-150
+  s_e6c88f1ab3893a::t_8788414f165756 234-237
+  s_e6c88f1ab3893a::t_15caaa351f2821 4,8
+  s_e6c88f1ab3893a::t_ca66970604df7d 59-65
+article_trace_front/index.html
+  s_e6c88f1ab3893a::t_27fa3fd4f8eafd 8-20
+article_trace_front/src/main.js
+  s_e6c88f1ab3893a::t_f8147c9a21fdbd 3
+article_trace_front/src/stores/theme.js
+  s_e6c88f1ab3893a::t_bb2cf10edd6bf5 1-27
+article_trace_front/README.md
+  s_e6c88f1ab3893a::t_818d82e1f7a169 66
+  s_e6c88f1ab3893a::t_7266bf5efdc6c0 47-48
+article_trace_front/src/assets/quill-content.scss
+  s_e6c88f1ab3893a::t_d8781c70e16d35 127-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "7bca3f0de550237f20fb0407b303e12cad31eca8",
+  "prompts": {},
+  "sessions": {
+    "s_e6c88f1ab3893a": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_7k39pamrsvig",
+        "model": "gemini-3.8-flash"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
