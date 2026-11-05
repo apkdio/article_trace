@@ -1283,16 +1283,94 @@ const refreshAfterDelete = async () => {
   border-radius: 4px;
 
   :deep(.ql-toolbar) {
+    position: sticky;
+    /* 抽屉内容区自带 --el-drawer-padding-primary 的上内边距：负偏移让吸顶时压到滚动区顶边，
+       否则上沿会露出一条正文 */
+    top: calc(-1 * var(--el-drawer-padding-primary, 20px));
+    z-index: 10;
     border: none;
     border-bottom: 1px solid var(--at-border-warm);
     background: var(--at-bg-stat);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+    button,
+    .ql-picker-label {
+      border-radius: 4px;
+      color: var(--at-text-regular);
+
+      &:hover,
+      &:focus {
+        background: var(--at-bg-tint) !important;
+      }
+
+      &.ql-active {
+        background: var(--at-celadon-tag-bg) !important;
+      }
+    }
+
+    .ql-picker-options {
+      background-color: var(--at-bg-card) !important;
+      border: 1px solid var(--at-border-warm) !important;
+
+      .ql-picker-item:hover {
+        background: var(--at-bg-tint) !important;
+      }
+      .ql-picker-item.ql-selected {
+        background: var(--at-celadon-tag-bg) !important;
+      }
+    }
+
+    .ql-stroke {
+      stroke: var(--at-text-regular) !important;
+    }
+    .ql-fill {
+      fill: var(--at-text-regular) !important;
+    }
+    .ql-picker {
+      color: var(--at-text-regular) !important;
+    }
+
+    button:hover .ql-stroke,
+    button.ql-active .ql-stroke,
+    .ql-picker-label:hover .ql-stroke,
+    .ql-picker-label.ql-active .ql-stroke {
+      stroke: var(--at-celadon) !important;
+    }
+
+    button:hover .ql-fill,
+    button.ql-active .ql-fill,
+    .ql-picker-label:hover .ql-fill,
+    .ql-picker-label.ql-active .ql-fill {
+      fill: var(--at-celadon) !important;
+    }
+
+    button:hover,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active {
+      color: var(--at-celadon) !important;
+    }
 
     /* 只有 markdown 按钮需要自己画图标：Quill 的内置图标表里没有它（formula / clean 都有 SVG），
        再给 formula 补一个就成两个图标叠在一起了 */
+    button.ql-markdown {
+      display: inline-flex;
+      align-items: center;      /* 文字图标按按钮盒子居中，别跟着行盒往下沉 */
+      justify-content: center;
+      padding: 0;
+    }
+
     .ql-markdown::before {
       content: 'M↓';
       font-size: 13px;
       font-weight: 700;
+      color: var(--at-text-regular);
+      line-height: 1;
+    }
+
+    button:hover .ql-markdown::before,
+    button.ql-active .ql-markdown::before {
+      color: var(--at-celadon);
     }
 
     /* 下拉文案：snow 只为 Normal/Small/Large/Huge 配了 ::before，自定义档位与中文标题都得自己补，
@@ -1454,7 +1532,7 @@ const refreshAfterDelete = async () => {
 :deep(.modern-table) {
   --el-table-bg-color: var(--at-bg-card);
   --el-table-tr-bg-color: var(--at-bg-card);
-  --el-table-row-hover-bg-color: #f9f7f2;
+  --el-table-row-hover-bg-color: var(--at-row-hover);
   --el-table-border-color: var(--at-divider-warm);
 
   .el-table__header th {
@@ -1520,7 +1598,7 @@ const refreshAfterDelete = async () => {
   .article-title {
     font-size: 28px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: var(--at-text-main);
     line-height: 1.4;
     margin-bottom: 20px;
   }
@@ -1537,7 +1615,7 @@ const refreshAfterDelete = async () => {
       align-items: center;
       gap: 5px;
       font-size: 13px;
-      color: #888;
+      color: var(--at-text-secondary);
       margin-right: 20px;
 
       .el-icon {
@@ -1583,7 +1661,7 @@ const refreshAfterDelete = async () => {
   .article-content {
     font-size: 16px;
     line-height: 1.8;
-    color: #3f3f3f;
+    color: var(--at-text-main);
     letter-spacing: 0.5px;
 
     /* 处理 v-html 内部的图片 */
