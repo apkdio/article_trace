@@ -1279,13 +1279,13 @@ const refreshAfterDelete = async () => {
 
 .editor-container {
   width: 100%;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--at-border-warm);
   border-radius: 4px;
 
   :deep(.ql-toolbar) {
     border: none;
-    border-bottom: 1px solid #dcdfe6;
-    background: #fcfcfc;
+    border-bottom: 1px solid var(--at-border-warm);
+    background: var(--at-bg-stat);
 
     /* 只有 markdown 按钮需要自己画图标：Quill 的内置图标表里没有它（formula / clean 都有 SVG），
        再给 formula 补一个就成两个图标叠在一起了 */
@@ -1324,6 +1324,8 @@ const refreshAfterDelete = async () => {
     border: none;
     min-height: 350px;
     font-size: 15px;
+    background: var(--at-bg-card);
+    color: var(--at-text-main);
   }
 
   /* .ql-editor 是 height:100%，而父级高度只来自上面的 min-height（高度不确定）时百分比会退化成 auto：
@@ -1335,7 +1337,7 @@ const refreshAfterDelete = async () => {
 
   /* 表格块在编辑器里给一层虚线轮廓：它是整块只读内容，不是普通段落 */
   :deep(.ql-editor .ql-table-embed) {
-    outline: 1px dashed #dcdfe6;
+    outline: 1px dashed var(--at-border-warm);
     outline-offset: -1px;
   }
 }
@@ -1344,9 +1346,9 @@ const refreshAfterDelete = async () => {
 .formula-preview {
   margin: 12px 0;
   padding: 12px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--at-border-warm);
   border-radius: 4px;
-  background: #fafafa;
+  background: var(--at-bg-stat);
   min-height: 56px;
 
   .formula-preview-label {
@@ -1569,11 +1571,11 @@ const refreshAfterDelete = async () => {
 
     .image-placeholder {
       height: 200px;
-      background: #f5f7fa;
+      background: var(--at-bg-stat);
       display: flex;
       justify-content: center;
       align-items: center;
-      color: #909399;
+      color: var(--at-text-secondary);
     }
   }
 

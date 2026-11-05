@@ -434,7 +434,7 @@ const uploadSubmit = async () => {
 
 .info-text p {
   display: flex; align-items: center; gap: 6px;
-  font-size: 13px; color: #909399; margin: 4px 0;
+  font-size: 13px; color: var(--at-text-secondary); margin: 4px 0;
 }
 
 

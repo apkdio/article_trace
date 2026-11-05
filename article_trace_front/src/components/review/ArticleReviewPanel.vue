@@ -193,7 +193,7 @@ defineExpose({load})
 
     .panel-count {
       font-size: 13px;
-      color: #909399;
+      color: var(--at-text-secondary);
     }
   }
 
@@ -210,7 +210,7 @@ defineExpose({load})
     display: flex;
     gap: 20px;
     font-size: 13px;
-    color: #909399;
+    color: var(--at-text-secondary);
     margin-bottom: 10px;
   }
 

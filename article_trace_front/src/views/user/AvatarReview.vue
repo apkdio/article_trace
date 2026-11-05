@@ -223,24 +223,24 @@ const reject = (row) => {
   gap: 2px;
 
   .nick {
-    color: #1e293b;
+    color: var(--at-text-main);
     font-weight: 500;
   }
 
   .username {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--at-text-secondary);
   }
 }
 
 .reason {
   font-size: 13px;
-  color: #64748b;
+  color: var(--at-text-regular);
   line-height: 1.5;
 }
 
 .muted {
-  color: #cbd5e1;
+  color: var(--at-text-secondary);
 }
 
 .pager {

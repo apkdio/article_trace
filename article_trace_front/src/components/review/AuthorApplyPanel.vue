@@ -155,7 +155,7 @@ defineExpose({load})
 
     .panel-count {
       font-size: 13px;
-      color: #909399;
+      color: var(--at-text-secondary);
     }
   }
 
@@ -165,11 +165,12 @@ defineExpose({load})
 
     .nick {
       font-weight: 600;
+      color: var(--at-text-main);
     }
 
     .username {
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--at-text-secondary);
     }
   }
 

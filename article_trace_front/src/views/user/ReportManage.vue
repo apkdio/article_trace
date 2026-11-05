@@ -262,11 +262,12 @@ const reject = (row) => {
 
     .nick {
       font-weight: 600;
+      color: var(--at-text-main);
     }
 
     .username {
       font-size: 12px;
-      color: #94a3b8;
+      color: var(--at-text-secondary);
     }
   }
 
@@ -276,7 +277,7 @@ const reject = (row) => {
   }
 
   .muted {
-    color: #c0c4cc;
+    color: var(--at-text-secondary);
   }
 
   .pager {

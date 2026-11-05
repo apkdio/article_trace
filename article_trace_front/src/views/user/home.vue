@@ -50,7 +50,6 @@ onMounted(() => {
       class="dashboard-container"
       v-loading="pageLoading"
       element-loading-text="文迹数据加载中..."
-      element-loading-background="rgba(245, 242, 235, 0.7)"
   >
     <template v-if="!pageLoading">
       <!-- 保持原有结构，动画是通过 CSS animation 实现的 -->
