@@ -92,7 +92,7 @@ defineProps({
         .writer-stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            background: #f5f3ee;
+            background: var(--at-bg-stat);
             border-radius: 8px;
             padding: 12px 0;
             margin: 14px 0;

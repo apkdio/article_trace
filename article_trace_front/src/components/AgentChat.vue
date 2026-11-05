@@ -380,20 +380,20 @@ function formatSessionTime(ts) {
             align-items: center;
             justify-content: center;
             gap: 10px;
-            background: #f5f7fa;
-            color: #909399;
+            background: var(--at-bg-stat);
+            color: var(--at-text-secondary);
 
             p {
                 margin: 0;
                 font-size: 14px;
-                color: #606266;
+                color: var(--at-text-regular);
             }
         }
 
         .session-list {
             flex: 1;
             overflow-y: auto;
-            background: #f5f7fa;
+            background: var(--at-bg-stat);
             padding: 8px;
 
             .session-tip {
@@ -461,7 +461,7 @@ function formatSessionTime(ts) {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
-            background: #f5f7fa;
+            background: var(--at-bg-stat);
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -559,8 +559,8 @@ function formatSessionTime(ts) {
             display: flex;
             gap: 8px;
             padding: 12px 16px;
-            border-top: 1px solid #ebeef5;
-            background: #fff;
+            border-top: 1px solid var(--at-border-warm);
+            background: var(--at-bg-card);
         }
     }
 }

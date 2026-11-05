@@ -75,8 +75,9 @@ defineProps({
             flex-shrink: 0;
 
             &.top-three {
-                background: var(--at-celadon);
-                color: #fff;
+                background: var(--at-rank-top3-bg);
+                color: var(--at-rank-top3-color);
+                font-weight: 700;
             }
         }
 

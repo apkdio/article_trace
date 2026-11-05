@@ -1,7 +1,8 @@
 <script setup>
 import {ref, onMounted} from 'vue'
-import {Search, View, SwitchButton, CaretBottom, User, Refresh, Timer, Bell} from '@element-plus/icons-vue'
+import {Search, View, SwitchButton, CaretBottom, User, Refresh, Timer, Bell, Sunny, Moon} from '@element-plus/icons-vue'
 import {userInfoStore} from "@/stores/userInfo.js";
+import {themeStore} from "@/stores/theme.js";
 import avatar from "@/assets/defaultLogo.jpg";
 import cover from "@/assets/defaultCover.jpg"
 import {
@@ -263,6 +264,14 @@ const searchArticleInWriter = (nickName) => {
             placement="bottom"
         >
           <el-button :icon="Refresh" circle @click="clearInf"/>
+        </el-tooltip>
+        <el-tooltip
+            class="box-item"
+            effect="light"
+            :content="themeStore().isDark ? '切换亮色模式' : '切换暗黑模式'"
+            placement="bottom"
+        >
+          <el-button :icon="themeStore().isDark ? Sunny : Moon" circle @click="themeStore().toggleTheme"/>
         </el-tooltip>
         <!--
           站内通知：放在按钮组里、复用圆形按钮样式。

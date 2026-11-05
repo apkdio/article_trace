@@ -241,12 +241,12 @@ defineExpose({openNotify, unread})
     .notify-item {
         padding: 10px 12px;
         border-radius: 8px;
-        border-bottom: 1px solid #f2f3f5;
+        border-bottom: 1px solid var(--at-divider-warm);
         cursor: pointer;
         transition: background 0.2s;
 
         &:hover {
-            background: #f5f7fa;
+            background: var(--at-bg-tint);
         }
 
         &.unread .notify-title {

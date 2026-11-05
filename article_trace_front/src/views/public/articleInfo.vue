@@ -2,9 +2,10 @@
 import {ref, onMounted, computed, nextTick} from 'vue'
 import {
   Search, SwitchButton, CaretBottom, User, Timer, Calendar,
-  ChatLineRound, Delete, Bell
+  ChatLineRound, Delete, Bell, Sunny, Moon
 } from '@element-plus/icons-vue'
 import {userInfoStore} from "@/stores/userInfo.js";
+import {themeStore} from "@/stores/theme.js";
 import avatar from "@/assets/defaultLogo.jpg";
 import {
   addCommentService,
@@ -232,6 +233,14 @@ const pushSearch = (type) => {
                     class="custom-search" @keyup.enter="pushSearch(0)"/>
         </div>
         <el-button :icon="Search" circle @click="pushSearch(0)"/>
+        <el-tooltip
+            class="box-item"
+            effect="light"
+            :content="themeStore().isDark ? '切换亮色模式' : '切换暗黑模式'"
+            placement="bottom"
+        >
+          <el-button :icon="themeStore().isDark ? Sunny : Moon" circle @click="themeStore().toggleTheme"/>
+        </el-tooltip>
         <!-- 站内通知：与门户页一致，放在按钮组里、复用圆形按钮样式（未登录不显示）-->
         <el-tooltip
             v-if="isLogin"
