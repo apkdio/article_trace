@@ -1,5 +1,5 @@
 <script setup>
-import {Key, Lock, Message, Picture, User} from '@element-plus/icons-vue'
+import {Key, Lock, Message, Picture, User, Sunny, Moon} from '@element-plus/icons-vue'
 import {computed, onMounted, ref, watch} from 'vue'
 import {
   forgetPassService,
@@ -10,6 +10,7 @@ import {
 } from "@/api/user.js";
 import router from "@/router/index.js";
 import {userInfoStore} from "@/stores/userInfo.js";
+import {themeStore} from "@/stores/theme.js";
 import {loginCheck} from "@/utils/loginCheck.js";
 import {resetAuthHandled} from "@/utils/session.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
@@ -346,6 +347,12 @@ function clearInf() {
         <transition name="fade-slide" mode="out-in">
           <div class="form-card" :key="isRegister + String(resetPass)">
 
+            <!-- 主题切换：三种表单状态共用，放在卡片右上角 -->
+            <el-tooltip :content="themeStore().isDark ? '切换亮色模式' : '切换暗黑模式'" placement="bottom-end">
+              <el-button :icon="themeStore().isDark ? Sunny : Moon" circle text class="theme-toggle"
+                         @click="themeStore().toggleTheme"/>
+            </el-tooltip>
+
             <!--注册-->
             <el-form ref="FormRef" size="large" v-if="!isRegister && !resetPass" :model="FormData"
                      :rules="FormDataRules">
@@ -560,6 +567,7 @@ function clearInf() {
 
 
 .form-card {
+  position: relative;
   width: 100%;
   max-width: 420px;
   padding: 40px;
@@ -568,6 +576,24 @@ function clearInf() {
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 24px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+
+  .theme-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    /* el-button.is-text 默认 border: 0 solid transparent，这里给切换按钮显式描边 */
+    border: 2px solid #bcbcbc;
+    background: transparent;
+    color: var(--at-text-secondary);
+
+    /* 悬停只改 border 与图标颜色，不铺容器底色（暗色下铺底几乎看不出来） */
+    &:hover,
+    &:focus-visible {
+      color: var(--at-celadon);
+      border-color: var(--at-celadon);
+      background: transparent;
+    }
+  }
 
   .gradient-title {
     font-size: 2.2rem;
@@ -809,6 +835,68 @@ function clearInf() {
   .submit-btn {
     height: 44px;
     font-size: 14px;
+  }
+}
+
+/* 暗色：靠「取图」接缝——竖向上/中/下取图片右缘压暗后的蓝灰，
+   再向右渐深；这样照片和表单背景是同一族颜色，不会出现暖褐撞冷蓝 */
+html.dark {
+  .login-container {
+    /* 底色三段就是下面 .glass-overlay 暗层压在照片右缘后的合成色 */
+    background:
+      linear-gradient(90deg, rgba(8, 9, 12, 0) 40%, rgba(8, 9, 12, 0.88) 100%),
+      linear-gradient(180deg, #424d5b 0%, #525765 42%, #464b58 72%, #383c46 100%);
+  }
+
+  .login-page .bg-section {
+    .glass-overlay {
+      /* 用暗层压图而不是 filter：filter 会连里面的 Logo 一起压暗 */
+      background: rgba(9, 11, 15, 0.55);
+    }
+  }
+
+  /* 要压过 .login-page .bg-section .glass-overlay .logo-img 的 drop-shadow，这里多带一层 html.dark */
+  .login-page .bg-section .glass-overlay .logo-img {
+    filter: invert(1) brightness(1.05) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4));
+  }
+
+  .form-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .theme-toggle {
+    border-color: #4d4d4d;
+  }
+
+  .gradient-title {
+    /* 用 background-image：background 简写会重置上面的 background-clip: text，标题会变成一整条色块 */
+    background-image: linear-gradient(135deg, #eeeae2 0%, #c8965a 100%);
+  }
+
+  .email-code-button {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .submit-btn {
+    background: linear-gradient(135deg, #c8965a 0%, #a57842 100%);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .footer-ops,
+  .captcha-dialog-tip {
+    color: var(--at-text-secondary);
+  }
+}
+
+/* 输入框是 Element 内部结构：:deep 挂在 .login-page 上，html 节点没有 scoped 属性 */
+html.dark .login-page {
+  :deep(.el-input__wrapper) {
+    background-color: rgba(255, 255, 255, 0.05);
+
+    &.is-focus {
+      background-color: rgba(255, 255, 255, 0.09);
+    }
   }
 }
 </style>
