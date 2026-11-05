@@ -1690,7 +1690,7 @@ const refreshAfterDelete = async () => {
 }
 
 .drawer-footer {
-  border-top: 1px solid #f2f2f2;
+  border-top: 1px solid var(--at-divider-warm);
   padding: 15px 20px;
   text-align: right;
 }
