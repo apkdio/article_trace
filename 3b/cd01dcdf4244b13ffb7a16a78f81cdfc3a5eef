@@ -1,0 +1,31 @@
+article_trace_front/src/components/review/ArticleReviewPanel.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 196,213
+article_trace_front/src/views/user/AvatarReview.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 226,232,238,243
+article_trace_front/src/components/review/ProfileReviewPanel.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 214,220,231,236
+article_trace_front/src/views/user/ReportManage.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 265,270,280
+article_trace_front/src/components/review/AuthorApplyPanel.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 158,168,173
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 1282,1287-1288,1327-1328,1340,1349,1351,1574,1578
+article_trace_front/src/views/user/UserLogo.vue
+  s_ab74ea15e793d1::t_c2c7323dafda33 437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.51-trip",
+  "base_commit_sha": "3bcd01dcdf4244b13ffb7a16a78f81cdfc3a5eef",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
