@@ -389,9 +389,9 @@ const searchArticleInWriter = (nickName) => {
         © {{ new Date().getFullYear() }} {{ siteName }} · MIT License
       </el-footer>
     </el-container>
+    <!-- 放在 .front-layout 里面：组件必须是单根，否则页面级 <transition> 不生效 -->
+    <AgentChat/>
   </div>
-
-  <AgentChat/>
 </template>
 
 <style lang="scss" scoped>
