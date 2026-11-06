@@ -339,7 +339,7 @@ const pushSearch = (type) => {
 
                 <el-input v-model="commentModel.content" type="textarea" :rows="3" :disabled="!canComment"
                           placeholder="友善发言，记录思想..." maxlength="200" show-word-limit/>
-                <div class="comment-btn-row">
+                <div class="comment-btn-row" v-if="canComment">
                   <el-button type="primary" :disabled="!canComment" @click="AddComment">发表评论</el-button>
                 </div>
               </div>
@@ -689,7 +689,7 @@ const pushSearch = (type) => {
         top: 0;
         left: 0;
         width: 100%;
-        height: 80px;
+        height: 100%;
         z-index: 10;
         background: var(--at-mask-bg);
         backdrop-filter: blur(4px);
@@ -893,7 +893,7 @@ const pushSearch = (type) => {
 
       .comment-input-area {
         .comment-mask {
-          height: 100px; // 遮罩区域高度适应文本域
+          height: 100%;   // 盖住整个输入区，按钮在未登录时不渲染
         }
       }
 
