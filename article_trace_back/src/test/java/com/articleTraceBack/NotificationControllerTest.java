@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Controller.NotificationController;
 import com.articleTraceBack.Service.NotificationService;
+import com.articleTraceBack.Utils.NotLoggedInException;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.pojo.Notification;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * 站内信接口层测试：直接调用 Controller，用 ThreadLocal 模拟登录态。
@@ -44,6 +46,8 @@ public class NotificationControllerTest {
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("id", TEST_USER_ID);
         userInfo.put("name", "test-user");
+        // CurrentUser 要求三个字段齐全（生产由 TokenCheck 校验后写入）
+        userInfo.put("type", 1);
         ThreadLocalUtil.set(userInfo);
     }
 
@@ -85,8 +89,9 @@ public class NotificationControllerTest {
     @Test
     public void testUnauthenticatedIsRejected() {
         ThreadLocalUtil.remove();
-        Result<PageBean<Notification>> list = notificationController.list(null, 1, 10);
-        assertEquals(1, list.getCode(), "未登录应返回失败码");
-        assertEquals("未登录！", list.getMessage());
+        // 受保护接口取不到当前用户时抛 NotLoggedInException，由 GlobalExceptionHandler 转 401
+        assertThrows(NotLoggedInException.class,
+                () -> notificationController.list(null, 1, 10),
+                "未登录应抛 NotLoggedInException（最终 401）");
     }
 }
