@@ -2,7 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.config.SiteFeatureProperties;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
@@ -42,9 +42,6 @@ public class AuthorApplyController {
             return Result.error("暂不开放作者申请！");
         }
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         String reason = (body == null) ? null : body.get("reason");
         if (!applyService.submit(userId, reason)) {
             return Result.error("已有待审核的申请，请勿重复提交！");
@@ -56,9 +53,6 @@ public class AuthorApplyController {
     @GetMapping("/mine")
     public Result<AuthorApply> mine() {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         return Result.success(applyService.findMine(userId));
     }
 
@@ -79,9 +73,6 @@ public class AuthorApplyController {
                                  @RequestParam boolean pass,
                                  @RequestParam(required = false) String rejectReason) {
         Integer reviewerId = currentUserId();
-        if (reviewerId == null) {
-            return Result.error("未登录！");
-        }
         if (!isMaster()) {
             return Result.error("权限不足！");
         }
@@ -93,37 +84,11 @@ public class AuthorApplyController {
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private Integer currentUserId() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object id = map.get("id");
-            if (id instanceof Integer value) {
-                return value;
-            }
-            if (id != null) {
-                try {
-                    return Integer.valueOf(id.toString());
-                } catch (NumberFormatException ignored) {
-                    return null;
-                }
-            }
-        }
-        return null;
+        return CurrentUser.require().id();
     }
 
     /** 当前登录用户是否为站长 */
     private boolean isMaster() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object type = map.get("type");
-            if (type == null) {
-                return false;
-            }
-            try {
-                return Integer.parseInt(type.toString()) == ROLE_MASTER;
-            } catch (NumberFormatException ignored) {
-                return false;
-            }
-        }
-        return false;
+        return CurrentUser.require().type() == ROLE_MASTER;
     }
 }

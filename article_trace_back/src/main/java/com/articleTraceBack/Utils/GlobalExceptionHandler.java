@@ -4,7 +4,9 @@ import com.articleTraceBack.pojo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -23,6 +25,11 @@ import java.util.stream.Collectors;
 @Slf4j
 // 全局异常处理器
 public class GlobalExceptionHandler {
+    /** 受保护接口取不到当前用户：与 TokenCheck 的 401 保持一致，前端按会话过期处理 */
+    @ExceptionHandler(NotLoggedInException.class)
+    public ResponseEntity<Result<String>> handleNotLoggedIn(NotLoggedInException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(ex.getMessage()));
+    }
     /** 参数校验失败（@Validated）：取第一条字段错误 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<String> handleMethodArgumentNotValidException

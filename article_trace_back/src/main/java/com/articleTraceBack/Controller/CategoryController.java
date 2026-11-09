@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.CategoryService;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.Result;
 import org.springframework.dao.DuplicateKeyException;
@@ -24,8 +24,7 @@ public class CategoryController {
     /** 新增分类（作者，名称唯一） */
     @PostMapping("/add")
     public Result<String> addCategory(@RequestBody @Validated Category category) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int id = (int) userInfo.get("id");
+        int id = CurrentUser.require().id();
         Map<String, Object> error = new HashMap<>();
         if (categoryService.findCategoryByName(category.getCategoryName()) == null) {
             category.setCreateUser(id);
@@ -61,9 +60,8 @@ public class CategoryController {
     @PatchMapping("/update/{id}")
     public Result<String> updateCategory(@RequestBody @Validated Category category,
                                          @PathVariable("id") int id) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
         Map<String, Object> error = new HashMap<>();
-        int uid = (int) userInfo.get("id");
+        int uid = CurrentUser.require().id();
         Category existing = categoryService.findById(id);
         if (existing == null) {
             error.put("error", "类别不存在！");
@@ -97,9 +95,8 @@ public class CategoryController {
     /** 删除分类（仅创建人），关联文章的分类置空 */
     @DeleteMapping("/delete/{id}")
     public Result<String> deleteCategory(@PathVariable("id") int id) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
         Map<String, Object> error = new HashMap<>();
-        int uid = (int) userInfo.get("id");
+        int uid = CurrentUser.require().id();
         Category ca = categoryService.findById(id);
         if (ca == null) {
             error.put("error", "文章类别不存在！");

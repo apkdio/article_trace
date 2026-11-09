@@ -2,7 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.NotificationService;
 import com.articleTraceBack.Service.Support.SessionExpiryNotifier;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
@@ -37,22 +37,15 @@ public class NotificationController {
                                                @RequestParam(defaultValue = "1") int pageNum,
                                                @RequestParam(defaultValue = "10") int pageSize) {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         return Result.success(notificationService.listByReceiver(userId, type, pageNum, pageSize));
     }
 
     /** 未读数（前端角标）；铃铛轮询兼作会话检查，快到期时顺带发站内信提醒 */
     @GetMapping("/unreadCount")
     public Result<Map<String, Object>> unreadCount() {
-        Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        Object name = userInfo == null ? null : userInfo.get("name");
-        long expiresIn = sessionExpiryNotifier.notifyIfNeeded(userId, name == null ? null : name.toString());
+        CurrentUser.Session me = CurrentUser.require();
+        int userId = me.id();
+        long expiresIn = sessionExpiryNotifier.notifyIfNeeded(userId, me.username());
         Map<String, Object> data = new HashMap<>();
         data.put("count", notificationService.unreadCount(userId));
         data.put("expiresIn", expiresIn);
@@ -63,9 +56,6 @@ public class NotificationController {
     @PatchMapping("/read/{id}")
     public Result<String> read(@PathVariable int id) {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         if (!notificationService.markRead(userId, id)) {
             return Result.error("消息不存在或已读！");
         }
@@ -76,9 +66,6 @@ public class NotificationController {
     @PatchMapping("/readAll")
     public Result<Integer> readAll() {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         return Result.success(notificationService.markAllRead(userId));
     }
 
@@ -86,9 +73,6 @@ public class NotificationController {
     @DeleteMapping("/{id}")
     public Result<String> delete(@PathVariable int id) {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         if (!notificationService.delete(userId, id)) {
             return Result.error("消息不存在！");
         }
@@ -97,20 +81,6 @@ public class NotificationController {
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private Integer currentUserId() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object id = map.get("id");
-            if (id instanceof Integer value) {
-                return value;
-            }
-            if (id != null) {
-                try {
-                    return Integer.valueOf(id.toString());
-                } catch (NumberFormatException ignored) {
-                    return null;
-                }
-            }
-        }
-        return null;
+        return CurrentUser.require().id();
     }
 }

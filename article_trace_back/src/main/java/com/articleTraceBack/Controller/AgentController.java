@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AgentSessionService;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AgentAskRequest;
 import com.articleTraceBack.pojo.AgentChatMessage;
 import com.articleTraceBack.pojo.AgentMatchedArticle;
@@ -84,9 +84,6 @@ public class AgentController {
     @GetMapping("/sessions")
     public Result<List<AgentSession>> listSessions() {
         String userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         if (!agentClient.isEnabled()) {
             return Result.error("AI 助手未启用");
         }
@@ -116,9 +113,6 @@ public class AgentController {
             @PathVariable String sessionId,
             @RequestParam(required = false, defaultValue = "0") int limit) {
         String userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         if (!agentClient.isEnabled()) {
             return Result.error("AI 助手未启用");
         }
@@ -144,9 +138,6 @@ public class AgentController {
     @DeleteMapping("/sessions/{sessionId}")
     public Result<String> deleteSession(@PathVariable String sessionId) {
         String userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         if (!agentClient.isEnabled()) {
             return Result.error("AI 助手未启用");
         }
@@ -264,11 +255,6 @@ public class AgentController {
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private String currentUserId() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object id = map.get("id");
-            return id == null ? null : String.valueOf(id);
-        }
-        return null;
+        return String.valueOf(CurrentUser.require().id());
     }
 }

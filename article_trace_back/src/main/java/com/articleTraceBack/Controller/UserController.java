@@ -286,10 +286,10 @@ public class UserController {
     /** 当前登录用户信息 */
     @GetMapping("/userInfo")
     public Result<Object> userInfo() {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        CurrentUser.Session me = CurrentUser.require();
         Map<String, Object> error = new HashMap<>();
-        String username = (String) userInfo.get("name");
-        int uid = (int) userInfo.get("id");
+        String username = me.username();
+        int uid = me.id();
         User user = userService.findUserByName(username);
         if (user == null) {
             error.put("error", "未找到用户！");
@@ -302,12 +302,12 @@ public class UserController {
     /** 修改昵称 / 邮箱 */
     @PatchMapping("/update")
     public Result<Map<String, String>> update(@RequestBody @Validated(User.update.class) User user) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        CurrentUser.Session me = CurrentUser.require();
         Map<String, Object> error = new HashMap<>();
         String name = user.getUsername();
-        String username = userInfo.get("name").toString();
+        String username = me.username();
         int id = user.getId();
-        int tokenUid = (int) userInfo.get("id");
+        int tokenUid = me.id();
         if (Objects.equals(name, username)
                 && Objects.equals(id, tokenUid)) {
             try {
@@ -337,8 +337,7 @@ public class UserController {
     @PatchMapping("/updateUserLogo")
     public Result<String> updateUserLogo(@RequestParam("userLogo") MultipartFile userLogo) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int userId = (int) userInfo.get("id");
+        int userId = CurrentUser.require().id();
         if (userLogo == null || userLogo.isEmpty()) {
             error.put("file", "文件为空！");
             return Result.error(error);
@@ -354,7 +353,7 @@ public class UserController {
         if (userService.isValidFile(userLogo)) {
             // 站长改自己的头像不进审核队列：他是唯一能审的人，审自己没意义，
             // 还会让待审状态卡在自己身上。副作用与审核通过完全一致（见 submitDirect）。
-            if ((int) userInfo.get("type") == 0) {
+            if (CurrentUser.require().type() == 0) {
                 if (avatarApplyService.submitDirect(userId, userLogo)) {
                     return Result.success();
                 }
@@ -382,11 +381,7 @@ public class UserController {
     /** 返回当前生效头像的三个字段：对象名、原图地址、缩略图地址。 */
     @GetMapping("/nowLogo")
     public Result<Map<String, Object>> nowLogo() {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        if (userInfo == null) {
-            return Result.error("未登录！");
-        }
-        User user = userService.findUserByName(userInfo.get("name").toString());
+        User user = userService.findUserByName(CurrentUser.require().username());
         Map<String, Object> error = new HashMap<>();
         if (user == null) {
             error.put("error", "用户不存在!");
@@ -406,8 +401,7 @@ public class UserController {
     @PatchMapping("/updatePass")
     public Result<String> updatePass(@RequestBody @Validated UpdatePassPojo passInfo) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         String newPass = passInfo.getNewPass();
         String confirmPass = passInfo.getConfirmPass();
         if (!newPass.equals(confirmPass)) {
@@ -466,8 +460,7 @@ public class UserController {
     /** 退出登录：清 Cookie 与 Redis 中的令牌 */
     @PostMapping("/logout")
     public void logout(HttpServletResponse response) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         userService.deleteRedisToken(username);
         // 光删 Redis 不够：Cookie 还在浏览器里，得让它一起过期
         CookieUtil.clearToken(response, cookieSecure);
@@ -477,9 +470,9 @@ public class UserController {
     @DeleteMapping("/removeUserLogo")
     public Result<String> removeUserLogo() {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
-        int userId = (int) userInfo.get("id");
+        CurrentUser.Session me = CurrentUser.require();
+        String username = me.username();
+        int userId = me.id();
         // 有待审头像时不允许重置：重置清掉的是当前生效的头像，待审记录仍留在队列里，
         // 审批通过后又会把那张图设回去——用户会以为「重置没生效」。
         // 前端在待审期间已禁用按钮，这里是不走界面的兜底。
@@ -500,9 +493,9 @@ public class UserController {
     public Result<PageBean<User>> accountManage(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "5") int pageSize) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        CurrentUser.Session me = CurrentUser.require();
         Map<String, Object> error = new HashMap<>();
-        String username = userInfo.get("name").toString();
+        String username = me.username();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         User master = userService.findUserByName(username);
@@ -529,8 +522,7 @@ public class UserController {
     public Result<String> changeType(@RequestParam int userId,
                                      @RequestParam int type, String masterPass) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (type != 0 && type != 1) {
             error.put("error", "身份错误！");
@@ -573,8 +565,7 @@ public class UserController {
     @DeleteMapping("/delete")
     public Result<String> deleteUser(@RequestParam int userId, @RequestParam String masterPass) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
             if (!Objects.equals(masterPass, masterPassword)) {

@@ -183,6 +183,7 @@ article_trace_back/
 - **邮箱口径**：落库、查重、按邮箱取用户、验证码的 Redis 键统一走 `Utils/EmailNormalizer`（trim + 小写）。注册、改资料、默认站长初始化都不例外——只归一化一处会出现「查重说没占用、唯一索引说占用」。登录不经过邮箱（只认 `username`），不受影响。
 - **登录**：校验密码 → 签发 Token → 写 Redis → 下发 HttpOnly Cookie → 记录最后登录时间。
 - **账号 / 密码口径**：用户名 `\S{1,15}`、密码 `\S{1,72}`——**都不允许空白**，用户名上限 15。注册请求体（`RegisterUserPojo`）与改密 / 找回密码的 Pojo 都带同样的 `@Pattern`，前端注册、改密、找回同口径提示。**登录只校验非空、不拦空格**：历史账号可能有带空格的密码，拦在登录等于把人锁死；库里的 `username varchar(20)` 只是列上限，业务上限按 15。
+- **取当前用户**：Controller 统一走 `Utils/CurrentUser`——受保护接口用 `require()`（取不到抛 `NotLoggedInException` → 401），`/reader/**` 这类可选登录的公开接口用 `optional()`（null = 匿名）。不要再直接碰 `ThreadLocalUtil`；异步链路（SSE 回调线程）没有 ThreadLocal，用户信息按参数传进去。
 - **登出**：`POST /user/logout`，删掉 Redis 中的 Token **并**下发过期 Cookie 让浏览器丢弃它——只删 Redis 的话 Cookie 还在，浏览器下次仍会带着它发请求。
 - **忘记密码**：凭注册邮箱 + 邮箱验证码设置新密码；改密后旧登录态立即失效。
 - **修改信息/头像**：头像经 `MultipartFile` 上传至 RustFS 的 **avatar 桶**并生成一条待审记录，**此时 `user_pic` 一动不动**（用户仍看到旧头像）。站长审批通过后，对象被复制到 pic 桶并写入 `user_pic`，旧头像随即删除；拒绝则丢掉待审对象。**站长改自己的头像免审核**——他是唯一能审的人，审自己没意义；直通路径（`AvatarApplyService.submitDirect`）与审核通过**共用 `promote()`**，搬运/换指向/清旧对象与待审对象一步都不省。

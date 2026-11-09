@@ -9,7 +9,7 @@ import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RichTextCleaner;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Article;
 import com.articleTraceBack.pojo.ArticleSnapshot;
 import com.articleTraceBack.pojo.PageBean;
@@ -56,8 +56,7 @@ public class ArticleController {
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         timeOrder = normalizeTimeOrder(timeOrder);
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int uid = (int) userInfo.get("id");
+        int uid = CurrentUser.require().id();
         int totalArticles = articleService.findAllArticlesWithConditions(uid, categoryId, state, search);
         int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
@@ -78,9 +77,9 @@ public class ArticleController {
     public Result<Map<String, Object>> addArticle(@RequestPart("article") @Validated Article article,
                                                   @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int uid = (int) userInfo.get("id");
-        String username = userInfo.get("name").toString();
+        CurrentUser.Session me = CurrentUser.require();
+        int uid = me.id();
+        String username = me.username();
         String articleTitle = article.getTitle();
         String content = article.getTitle() + article.getContent();
         String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -100,7 +99,7 @@ public class ArticleController {
             article.setId(null);
             // 目标状态由服务端按「草稿 / 提交」意图 + 角色决定，不信任请求体
             // 作者只能传待审状态，不可直接发布
-            Integer target = ArticlePublishPolicy.resolveTargetState(article.getState(), (int) userInfo.get("type"));
+            Integer target = ArticlePublishPolicy.resolveTargetState(article.getState(), me.type());
             if (target == null) {
                 error.put("state", "非合理值！");
                 return Result.error(error);
@@ -118,7 +117,7 @@ public class ArticleController {
             try {
                 // 新增没有旧版本可比，快照传 null；版本从 0 开始
                 if (articleService.articleAddOrUpdate(article, 0, cover, username, null)) {
-                    return Result.success(savedResult(article, (int) userInfo.get("type")));
+                    return Result.success(savedResult(article, me.type()));
                 }
             } catch (DuplicateKeyException e) {
                 // 并发下两个请求可能同时通过查重，由唯一索引 uk_user_title 兜底
@@ -144,10 +143,10 @@ public class ArticleController {
             return Result.error(error);
         }
         {
-            Map<String, Object> userInfo = ThreadLocalUtil.get();
-            int uid = (int) userInfo.get("id");
-            int roleType = (int) userInfo.get("type");
-            String username = userInfo.get("name").toString();
+            CurrentUser.Session me = CurrentUser.require();
+            int uid = me.id();
+            int roleType = me.type();
+            String username = me.username();
             String articleTitle = article.getTitle();
             String content = article.getTitle() + article.getContent();
             String cleanContent = RichTextCleaner.cleanToPlainText(content);
@@ -234,9 +233,9 @@ public class ArticleController {
     /** 删除文章：作者本人直删，他人需站长身份 + 站长密码 */
     @DeleteMapping("/delete")
     public Result<String> deleteArticle(@RequestParam int articleId, String masterPass) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int uid = (int) userInfo.get("id");
-        int type = (int) userInfo.get("type");
+        CurrentUser.Session me = CurrentUser.require();
+        int uid = me.id();
+        int type = me.type();
         Map<String, Object> error = new HashMap<>();
         Article art = articleService.findArticleByIdWithEntity(articleId);
         if (art != null) {
@@ -264,8 +263,7 @@ public class ArticleController {
     /** 我的文章统计（总数 / 待审 / 已发布 / 已驳回） */
     @GetMapping("/count")
     public Result<Map<String, Object>> count() {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int userId = (int) userInfo.get("id");
+        int userId = CurrentUser.require().id();
         int totalArticles = articleService.findAllArticlesCountInMaster(null, null, userId, null, null, null);
         int waitAccessTotal = articleService.findAllArticlesCountInMaster(null, 2, userId, null, null, null);
         int accessTotal = articleService.findAllArticlesCountInMaster(null, 1, userId, null, null, null);
@@ -295,8 +293,7 @@ public class ArticleController {
         if (searchType != null && search == null) {
             searchType = null;
         }
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
             Integer userId = master.getId();
@@ -322,8 +319,7 @@ public class ArticleController {
                                         @RequestParam(required = false) String rejectReason,
                                         @RequestParam(required = false) Long version) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        String username = userInfo.get("name").toString();
+        String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
             if (state == ArticleService.STATE_REJECTED

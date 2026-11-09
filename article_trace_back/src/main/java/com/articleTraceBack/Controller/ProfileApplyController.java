@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.ProfileApplyService;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.ProfileApply;
 import com.articleTraceBack.pojo.Result;
@@ -51,9 +51,6 @@ public class ProfileApplyController {
             return Result.error("权限不足！");
         }
         Integer reviewerId = currentUserId();
-        if (reviewerId == null) {
-            return Result.error("未登录！");
-        }
         if (!pass && (rejectReason == null || rejectReason.isBlank())) {
             return Result.error("拒绝时必须填写理由！");
         }
@@ -68,17 +65,11 @@ public class ProfileApplyController {
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private Integer currentUserId() {
-        Object id = attribute("id");
-        return id instanceof Integer value ? value : null;
+        return CurrentUser.require().id();
     }
 
     private boolean isMaster() {
-        Object type = attribute("type");
-        return type instanceof Integer value && value == ROLE_MASTER;
+        return CurrentUser.require().type() == ROLE_MASTER;
     }
 
-    private Object attribute(String key) {
-        Map<String, Object> info = ThreadLocalUtil.get();
-        return info == null ? null : info.get(key);
-    }
 }

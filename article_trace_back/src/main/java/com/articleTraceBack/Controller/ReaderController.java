@@ -7,7 +7,7 @@ import com.articleTraceBack.Service.ReaderService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.PageUtil;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,12 +132,7 @@ public class ReaderController {
             error.put("error", "评论功能暂未开放！");
             return Result.error(error);
         }
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        if (userInfo == null) {
-            error.put("error", "请登录！");
-            return Result.error(error);
-        }
-        int id = (int) userInfo.get("id");
+        int id = CurrentUser.require().id();
         User addComment = userService.findUserById(id);
         if (addComment.getNickname() == null || addComment.getEmail() == null) {
             error.put("error", "请完善用户信息！");
@@ -170,9 +165,9 @@ public class ReaderController {
     public Result<String> deleteComment(@RequestParam int commentId,
                                         @RequestParam int articleId) {
         Map<String, Object> error = new HashMap<>();
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
-        int userId = (int) userInfo.get("id");
-        int type = (int) userInfo.get("type");
+        CurrentUser.Session me = CurrentUser.require();
+        int userId = me.id();
+        int type = me.type();
         if (type == 0) {
             boolean result = readerService.deleteComment(commentId);
             if (result) return Result.success();
@@ -236,10 +231,10 @@ public class ReaderController {
     /** 上报浏览量（登录按用户名去重，匿名按 IP+UA） */
     @PatchMapping("/article/addViews/{articleId}")
     public void addViews(@PathVariable int articleId, HttpServletRequest request) {
-        Map<String, Object> userInfo = ThreadLocalUtil.get();
+        CurrentUser.Session me = CurrentUser.optional();
         String username;
-        if (userInfo != null) {
-            username = userInfo.get("name").toString();
+        if (me != null) {
+            username = me.username();
         } else {
             username = readerService.getIPMixUA(request);
         }

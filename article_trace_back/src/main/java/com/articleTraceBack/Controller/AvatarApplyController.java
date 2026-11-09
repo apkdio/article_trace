@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AvatarApplyService;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AvatarApply;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Result;
@@ -35,9 +35,6 @@ public class AvatarApplyController {
     @GetMapping("/mine")
     public Result<AvatarApply> mine() {
         Integer userId = currentUserId();
-        if (userId == null) {
-            return Result.error("未登录！");
-        }
         return Result.success(avatarApplyService.findMine(userId));
     }
 
@@ -58,9 +55,6 @@ public class AvatarApplyController {
                                  @RequestParam boolean pass,
                                  @RequestParam(required = false) String rejectReason) {
         Integer reviewerId = currentUserId();
-        if (reviewerId == null) {
-            return Result.error("未登录！");
-        }
         if (!isMaster()) {
             return Result.error("权限不足！");
         }
@@ -78,37 +72,11 @@ public class AvatarApplyController {
 
     /** 从 ThreadLocal 取当前登录用户 id（TokenCheck 已校验登录） */
     private Integer currentUserId() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object id = map.get("id");
-            if (id instanceof Integer value) {
-                return value;
-            }
-            if (id != null) {
-                try {
-                    return Integer.valueOf(id.toString());
-                } catch (NumberFormatException ignored) {
-                    return null;
-                }
-            }
-        }
-        return null;
+        return CurrentUser.require().id();
     }
 
     /** 当前登录用户是否为站长 */
     private boolean isMaster() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object type = map.get("type");
-            if (type == null) {
-                return false;
-            }
-            try {
-                return Integer.parseInt(type.toString()) == ROLE_MASTER;
-            } catch (NumberFormatException ignored) {
-                return false;
-            }
-        }
-        return false;
+        return CurrentUser.require().type() == ROLE_MASTER;
     }
 }

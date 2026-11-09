@@ -5,7 +5,7 @@ import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.ReportService;
-import com.articleTraceBack.Utils.ThreadLocalUtil;
+import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Result;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,18 +65,6 @@ public class ReviewController {
 
     /** 当前登录用户是否为站长 */
     private boolean isMaster() {
-        Object info = ThreadLocalUtil.get();
-        if (info instanceof Map<?, ?> map) {
-            Object type = map.get("type");
-            if (type == null) {
-                return false;
-            }
-            try {
-                return Integer.parseInt(type.toString()) == ROLE_MASTER;
-            } catch (NumberFormatException ignored) {
-                return false;
-            }
-        }
-        return false;
+        return CurrentUser.require().type() == ROLE_MASTER;
     }
 }
