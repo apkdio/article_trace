@@ -20,15 +20,11 @@ const confirmPasswordValidator = confirmPasswordValid(() => userPass.value.newPa
 
 const rules = {
   oriPass: [
-    {required: true, message: '请输入原密码', trigger: 'blur'},
-    {
-      max: 60,
-      message: '原密码长度在60位以内',
-      trigger: 'change'
-    }
+    {required: true, message: '请输入原密码', trigger: 'blur'}
   ],
   newPass: [
-    {required: true, message: '请输入新密码', trigger: 'blur'}
+    {required: true, message: '请输入新密码', trigger: 'blur'},
+    {pattern: /^\S{1,72}$/, message: '密码需为 1-72 个非空白字符！', trigger: 'blur'}
   ],
   confirmPass: [
     {required: true, message: '请输入确认密码！'},

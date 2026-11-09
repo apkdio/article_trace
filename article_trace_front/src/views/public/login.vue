@@ -129,7 +129,10 @@ const FormDataRules = computed(() => {
         {type: 'email', message: '邮箱格式不正确！', trigger: 'blur'}
       ],
       emailCode: [{required: true, message: '请输入验证码！', trigger: 'blur'}],
-      password: [{required: true, message: '请输入新密码！'}, {max: 60, message: "密码过长！"}],
+      password: [
+        {required: true, message: '请输入新密码！'},
+        {pattern: /^\S{1,72}$/, message: '密码需为 1-72 个非空白字符！'}
+      ],
       confirmPassword: [{validator: confirmPasswordValidator}]
     }
   }
@@ -143,8 +146,14 @@ const FormDataRules = computed(() => {
     }
   } else {
     return {
-      username: [{required: true, message: '请输入用户名！'}, {max: 20, message: "用户名过长！"}],
-      password: [{required: true, message: '请输入密码！'}, {max: 60, message: "密码过长！"}],
+      username: [
+        {required: true, message: '请输入用户名！'},
+        {pattern: /^\S{1,15}$/, message: '用户名需为 1-15 个非空白字符！'}
+      ],
+      password: [
+        {required: true, message: '请输入密码！'},
+        {pattern: /^\S{1,72}$/, message: '密码需为 1-72 个非空白字符！'}
+      ],
       confirmPassword: [{validator: confirmPasswordValidator}],
       email: [
         {required: true, message: '请输入邮箱！', trigger: 'blur'},
