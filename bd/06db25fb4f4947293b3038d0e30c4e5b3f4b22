@@ -1,0 +1,52 @@
+article_trace_back/src/test/java/com/articleTraceBack/CurrentUserTest.java
+  s_ab74ea15e793d1::t_18697975cb77b1 1-47
+article_trace_back/src/main/java/com/articleTraceBack/Utils/NotLoggedInException.java
+  s_ab74ea15e793d1::t_9166c98e7b8624 1-8
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_95ed8b1fddf4eb 102,120
+  s_ab74ea15e793d1::t_f935501a517ba8 12,59,80-82,146-149,236-238,266,296,322
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_95ed8b1fddf4eb 310,356
+  s_ab74ea15e793d1::t_3e9918ac368976 289,291-292,305,308,340,384,404,463,473-475,496,498,525,568
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_801f630586f54c 186
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 10,135,168-170,234,236-237
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 4,258
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_fdc0dcd476ff32 28-32
+  s_ab74ea15e793d1::t_13db744c05efe5 7,9
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReportController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 4,82,87
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AvatarApplyController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 4,75,80
+article_trace_back/src/main/java/com/articleTraceBack/Controller/NotificationController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 5,46-48,84
+article_trace_back/src/main/java/com/articleTraceBack/Controller/CategoryController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 4,27,64,99
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ProfileApplyController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 4,68,72
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReviewController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 8,68
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AuthorApplyController.java
+  s_ab74ea15e793d1::t_f935501a517ba8 5,87,92
+article_trace_back/src/main/java/com/articleTraceBack/Utils/CurrentUser.java
+  s_ab74ea15e793d1::t_4b837ef39ecb0e 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "bd06db25fb4f4947293b3038d0e30c4e5b3f4b22",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
