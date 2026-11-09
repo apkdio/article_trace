@@ -1,0 +1,23 @@
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_6e6be0663bec32 185
+article_trace_back/src/main/java/com/articleTraceBack/pojo/RegisterUserPojo.java
+  s_ab74ea15e793d1::t_d52f3db4dbef0a 4,11,14,17
+article_trace_back/src/test/java/com/articleTraceBack/RegisterValidationTest.java
+  s_ab74ea15e793d1::t_925182ca5c2636 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "e6a4cb10512f6a12ce38ac294256ce96e2e1960e",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
