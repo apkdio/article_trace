@@ -1,0 +1,19 @@
+article_trace_back/src/test/java/com/articleTraceBack/NotificationControllerTest.java
+  s_f674c89650c49b::t_fdd9de1f9c66b8 5,22,49-50,92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "c2b322384d123372f31bb4d6076105ebbf96f87f",
+  "prompts": {},
+  "sessions": {
+    "s_f674c89650c49b": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_8f9zqjg97k78",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
