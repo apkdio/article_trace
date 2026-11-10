@@ -16,6 +16,7 @@ import {resetAuthHandled} from "@/utils/session.js";
 import {confirmPasswordValid} from "@/utils/validators.js";
 import {getSiteFeatures} from "@/api/site.js";
 import {errorText} from "@/utils/errorText.js";
+import {ElMessage} from "element-plus";
 
 
 let isRegister = ref(true)
@@ -59,8 +60,11 @@ async function loadCaptcha() {
       captchaId.value = result.data.captchaId
       captchaImage.value = result.data.image
     }
+    else{
+      ElMessage.warning(result.message);
+    }
   } catch {
-    // 静默失败：用户可点击图片重试
+    ElMessage.error("获取验证码失败！请重试！");
   }
 }
 
