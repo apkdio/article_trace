@@ -540,7 +540,8 @@ const pushSearch = (type) => {
     flex-direction: column;
 
     .content-card-wrapper {
-      flex: 1 1 auto;
+      /* 只能涨不能缩：flex-shrink 会让长文章被压成侧栏高度，正文与评论溢出卡片背景 */
+      flex: 1 0 auto;
       background: var(--at-bg-card);
       border-radius: 12px;
       padding: 28px 40px;
@@ -642,6 +643,10 @@ const pushSearch = (type) => {
         font-size: 17px;
         line-height: 1.9;
         color: var(--at-text-main);
+        /* 正文 div 带 ql-editor 类（拿排版样式），Quill snow 的 height:100% / overflow:auto 要压掉，
+           否则卡片被 flex 定高后正文会变成卡片内部的滚动区，评论区被顶出卡片 */
+        height: auto;
+        overflow: visible;
 
         :deep(p) {
           // 行高 1.9 本身已带约 0.9em 的上下留白；再留 0.1em，段间视觉空白约半行
