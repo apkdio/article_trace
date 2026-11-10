@@ -14,7 +14,9 @@
  * 两个参照系的宽度就都固定了。这比 scrollbar-gutter 更省心——gutter 只对
  * 「被锁的那个元素」生效，而 fixed 元素根本不在那个元素的参照系里，管不到。
  */
-:root {
+/* html:root 而不是 :root：Element 的按需样式在开发模式下晚于本文件注入，
+   同权重（:root）会被它的默认蓝覆盖；多一个 html 元素选择器保证恒赢，且不需要 !important */
+html:root {
   --at-bg-page: #f5f2eb;
   --at-bg-aside: #ebe6db;
   --at-bg-header: #faf8f3;

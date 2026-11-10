@@ -156,7 +156,7 @@ article_trace_front/
 - **状态与入口**：`stores/theme.js` 只存 `isDark`；入口是门户页与文章详情页的圆形按钮、后台顶栏铃铛左侧的按钮，图标随状态在 `Sunny` / `Moon` 间换。
 - **防闪烁**：`index.html` 里有一段内联脚本，在应用启动前读 localStorage 并先补上 `.dark`——晚一步就会先闪一帧亮色。`main.js` 另外引入 `element-plus/theme-chalk/dark/css-vars.css`。
 - **令牌**：`main.scss` 的 `:root` 定义亮色，`html.dark` 覆盖同一批 `--at-*`；同时把 `--el-bg-color`、`--el-text-color-*`、`--el-border-color-*`、`--el-fill-color-*` 映射到 `--at-*`，没单独定制的 Element 组件自动接轨。新增的令牌：`--at-bg-aside` / `--at-bg-header`、`--at-row-hover`、`--at-text-inverse`、`--at-banner-master`、`--at-rank-top3-bg` / `--at-rank-top3-color`、`--at-shadow-card` / `--at-shadow-dropdown`、`--at-img-filter`、`--at-logo-filter`。
-- **必须用令牌**：主色原先带的 `!important` 已全部去掉——它会让 `html.dark` 的覆盖失效；之后新增样式一律写 `--at-*`，别再硬编码色值，否则暗色下会留白块。
+- **必须用令牌**：主色原先带的 `!important` 已全部去掉——它会让 `html.dark` 的覆盖失效。亮色令牌写在 `html:root`（比 Element 的 `:root` 多一个元素选择器，开发模式下按需样式晚注入也压不回去），暗色隔在后面的 `html.dark` 里；之后新增样式一律写 `--at-*`，别再硬编码色值，否则暗色下会留白块。
 - **正文与图片**：`quill-content.scss` 给正文插图默认加 `--at-img-filter`（暗色轻微压暗），悬停恢复原画；全站 Logo 用 `--at-logo-filter` 反色。
 
 ### AI 问答（AgentChat.vue）
