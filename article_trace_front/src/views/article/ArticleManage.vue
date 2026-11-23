@@ -7,7 +7,7 @@ import {clearDraft, loadDraft, saveDraft} from '@/utils/articleDraft.js'
 import {addCategory, getAllCategories} from "@/api/category.js";
 import {
   addArticleService, deleteArticleService,
-  getArticleWithConditions, getArticleWithConditionsMaster,
+  getArticleVersionService, getArticleWithConditions, getArticleWithConditionsMaster,
   updateArticleService
 } from "@/api/article.js";
 import {Delta, Quill, QuillEditor} from '@vueup/vue-quill'
@@ -32,6 +32,7 @@ import {
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
 import {errorText} from "@/utils/errorText.js";
 import {markdownToHtml, sanitizeImportedHtml, splitMarkdownTables} from "@/utils/markdown.js";
+import {startVersionWatch} from "@/utils/versionWatch.js";
 import {renderMathIn, renderTex} from "@/utils/mathRender.js";
 import PageHeader from "@/components/PageHeader.vue";
 import ImageCropper from "@/components/ImageCropper.vue";
@@ -704,6 +705,8 @@ const resetArticleForm = () => {
 const closeDrawer = () => {
   visibleDrawer.value = false
   resetArticleForm()
+  cancelVersionWatch()
+  versionConflict.value = ''
   // 抽屉确认关闭（含保存成功）之后，本地草稿就没意义了
   cancelDraftSave()
   clearDraft()
@@ -896,6 +899,48 @@ const openEditDrawer = async (row) => {
   articleModel.value = JSON.parse(JSON.stringify(row))
   visibleDrawer.value = true
   // 改稿路径不弹草稿提示：草稿仍留着，下次点「添加文章」时再问，别干扰编辑
+  watchArticleVersion()
+}
+
+// 编辑中轮询版本：站长在另一端审核完毕 / 另一台设备保存过时尽早拦下，避免写完才发现保存不了
+const versionConflict = ref('')
+let stopVersionWatch = null
+const cancelVersionWatch = () => {
+  if (stopVersionWatch) {
+    stopVersionWatch()
+    stopVersionWatch = null
+  }
+}
+const watchArticleVersion = () => {
+  cancelVersionWatch()
+  versionConflict.value = ''
+  const id = articleModel.value.id
+  const baseVersion = articleModel.value.version
+  if (id == null || baseVersion == null) return
+  stopVersionWatch = startVersionWatch(async () => {
+    const res = await getArticleVersionService(id)
+    if (res.code !== 0 || !res.data || res.data.version === baseVersion) return
+    versionConflict.value = res.data.state === 2
+        ? '这篇文章刚被站长审核过，当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
+        : '这篇文章在别处被修改过，当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
+    cancelVersionWatch()
+    ElMessage.warning('检测到文章版本已变化')
+  })
+}
+const copyArticleBody = async () => {
+  const html = articleModel.value.content || ''
+  const text = new DOMParser().parseFromString(html, 'text/html').body.innerText
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('正文已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败，请手动选中正文复制')
+  }
+}
+const reloadAfterConflict = async () => {
+  closeDrawer()
+  await getArticles()
+  ElMessage.info('列表已刷新，请重新打开文章')
 }
 
 const beforeCloseDrawer = () => {
@@ -907,8 +952,7 @@ const beforeCloseDrawer = () => {
   }).then(async () => {
     // 封面此时还在浏览器里，没有产生任何服务端对象，直接清本地即可
     closeDrawer()
-    ElMessage.primary("数据已清空！")
-  }).catch(() => {
+    ElMessage.success("数据已清空！")  }).catch(() => {
     ElMessage.info("取消关闭！")
   })
 }
@@ -1137,6 +1181,14 @@ const refreshAfterDelete = async () => {
       <el-alert v-if="drawerTitle === '修改文章' && articleModel.state === 3 && articleModel.rejectReason"
                 type="warning" :closable="false" show-icon style="margin-bottom: 12px"
                 :title="'驳回理由：' + articleModel.rejectReason"/>
+      <!-- 版本冲突：站长在另一端审完了 / 另一台设备保存过，继续编辑也保存不了 -->
+      <el-alert v-if="versionConflict" type="error" :closable="false" show-icon
+                style="margin-bottom: 12px" :title="versionConflict">
+        <div class="version-conflict-actions">
+          <el-button size="small" @click="copyArticleBody">复制正文</el-button>
+          <el-button size="small" type="primary" @click="reloadAfterConflict">刷新并关闭</el-button>
+        </div>
+      </el-alert>
       <el-form :model="articleModel" ref="articleModelRef" :rules="articleModelRule" label-position="top">
         <el-row :gutter="20">
           <el-col :span="16">
@@ -1209,8 +1261,8 @@ const refreshAfterDelete = async () => {
 
       <template #footer>
         <div class="drawer-footer">
-          <el-button type="info" @click="addOrUpdateArticle(0)" round size="large">存为草稿</el-button>
-          <el-button type="primary" @click="addOrUpdateArticle(1)" round size="large">立即发布</el-button>
+          <el-button type="info" :disabled="Boolean(versionConflict)" @click="addOrUpdateArticle(0)" round size="large">存为草稿</el-button>
+          <el-button type="primary" :disabled="Boolean(versionConflict)" @click="addOrUpdateArticle(1)" round size="large">立即发布</el-button>
         </div>
       </template>
     </el-drawer>
@@ -1558,6 +1610,10 @@ const refreshAfterDelete = async () => {
       color: var(--el-color-warning);
     }
   }
+}
+
+.version-conflict-actions {
+  margin-top: 8px;
 }
 
 /* 公式对话框里的实时预览 */

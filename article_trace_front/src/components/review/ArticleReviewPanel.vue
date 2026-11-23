@@ -1,10 +1,11 @@
 <script setup>
-import {onMounted, ref, nextTick} from 'vue'
+import {onBeforeUnmount, onMounted, ref, nextTick} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {CloseBold, Select} from '@element-plus/icons-vue'
 import {errorText} from '@/utils/errorText.js'
 import {renderMathIn} from '@/utils/mathRender.js'
-import {assessArticleService, getArticleWithConditionsMaster} from '@/api/article.js'
+import {assessArticleService, getArticleVersionsService, getArticleWithConditionsMaster} from '@/api/article.js'
+import {startVersionWatch} from '@/utils/versionWatch.js'
 
 /*
  * 审核中心 · 待审文章面板。
@@ -24,6 +25,10 @@ const previewVisible = ref(false)
 const previewRow = ref({})
 const previewContentRef = ref()
 
+// 列表加载后作者又改过稿：轮询发现版本变化就标出来并禁用这一行的审核，避免白审
+const stale = ref({})
+let stopVersionWatch = null
+
 const load = async () => {
   loading.value = true
   try {
@@ -36,6 +41,7 @@ const load = async () => {
     if (res.code === 0) {
       items.value = res.data?.items || []
       total.value = res.data?.total || 0
+      stale.value = {}
     } else {
       items.value = []
       total.value = 0
@@ -50,7 +56,34 @@ const load = async () => {
   }
 }
 
-onMounted(load)
+const checkVersions = async () => {
+  const rows = items.value.filter(row => row.id != null)
+  if (!rows.length) return
+  const res = await getArticleVersionsService(rows.map(row => row.id))
+  if (res.code !== 0 || !Array.isArray(res.data)) return
+  const latest = new Map(res.data.map(item => [item.id, item]))
+  const next = {...stale.value}
+  let changed = false
+  rows.forEach(row => {
+    const current = latest.get(row.id)
+    if (current && row.version != null && current.version !== row.version) {
+      next[row.id] = true
+      changed = true
+    }
+  })
+  if (changed) {
+    stale.value = next
+    ElMessage.warning('有待审文章在你查看后被修改，请刷新列表后再审')
+  }
+}
+
+onMounted(() => {
+  load()
+  stopVersionWatch = startVersionWatch(checkVersions)
+})
+onBeforeUnmount(() => {
+  if (stopVersionWatch) stopVersionWatch()
+})
 
 const onCurrentChange = (num) => {
   pageNum.value = num
@@ -71,6 +104,10 @@ const openPreview = async (row) => {
 
 /** 通过：直接确认 */
 const approve = (row) => {
+  if (stale.value[row.id]) {
+    ElMessage.warning('这篇文章刚被作者改过，请先刷新列表')
+    return
+  }
   ElMessageBox.confirm(
       `通过「${row.title}」并立即对外发布？`,
       '通过审核',
@@ -91,6 +128,10 @@ const approve = (row) => {
 
 /** 驳回：必须写理由，理由会展示给作者（作者改完可重投） */
 const reject = (row) => {
+  if (stale.value[row.id]) {
+    ElMessage.warning('这篇文章刚被作者改过，请先刷新列表')
+    return
+  }
   ElMessageBox.prompt(
       `驳回「${row.title}」？理由会展示给作者，作者可修改后重新投稿。`,
       '驳回文章',
@@ -132,6 +173,9 @@ defineExpose({load})
       <el-table-column label="标题" min-width="220">
         <template #default="{ row }">
           <el-button link type="primary" @click="openPreview(row)">{{ row.title }}</el-button>
+          <el-tag v-if="stale[row.id]" size="small" type="warning" disable-transitions
+                  class="hit-tag">作者刚改过
+          </el-tag>
           <el-tag v-if="row.sensitiveHit" size="small" type="danger" disable-transitions
                   class="hit-tag">命中违禁词
           </el-tag>
@@ -150,8 +194,10 @@ defineExpose({load})
            三个按钮在 200px 里放不下，「驳回」会被挤到第二行 -->
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button type="success" size="small" :icon="Select" @click="approve(row)">通过</el-button>
-          <el-button type="danger" size="small" :icon="CloseBold" @click="reject(row)">驳回</el-button>
+          <el-button type="success" size="small" :icon="Select" :disabled="Boolean(stale[row.id])"
+                     @click="approve(row)">通过</el-button>
+          <el-button type="danger" size="small" :icon="CloseBold" :disabled="Boolean(stale[row.id])"
+                     @click="reject(row)">驳回</el-button>
         </template>
       </el-table-column>
       <template #empty>

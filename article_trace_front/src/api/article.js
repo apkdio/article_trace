@@ -41,6 +41,16 @@ export function getArticleWithConditionsMaster(condition) {
     return request.get("/article/manageArticles", {params: condition})
 }
 
+/** 版本探针：作者本人或站长可查，编辑抽屉轮询冲突用 */
+export function getArticleVersionService(id) {
+    return request.get("/article/version/" + id)
+}
+
+/** 版本探针（批量，站长）：审核列表轮询冲突用 */
+export function getArticleVersionsService(ids) {
+    return request.post("/article/versions", ids)
+}
+
 /**
  * 审核文章：state=1 通过发布 / 3 驳回（驳回必须带理由，作者会看到）。
  * version 是审阅时那一行的版本号，后端据此拒绝「审的是旧稿」。

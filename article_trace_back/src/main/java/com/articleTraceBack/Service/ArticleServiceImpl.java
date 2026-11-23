@@ -258,6 +258,16 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
+    public List<Article> findArticleMetasByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Article> articles = articleMapper.selectBatchIds(ids);
+        Article.hideSensitiveDetail(articles);
+        return articles;
+    }
+
+    @Override
     public Article findArticleByIdWithEntity(int id) {
         Article article = articleMapper.findArticleById(id);
         if (article == null) {

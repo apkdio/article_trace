@@ -7,6 +7,7 @@ import com.articleTraceBack.Service.Support.ArticleSensitivityGuard;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.Utils.ForbiddenException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RichTextCleaner;
 import com.articleTraceBack.Utils.CurrentUser;
@@ -244,6 +245,46 @@ public class ArticleController {
         count.put("accessTotal", accessTotal);
         count.put("rejectTotal", rejectTotal);
         return Result.success(count);
+    }
+
+    /** 版本探针：作者本人或站长可查，只回 version / state / updateTime，供编辑抽屉轮询冲突 */
+    @GetMapping("/version/{id}")
+    public Result<Map<String, Object>> articleVersion(@PathVariable int id) {
+        CurrentUser.Session me = CurrentUser.require();
+        Article meta = articleService.findArticleMetaById(id);
+        if (meta == null) {
+            throw new BusinessException("error", "文章不存在！");
+        }
+        if (me.type() != ArticleService.ROLE_MASTER && !Objects.equals(meta.getCreateUser(), me.id())) {
+            throw new ForbiddenException();
+        }
+        return Result.success(versionOf(meta));
+    }
+
+    /** 版本探针（批量，站长）：审核列表轮询用，一次最多 50 篇 */
+    @PostMapping("/versions")
+    public Result<List<Map<String, Object>>> articleVersions(@RequestBody List<Integer> ids) {
+        CurrentUser.Session me = CurrentUser.require();
+        if (me.type() != ArticleService.ROLE_MASTER) {
+            throw new ForbiddenException();
+        }
+        if (ids == null || ids.isEmpty()) {
+            return Result.success(List.of());
+        }
+        if (ids.size() > 50) {
+            throw new BusinessException("error", "一次最多查询 50 篇文章的版本！");
+        }
+        return Result.success(articleService.findArticleMetasByIds(ids).stream()
+                .map(this::versionOf).toList());
+    }
+
+    private Map<String, Object> versionOf(Article article) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", article.getId());
+        data.put("version", article.getVersion());
+        data.put("state", article.getState());
+        data.put("updateTime", article.getUpdateTime());
+        return data;
     }
 
     /** 全站文章分页（站长，支持按标题或作者检索） */

@@ -30,6 +30,9 @@ public interface ArticleService {
     /** 轻量读取：{@code content} 仍是对象名、不读对象存储，供保存 / 审核在入口构造快照 */
     Article findArticleMetaById(int id);
 
+    /** 批量轻量读取（版本探针用）：只取 meta，不读正文对象 */
+    List<Article> findArticleMetasByIds(List<Integer> ids);
+
     /** 删除文章；不存在或删除失败抛 {@code BusinessException} */
     void deleteById(int id);
 
