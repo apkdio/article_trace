@@ -1,0 +1,23 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_2bea11ff63904e 261,264,272,274
+article_trace_back/src/main/java/com/articleTraceBack/Service/AvatarApplyServiceImpl.java
+  s_ab74ea15e793d1::t_4ae9e8099b51a4 133-139
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserService.java
+  s_ab74ea15e793d1::t_831d3a50b5dfa3 43-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "5c55cf4b180ec1296ae3e587fbdeb6cb186a5857",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
