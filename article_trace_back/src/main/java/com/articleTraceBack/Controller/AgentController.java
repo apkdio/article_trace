@@ -64,12 +64,15 @@ public class AgentController {
      */
     @PostMapping(value = "/ask", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter ask(@RequestBody AgentAskRequest req) {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        // 参数错误也在 SSE 通道里回：这个接口声明的就是 text/event-stream，
+        // 抛异常会让调用方收到一个 JSON 兜底文案，前端还得为它单写一套解析
         if (req == null || req.getQuery() == null || req.getQuery().isBlank()) {
-            throw new IllegalArgumentException("问题（query）不能为空！");
+            askExecutor.execute(() -> sendError(emitter, "问题（query）不能为空！"));
+            return emitter;
         }
         // 在同步线程取用户身份（异步线程里 ThreadLocal 已清理）
         String userId = currentUserId();
-        SseEmitter emitter = new SseEmitter(120_000L);
         // 续聊必须是自己的会话：别人的 sessionId 一旦转发，下面的 remember 会把它绑到调用者名下，
         // 连后续 messages / delete 的 owns 校验都会放行，等于整条会话被人接管
         if (userId == null || (req.getSessionId() != null && !req.getSessionId().isBlank()
