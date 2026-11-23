@@ -1,0 +1,24 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BodyImageLimits.java
+  s_ab74ea15e793d1::t_1e9655e36c1a32 1-54
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_ab74ea15e793d1::t_e30a25fc4f6139 5-6
+  s_ab74ea15e793d1::t_7d71afbf3ce239 77-81
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BodyImageLimitException.java
+  s_ab74ea15e793d1::t_e13832d05a9115 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "83f4faf0d8c46fd62852bc2704f0eb2503ce6492",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
