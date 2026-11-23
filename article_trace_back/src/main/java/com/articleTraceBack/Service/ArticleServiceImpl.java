@@ -450,15 +450,22 @@ public class ArticleServiceImpl implements ArticleService {
             updateWrapper.set("sensitive_hit", 0);
         }
         if (articleMapper.update(null, updateWrapper) != 1) {
-            // 0 行有两种：状态已经被别人改掉（多审核），或状态没变但版本被推高（作者又改了稿）
+            // 0 行只说明「版本对不上」，具体是谁改的要看最新状态：
+            // 状态没变 = 内容被保存过（作者改稿）；1→2 = 作者重新提交；→0 = 作者撤回；其余才是别的审核动作
             Article latest = articleMapper.selectById(id);
             if (latest == null) {
                 throw new BusinessException("error", "文章已被删除，请刷新列表！");
             }
-            if (!Objects.equals(latest.getState(), snapshot.state())) {
-                throw new BusinessException("error", "这篇文章已被其他站长处理，请刷新列表！");
+            if (Objects.equals(latest.getState(), snapshot.state())) {
+                throw new BusinessException("error", "文章内容刚被修改（版本已变化），请刷新后重试！");
             }
-            throw new BusinessException("error", "文章可能刚被修改，请刷新后重试！");
+            if (latest.getState() == STATE_PENDING && snapshot.state() == STATE_PUBLISHED) {
+                throw new BusinessException("error", "作者已重新提交稿件，请刷新列表！");
+            }
+            if (latest.getState() == STATE_DRAFT) {
+                throw new BusinessException("error", "作者已把文章撤回为草稿，请刷新列表！");
+            }
+            throw new BusinessException("error", "这篇文章已被其他站长处理，请刷新列表！");
         }
         // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除
         if (state == 1) {

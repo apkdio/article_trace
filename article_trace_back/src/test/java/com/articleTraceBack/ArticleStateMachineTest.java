@@ -144,6 +144,24 @@ public class ArticleStateMachineTest {
         }
     }
 
+    /** 作者把已发布文章改稿重投（1→2）时，审核落空不能被说成「别的站长处理了」 */
+    @Test
+    public void authorResubmitIsNotBlamedOnAnotherMaster() {
+        Integer id = insertArticle(ArticleService.STATE_PUBLISHED);
+        try {
+            ArticleSnapshot snapshot = snapshotOf(id);   // state = 1
+            // 模拟作者保存已发布文章：目标 2，版本 +1
+            articleMapper.update(null, new UpdateWrapper<Article>().eq("id", id)
+                    .set("state", ArticleService.STATE_PENDING).setSql("version = version + 1"));
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, ArticleService.STATE_REJECTED, "追回误审", snapshot));
+            assertTrue(ex.getMessage().contains("作者已重新提交"), "实际：" + ex.getMessage());
+        } finally {
+            articleMapper.deleteById(id);
+        }
+    }
+
     /** 入口快照：模拟 controller 在请求进入时读到的状态与版本 */
     private ArticleSnapshot snapshotOf(Integer id) {
         Article raw = articleMapper.selectById(id);
