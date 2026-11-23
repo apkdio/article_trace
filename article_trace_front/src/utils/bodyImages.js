@@ -43,13 +43,13 @@ export function measureBodyImages(html) {
     return {count, totalBytes}
 }
 
-/** 还能不能再加一张：返回提示文案，没超限返回空串 */
+/** 还能不能再加一张：返回提示文案，没超限返回空串。只描述限额，插入/保存的后续动作由调用方补 */
 export function bodyImageLimitError(stats, extraCount = 1, extraBytes = 0) {
     if (stats.count + extraCount > BODY_IMAGE_MAX_COUNT) {
         return `正文最多 ${BODY_IMAGE_MAX_COUNT} 张图片`
     }
     if (stats.totalBytes + extraBytes > BODY_IMAGE_TOTAL_MAX_BASE64) {
-        return `正文图片总量不能超过 ${BODY_IMAGE_TOTAL_MAX_TEXT}，请删减后再插入`
+        return `正文图片总量不能超过 ${BODY_IMAGE_TOTAL_MAX_TEXT}`
     }
     return ''
 }

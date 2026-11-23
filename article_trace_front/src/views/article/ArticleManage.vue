@@ -2,7 +2,7 @@
 
 import {Delete, Edit, Plus, Picture, Search, User, Calendar, Timer, UserFilled} from '@element-plus/icons-vue'
 import cover from '@/assets/defaultCover.jpg'
-import {nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {nextTick, onBeforeUnmount, onMounted, computed, ref, watch} from 'vue'
 import {clearDraft, loadDraft, saveDraft} from '@/utils/articleDraft.js'
 import {addCategory, getAllCategories} from "@/api/category.js";
 import {
@@ -20,9 +20,13 @@ import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} fro
 import {
   BODY_IMAGE_MAX_BASE64,
   BODY_IMAGE_MAX_BASE64_TEXT,
+  BODY_IMAGE_MAX_COUNT,
+  BODY_IMAGE_TOTAL_MAX_BASE64,
+  BODY_IMAGE_TOTAL_MAX_TEXT,
   base64Length,
   bodyImageLimitError,
   compressBodyImage,
+  formatImageSize,
   measureBodyImages
 } from "@/utils/bodyImages.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
@@ -141,7 +145,7 @@ const insertBodyImages = async (files, quill, startIndex) => {
   for (const file of images) {
     const countError = bodyImageLimitError(stats, 1, 0)
     if (countError) {
-      ElMessage.warning(countError)
+      ElMessage.warning(`${countError}，请删减后再插入`)
       break
     }
     try {
@@ -154,7 +158,7 @@ const insertBodyImages = async (files, quill, startIndex) => {
       }
       const totalError = bodyImageLimitError(stats, 1, size)
       if (totalError) {
-        ElMessage.warning(totalError)
+        ElMessage.warning(`${totalError}，请删减后再插入`)
         break
       }
       quill.insertEmbed(index, 'image', dataUrl, 'user')
@@ -231,6 +235,14 @@ const articleModel = ref({
   state: ''
 })
 const previewData = ref({})
+
+// 正文图片计数：与插入/保存共用同一份统计，避免「计数说没超、保存却被拦」
+const bodyImageStats = computed(() => measureBodyImages(articleModel.value.content))
+const bodyImageNearLimit = computed(() => {
+  const {count, totalBytes} = bodyImageStats.value
+  return count >= Math.ceil(BODY_IMAGE_MAX_COUNT * 0.8)
+      || totalBytes >= BODY_IMAGE_TOTAL_MAX_BASE64 * 0.8
+})
 
 // 封面延后到提交时才上传：选好文件先本地预览，避免「还没决定发布就落存储」产生孤儿对象
 const pendingCover = ref(null)
@@ -821,6 +833,12 @@ const handleSubmitError = (message) => {
 
 const addOrUpdateArticle = async (state) => {
   errorList.value = {}
+  // 图片超限直接拦在本地：发出去也只会被后端拒，还白传几 MB
+  const bodyImageError = bodyImageLimitError(measureBodyImages(articleModel.value.content), 0, 0)
+  if (bodyImageError) {
+    ElMessage.warning(`${bodyImageError}，请删减后再保存`)
+    return
+  }
   if (state !== 0) {
     if (userInfoStore().type !== 0) articleModel.value.state = 2
     else articleModel.value.state = 1
@@ -1173,6 +1191,13 @@ const refreshAfterDelete = async () => {
                 @ready="onQuillReady"
                 @blur="handleEditorBlur"
             />
+            <div
+                v-if="bodyImageStats.count"
+                class="body-image-meter"
+                :class="{'is-near-limit': bodyImageNearLimit}"
+            >
+              图片 {{ bodyImageStats.count }} 张 · 合计 {{ formatImageSize(bodyImageStats.totalBytes) }} / {{ BODY_IMAGE_TOTAL_MAX_TEXT }}
+            </div>
           </div>
         </el-form-item>
       </el-form>
@@ -1515,6 +1540,18 @@ const refreshAfterDelete = async () => {
   :deep(.ql-editor .ql-table-embed) {
     outline: 1px dashed var(--at-border-warm);
     outline-offset: -1px;
+  }
+
+  .body-image-meter {
+    padding: 6px 12px;
+    border-top: 1px dashed var(--at-border-warm);
+    font-size: 12px;
+    color: var(--at-text-secondary);
+    text-align: right;
+
+    &.is-near-limit {
+      color: var(--el-color-warning);
+    }
   }
 }
 
