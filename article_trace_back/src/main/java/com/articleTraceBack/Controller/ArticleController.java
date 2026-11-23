@@ -77,10 +77,11 @@ public class ArticleController {
     public Result<Map<String, Object>> addArticle(@RequestPart("article") @Validated Article article,
                                                   @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
+        // 先认登录态：未登录时不该先跑封面上限这类业务校验，否则 401 会伪装成 200 + 字段错误
+        CurrentUser.Session me = CurrentUser.require();
         if (coverTooLarge(cover, error)) {
             return Result.error(error);
         }
-        CurrentUser.Session me = CurrentUser.require();
         int uid = me.id();
         String username = me.username();
         String articleTitle = article.getTitle();
@@ -140,6 +141,8 @@ public class ArticleController {
                                               @RequestPart("article") @Validated Article article,
                                               @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
+        // 同上：先认登录态，未登录时不暴露「文章是否存在」
+        CurrentUser.Session me = CurrentUser.require();
         if (coverTooLarge(cover, error)) {
             return Result.error(error);
         }
@@ -149,7 +152,6 @@ public class ArticleController {
             return Result.error(error);
         }
         {
-            CurrentUser.Session me = CurrentUser.require();
             int uid = me.id();
             int roleType = me.type();
             String username = me.username();
@@ -337,6 +339,11 @@ public class ArticleController {
         String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (master != null && master.getType() == 0) {
+            // 审核只做「通过 / 驳回」；不先拦住非法目标状态，会被 updateState 挡下后误报成「刚被修改」
+            if (state != ArticleService.STATE_PUBLISHED && state != ArticleService.STATE_REJECTED) {
+                error.put("state", "只能通过（1）或驳回（3）！");
+                return Result.error(error);
+            }
             if (state == ArticleService.STATE_REJECTED
                     && (rejectReason == null || rejectReason.isBlank())) {
                 error.put("error", "驳回理由不能为空！");
