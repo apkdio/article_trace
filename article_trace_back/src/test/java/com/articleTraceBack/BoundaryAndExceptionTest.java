@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Controller.ArticleController;
 import com.articleTraceBack.Service.ArticleService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.GlobalExceptionHandler;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -128,12 +130,11 @@ public class BoundaryAndExceptionTest {
 
         // 此前这里是 int categoryId = article.getCategoryId() → 拆箱 NPE → 500，
         // 而且该行位于重名校验之前，连内容类报错都走不到
-        Result<Map<String, Object>> result = assertDoesNotThrow(() -> articleController.addArticle(article, null),
-                "缺少分类时应当返回提示而不是抛 NPE");
-
-        assertEquals(1, result.getCode(), "应当返回失败");
-        assertTrue(String.valueOf(result.getMessage()).contains("categoryId"),
-                "应当明确指出缺少的是分类，实际：" + result.getMessage());
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> articleController.addArticle(article, null),
+                "缺少分类时应抛业务异常而不是 NPE");
+        assertEquals("categoryId", ex.field(), "应当明确指出缺少的是分类");
+        assertTrue(ex.getMessage().contains("不能为空"), "文案应说明不能为空，实际：" + ex.getMessage());
     }
 
     private void loginAs(int uid, int roleType) {

@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AvatarApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AvatarApply;
 import com.articleTraceBack.pojo.PageBean;
@@ -44,7 +45,7 @@ public class AvatarApplyController {
                                               @RequestParam(defaultValue = "1") int pageNum,
                                               @RequestParam(defaultValue = "10") int pageSize) {
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         return Result.success(avatarApplyService.list(status, pageNum, pageSize));
     }
@@ -56,16 +57,16 @@ public class AvatarApplyController {
                                  @RequestParam(required = false) String rejectReason) {
         Integer reviewerId = currentUserId();
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         if (!pass && (rejectReason == null || rejectReason.isBlank())) {
-            return Result.error("拒绝时必须填写理由！");
+            throw new BusinessException("拒绝时必须填写理由！");
         }
         if (rejectReason != null && rejectReason.length() > MAX_REASON_LENGTH) {
-            return Result.error("拒绝理由过长（最多 " + MAX_REASON_LENGTH + " 字）！");
+            throw new BusinessException("拒绝理由过长（最多 " + MAX_REASON_LENGTH + " 字）！");
         }
         if (!avatarApplyService.review(id, pass, rejectReason, reviewerId)) {
-            return Result.error("记录不存在或已处理！");
+            throw new BusinessException("记录不存在或已处理！");
         }
         return Result.success();
     }

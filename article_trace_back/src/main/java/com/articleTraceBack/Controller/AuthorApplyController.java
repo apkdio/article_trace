@@ -2,6 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.config.SiteFeatureProperties;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
@@ -39,12 +40,12 @@ public class AuthorApplyController {
         // 单用户态下关闭申请入口：注册关了不再有新读者，但**存量账号仍能走到这里**，
         // 不关就是留了个后门
         if (!siteFeatures.isAuthorApplyEnabled()) {
-            return Result.error("暂不开放作者申请！");
+            throw new BusinessException("暂不开放作者申请！");
         }
         Integer userId = currentUserId();
         String reason = (body == null) ? null : body.get("reason");
         if (!applyService.submit(userId, reason)) {
-            return Result.error("已有待审核的申请，请勿重复提交！");
+            throw new BusinessException("已有待审核的申请，请勿重复提交！");
         }
         return Result.success();
     }
@@ -62,7 +63,7 @@ public class AuthorApplyController {
                                               @RequestParam(defaultValue = "1") int pageNum,
                                               @RequestParam(defaultValue = "10") int pageSize) {
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         return Result.success(applyService.list(status, pageNum, pageSize));
     }
@@ -74,10 +75,10 @@ public class AuthorApplyController {
                                  @RequestParam(required = false) String rejectReason) {
         Integer reviewerId = currentUserId();
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         if (!applyService.review(id, pass, rejectReason, reviewerId)) {
-            return Result.error("申请不存在或已处理！");
+            throw new BusinessException("申请不存在或已处理！");
         }
         return Result.success();
     }

@@ -77,7 +77,7 @@ public class UserController {
     public Result<Map<String, String>> captcha(HttpServletRequest request) {
         Map<String, String> captcha = captchaService.generate(IPUtil.mixOf(request));
         if (captcha == null) {
-            return Result.error("请求过于频繁，请稍后再试！");
+            throw new BusinessException("请求过于频繁，请稍后再试！");
         }
         return Result.success(captcha);
     }
@@ -92,34 +92,34 @@ public class UserController {
 
         // 1. 人机校验（图形验证码，一次性）
         if (!captchaService.verify(captchaId, captchaCode)) {
-            return Result.error("图形验证码错误或已过期！");
+            throw new BusinessException("图形验证码错误或已过期！");
         }
         // 2. 邮箱格式
         if (email == null || email.isBlank()) {
-            return Result.error("邮箱不能为空！");
+            throw new BusinessException("邮箱不能为空！");
         }
         if (!EMAIL_PATTERN.matcher(email.trim()).matches()) {
-            return Result.error("邮箱格式不正确！");
+            throw new BusinessException("邮箱格式不正确！");
         }
         // 3. 场景校验
         if (EmailCodeService.SCENE_RESET.equals(scene)) {
             if (userService.findUserByEmail(email.trim()) == null) {
-                return Result.error("该邮箱尚未注册！");
+                throw new BusinessException("该邮箱尚未注册！");
             }
         } else {
             scene = EmailCodeService.SCENE_REGISTER;
         }
         // 4. 注册场景在单用户态下直接拒绕：注册接口关了但验证码照发，等于没关
         if (EmailCodeService.SCENE_REGISTER.equals(scene) && !siteFeatures.isRegisterEnabled()) {
-            return Result.error("本站暂不开放注册！");
+            throw new BusinessException("本站暂不开放注册！");
         }
         // 5. 发码（锁定中的邮箱会被 send 拒绕，这里先给出带剩余时长的提示）
         long lockedSeconds = emailCodeService.lockRemainingSeconds(email, scene);
         if (lockedSeconds > 0) {
-            return Result.error("尝试次数过多，请 " + minutesOf(lockedSeconds) + " 分钟后再试！");
+            throw new BusinessException("尝试次数过多，请 " + minutesOf(lockedSeconds) + " 分钟后再试！");
         }
         if (!emailCodeService.send(email, scene)) {
-            return Result.error("发送过于频繁，请稍后再试！");
+            throw new BusinessException("发送过于频繁，请稍后再试！");
         }
         return Result.success("验证码已发送");
     }
@@ -133,10 +133,9 @@ public class UserController {
     @PostMapping("/register")
     public Result<String> register(@RequestBody @Validated RegisterUserPojo user,
                                    HttpServletRequest request) {
-        Map<String, Object> error = new HashMap<>();
         // 单用户态下关闭注册（个人备案要求：开放注册属于交互式服务，且邮箱注册不是实名）
         if (!siteFeatures.isRegisterEnabled()) {
-            return Result.error("本站暂不开放注册！");
+            throw new BusinessException("本站暂不开放注册！");
         }
         String username = user.getUsername();
         String password = user.getPassword();
@@ -145,24 +144,20 @@ public class UserController {
         String emailCode = user.getEmailCode();
 
         if (!password.equals(confirmPassword)) {
-            error.put("confirmPassword", "两次密码不一致！");
-            return Result.error(error);
+            throw new BusinessException("confirmPassword", "两次密码不一致！");
         }
         // 先查占用，避免无效请求白白消耗验证码
         if (userService.findUserByName(username) != null) {
-            error.put("username", "用户名已占用！");
-            return Result.error(error);
+            throw new BusinessException("username", "用户名已占用！");
         }
         if (userService.findUserByEmail(email) != null) {
-            error.put("email", "该邮箱已被注册！");
-            return Result.error(error);
+            throw new BusinessException("email", "该邮箱已被注册！");
         }
         // 邮箱验证码：一次性；输错会累计次数，用尽即作废该码并锁定邮箱
         int codeResult = emailCodeService.verify(email, EmailCodeService.SCENE_REGISTER, emailCode,
                 IPUtil.mixOf(request));
         if (codeResult != EmailCodeService.CODE_OK) {
-            error.put("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_REGISTER));
-            return Result.error(error);
+            throw new BusinessException("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_REGISTER));
         }
         // 注册一律为读者；成为作者请走「申请成为作者」
         User registerUser = new User();
@@ -171,16 +166,12 @@ public class UserController {
         registerUser.setEmail(email);
         registerUser.setType(ROLE_READER);
         try {
-            if (userService.userRegister(registerUser)) {
-                return Result.success();
-            }
+            userService.userRegister(registerUser);
         } catch (DuplicateKeyException e) {
             // 并发下两个请求可能同时通过查重，由唯一索引（uk_email）兜底
-            error.put("email", "该邮箱已被注册！");
-            return Result.error(error);
+            throw new BusinessException("email", "该邮箱已被注册！");
         }
-        error.put("error", "注册失败！请重试！");
-        return Result.error(error);
+        return Result.success();
     }
 
     /** 登录：校验验证码与失败次数后签发 JWT */
@@ -188,7 +179,6 @@ public class UserController {
     public Result<Map<String, Object>> login(@RequestBody @Validated(User.login.class) User user,
                                              HttpServletRequest request,
                                              HttpServletResponse response) {
-        Map<String, Object> error = new HashMap<>();
         // 限流两个维度：clientKey 是 IP+UA 指纹（请求头可伪造，仅辅助），username 才是防爆破的抓手
         String clientKey = IPUtil.mixOf(request);
         String username = user.getUsername();
@@ -197,17 +187,14 @@ public class UserController {
         long blockedSeconds = loginAttemptService.blockRemainingSeconds(username, clientKey);
         if (blockedSeconds > 0) {
             long minutes = minutesOf(blockedSeconds);
-            error.put("blocked", minutes);
-            error.put("error", "登录尝试过于频繁，请 " + minutes + " 分钟后再试！");
-            return Result.error(error);
+            throw new BusinessException("error", "登录尝试过于频繁，请 " + minutes + " 分钟后再试！",
+                    Map.of("blocked", minutes));
         }
 
         // 2. 失败超过阈值后必须出示图形验证码；图形码错误不计入失败次数
         boolean needCaptcha = loginAttemptService.needCaptcha(username, clientKey);
         if (needCaptcha && !captchaService.verify(user.getCaptchaId(), user.getCaptchaCode())) {
-            error.put("captcha", "图形验证码错误或已过期！");
-            error.put("needCaptcha", true);
-            return Result.error(error);
+            throw new BusinessException("captcha", "图形验证码错误或已过期！", Map.of("needCaptcha", true));
         }
 
         String password = user.getPassword();
@@ -221,8 +208,7 @@ public class UserController {
                 userInfo.put("type", result.getType());
                 String token = userService.genToken(userInfo, rememberMe);
                 if (!userService.setRedisToken(username, token, rememberMe)) {
-                    error.put("error", "Redis 服务异常！");
-                    return Result.error(error);
+                    throw new BusinessException("error", "Redis 服务异常！");
                 }
                 // 令牌只下发到 HttpOnly Cookie，不再交给前端脚本；
                 // 有效期与 Redis 里的 TTL 保持一致，否则会出现「Cookie 还在、后端已不认」。
@@ -243,21 +229,19 @@ public class UserController {
                 loginResult.put("lastLogin", lastLogin);
                 return Result.success(loginResult);
             }
-            return loginFailure(error, username, clientKey, "password", "密码错误！");
+            throw loginFailure(username, clientKey, "password", "密码错误！");
         }
-        return loginFailure(error, username, clientKey, "username", "用户名不存在！");
+        throw loginFailure(username, clientKey, "username", "用户名不存在！");
     }
 
     /**
-     * 记一次登录失败，并把「下次是否需要图形码 / 距离锁定还剩几次」带回前端。
+     * 记一次登录失败，并把「下次是否需要图形码 / 距离锁定还剩几次」带给前端。
      */
-    private Result<Map<String, Object>> loginFailure(Map<String, Object> error, String username,
-                                                     String clientKey, String field, String message) {
+    private BusinessException loginFailure(String username, String clientKey, String field, String message) {
         long failures = loginAttemptService.recordFailure(username, clientKey);
-        error.put(field, message);
-        error.put("needCaptcha", failures >= LoginAttemptService.CAPTCHA_THRESHOLD);
-        error.put("remaining", Math.max(0, LoginAttemptService.BLOCK_THRESHOLD - failures));
-        return Result.error(error);
+        return new BusinessException(field, message, Map.of(
+                "needCaptcha", failures >= LoginAttemptService.CAPTCHA_THRESHOLD,
+                "remaining", Math.max(0, LoginAttemptService.BLOCK_THRESHOLD - failures)));
     }
 
     /**
@@ -287,13 +271,11 @@ public class UserController {
     @GetMapping("/userInfo")
     public Result<Object> userInfo() {
         CurrentUser.Session me = CurrentUser.require();
-        Map<String, Object> error = new HashMap<>();
         String username = me.username();
         int uid = me.id();
         User user = userService.findUserByName(username);
         if (user == null) {
-            error.put("error", "未找到用户！");
-            return Result.error(error);
+            throw new BusinessException("error", "未找到用户！");
         }
         user.setArticlesTotal(userService.countPublishedArticles(uid));
         return Result.success(user);
@@ -303,7 +285,6 @@ public class UserController {
     @PatchMapping("/update")
     public Result<Map<String, String>> update(@RequestBody @Validated(User.update.class) User user) {
         CurrentUser.Session me = CurrentUser.require();
-        Map<String, Object> error = new HashMap<>();
         String name = user.getUsername();
         String username = me.username();
         int id = user.getId();
@@ -322,71 +303,58 @@ public class UserController {
                 }
                 // 按服务端给的字段落位：个签的错误不能显示在昵称输入框下；没有字段名才落到通用 key
                 String field = result.field() == null || result.field().isBlank() ? "error" : result.field();
-                error.put(field, result.reason());
-                return Result.error(error);
+                throw new BusinessException(field, result.reason());
             } catch (DuplicateKeyException e) {
                 // 并发下由唯一索引兜底：昵称可重复，只有邮箱有唯一约束
-                error.put("email", "邮箱已被使用！");
-                return Result.error(error);
+                throw new BusinessException("email", "邮箱已被使用！");
             }
         }
-        error.put("error", "Token不匹配！");
-        return Result.error(error);
+        throw new BusinessException("error", "Token不匹配！");
     }
 
     /** 上传头像（multipart 表单参数，进入审核队列，通过后生效） */
     @PatchMapping("/updateUserLogo")
     public Result<String> updateUserLogo(@RequestParam("userLogo") MultipartFile userLogo) {
-        Map<String, Object> error = new HashMap<>();
         int userId = CurrentUser.require().id();
         if (userLogo == null || userLogo.isEmpty()) {
-            error.put("file", "文件为空！");
-            return Result.error(error);
+            throw new BusinessException("file", "文件为空！");
         }
         if (userLogo.getContentType() == null || !userLogo.getContentType().contains("image")) {
-            error.put("file", "文件不是图片文件！");
-            return Result.error(error);
+            throw new BusinessException("file", "文件不是图片文件！");
         }
         if (userLogo.getSize() >= 2 * 1024 * 1024) {
-            error.put("file", "文件过大（>=2MB）!");
-            return Result.error(error);
+            throw new BusinessException("file", "文件过大（>=2MB）!");
         }
-        if (userService.isValidFile(userLogo)) {
-            // 站长改自己的头像不进审核队列：他是唯一能审的人，审自己没意义，
-            // 还会让待审状态卡在自己身上。副作用与审核通过完全一致（见 submitDirect）。
-            if (CurrentUser.require().type() == 0) {
-                if (avatarApplyService.submitDirect(userId, userLogo)) {
-                    return Result.success();
-                }
-                error.put("error", "提交失败，请稍后重试！");
-                return Result.error(error);
-            }
-            // 头像不再直接生效：先进 avatar 桶等待审核，通过后才写进 user_pic。
-            // 先探一次待审状态，这样「重复提交」和「上传失败」能给出不同的提示，
-            // 而不是把存储故障报成「已提交过」。
-            AvatarApply mine = avatarApplyService.findMine(userId);
-            if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
-                error.put("error", "已有待审核的头像，请勿重复提交！");
-                return Result.error(error);
-            }
-            if (avatarApplyService.submit(userId, userLogo)) {
-                return Result.success();
-            }
-            error.put("error", "提交失败，请稍后重试！");
-            return Result.error(error);
+        if (!userService.isValidFile(userLogo)) {
+            throw new BusinessException("file", "不是一个图片文件！");
         }
-        error.put("file", "不是一个图片文件！");
-        return Result.error(error);
+        // 站长改自己的头像不进审核队列：他是唯一能审的人，审自己没意义，
+        // 还会让待审状态卡在自己身上。副作用与审核通过完全一致（见 submitDirect）。
+        if (CurrentUser.require().type() == 0) {
+            if (!avatarApplyService.submitDirect(userId, userLogo)) {
+                throw new BusinessException("error", "提交失败，请稍后重试！");
+            }
+            return Result.success();
+        }
+        // 头像不再直接生效：先进 avatar 桶等待审核，通过后才写进 user_pic。
+        // 先探一次待审状态，这样「重复提交」和「上传失败」能给出不同的提示，
+        // 而不是把存储故障报成「已提交过」。
+        AvatarApply mine = avatarApplyService.findMine(userId);
+        if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
+            throw new BusinessException("error", "已有待审核的头像，请勿重复提交！");
+        }
+        if (!avatarApplyService.submit(userId, userLogo)) {
+            throw new BusinessException("error", "提交失败，请稍后重试！");
+        }
+        return Result.success();
     }
 
     /** 返回当前生效头像的三个字段：对象名、原图地址、缩略图地址。 */
     @GetMapping("/nowLogo")
     public Result<Map<String, Object>> nowLogo() {
         User user = userService.findUserByName(CurrentUser.require().username());
-        Map<String, Object> error = new HashMap<>();
         if (user == null) {
-            error.put("error", "用户不存在!");
-            return Result.error(error);
+            throw new BusinessException("error", "用户不存在!");
         }
         Map<String, Object> data = new HashMap<>();
         data.put("userPic", user.getUserPic());
@@ -401,57 +369,48 @@ public class UserController {
     /** 修改密码（校验原密码，成功后强制重新登录） */
     @PatchMapping("/updatePass")
     public Result<String> updatePass(@RequestBody @Validated UpdatePassPojo passInfo) {
-        Map<String, Object> error = new HashMap<>();
         String username = CurrentUser.require().username();
         String newPass = passInfo.getNewPass();
         String confirmPass = passInfo.getConfirmPass();
         if (!newPass.equals(confirmPass)) {
-            error.put("confirmPass", "两次密码不一致！");
-            return Result.error(error);
+            throw new BusinessException("confirmPass", "两次密码不一致！");
         }
-        if (userService.updatePass(username, newPass, passInfo.getOriPass())) {
-            if (userService.deleteRedisToken(username)) {
-                return Result.success();
-            }
-            error.put("Redis", "缓存删除失败！");
-            return Result.error(error);
+        if (!userService.updatePass(username, newPass, passInfo.getOriPass())) {
+            throw new BusinessException("oriPass", "原密码不正确，或已在其它设备改过，请重新登录后重试");
         }
-        error.put("oriPass", "原密码不正确，或已在其它设备改过，请重新登录后重试");
-        return Result.error(error);
+        if (!userService.deleteRedisToken(username)) {
+            throw new BusinessException("Redis", "缓存删除失败！");
+        }
+        return Result.success();
     }
 
     /** 忘记密码：凭重置码设置新密码 */
     @PostMapping("/forgetPass")
     public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo,
                                      HttpServletRequest request) {
-        Map<String, Object> error = new HashMap<>();
         String email = passInfo.getEmail();
         String emailCode = passInfo.getEmailCode();
         String newPass = passInfo.getPassword();
         String confirmPass = passInfo.getConfirmPassword();
 
         if (!newPass.equals(confirmPass)) {
-            error.put("confirmPassword", "两次密码不一致！");
-            return Result.error(error);
+            throw new BusinessException("confirmPassword", "两次密码不一致！");
         }
         // 邮箱验证码（一次性；输错累计次数，用尽即作废并锁定）
         int codeResult = emailCodeService.verify(email, EmailCodeService.SCENE_RESET, emailCode,
                 IPUtil.mixOf(request));
         if (codeResult != EmailCodeService.CODE_OK) {
-            error.put("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_RESET));
-            return Result.error(error);
+            throw new BusinessException("emailCode", emailCodeMessage(codeResult, email, EmailCodeService.SCENE_RESET));
         }
         User user = userService.findUserByEmail(email);
         if (user == null) {
-            error.put("email", "该邮箱尚未注册！");
-            return Result.error(error);
+            throw new BusinessException("email", "该邮箱尚未注册！");
         }
         User update = new User();
         update.setUsername(user.getUsername());
         update.setPassword(newPass);
         if (!userService.update(update, 1)) {
-            error.put("error", "设置新密码失败！请重试！");
-            return Result.error(error);
+            throw new BusinessException("error", "设置新密码失败！请重试！");
         }
         // 改密后让其现有登录态失效
         userService.deleteRedisToken(user.getUsername());
@@ -470,7 +429,6 @@ public class UserController {
     /** 重置为默认头像 */
     @DeleteMapping("/removeUserLogo")
     public Result<String> removeUserLogo() {
-        Map<String, Object> error = new HashMap<>();
         CurrentUser.Session me = CurrentUser.require();
         String username = me.username();
         int userId = me.id();
@@ -479,14 +437,12 @@ public class UserController {
         // 前端在待审期间已禁用按钮，这里是不走界面的兜底。
         AvatarApply mine = avatarApplyService.findMine(userId);
         if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
-            error.put("error", "有待审核的头像，请等审核结果出来再重置！");
-            return Result.error(error);
+            throw new BusinessException("error", "有待审核的头像，请等审核结果出来再重置！");
         }
-        if (userService.removeUserLogo(username)) {
-            return Result.success();
+        if (!userService.removeUserLogo(username)) {
+            throw new BusinessException("error", "重置失败！");
         }
-        error.put("error", "重置失败！");
-        return Result.error(error);
+        return Result.success();
     }
 
     /** 账号分页（站长） */
@@ -495,104 +451,85 @@ public class UserController {
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "5") int pageSize) {
         CurrentUser.Session me = CurrentUser.require();
-        Map<String, Object> error = new HashMap<>();
         String username = me.username();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         User master = userService.findUserByName(username);
-        if (master != null && master.getType() == 0) {
-            int total = userService.findAllAccounts();
-            int pageTotal = PageUtil.pageTotal(total, pageSize);
-            if (pageTotal == 0) {
-                error.put("error", "无数据！");
-                return Result.error(error);
-            }
-            if (pageNum > pageTotal) {
-                pageNum = pageTotal;
-            }
-            PageBean<User> users = userService.findAllAccountsWithPage(pageNum, pageSize);
-            users.setTotal(total);
-            return Result.success(users);
+        if (master == null || master.getType() != 0) {
+            throw new BusinessException("error", "权限不足！");
         }
-        error.put("error", "权限不足！");
-        return Result.error(error);
+        int total = userService.findAllAccounts();
+        int pageTotal = PageUtil.pageTotal(total, pageSize);
+        if (pageTotal == 0) {
+            throw new BusinessException("error", "无数据！");
+        }
+        if (pageNum > pageTotal) {
+            pageNum = pageTotal;
+        }
+        PageBean<User> users = userService.findAllAccountsWithPage(pageNum, pageSize);
+        users.setTotal(total);
+        return Result.success(users);
     }
 
     /** 变更用户身份（站长，需站长密码） */
     @PatchMapping("/changeType")
     public Result<String> changeType(@RequestParam int userId,
                                      @RequestParam int type, String masterPass) {
-        Map<String, Object> error = new HashMap<>();
         String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (type != 0 && type != 1) {
-            error.put("error", "身份错误！");
-            return Result.error(error);
+            throw new BusinessException("error", "身份错误！");
         }
-        if (master != null && master.getType() == 0) {
-            if (!Objects.equals(masterPass, masterPassword)) {
-                error.put("error", "站长密码错误！");
-                return Result.error(error);
-            }
-            User waitChange = userService.findUserById(userId);
-            if (waitChange == null) {
-                error.put("error", "用户不存在！");
-                return Result.error(error);
-            }
-            if (waitChange.getType() == type) {
-                error.put("error", "用户已处于该身份！");
-                return Result.error(error);
-            }
-            if (Objects.equals(waitChange.getId(), master.getId())) {
-                error.put("error", "不能更改自己的身份！");
-                return Result.error(error);
-            }
-            if (Objects.equals(waitChange.getUsername(), defaultUser)) {
-                error.put("error", "更改对象为默认用户！");
-                return Result.error(error);
-            }
-            if (userService.changeType(userId, type)) {
-                userService.deleteRedisToken(waitChange.getUsername());
-                return Result.success();
-            }
-            error.put("error", "失败！");
-            return Result.error(error);
+        if (master == null || master.getType() != 0) {
+            throw new BusinessException("error", "权限不足！");
         }
-        error.put("error", "权限不足！");
-        return Result.error(error);
+        if (!Objects.equals(masterPass, masterPassword)) {
+            throw new BusinessException("error", "站长密码错误！");
+        }
+        User waitChange = userService.findUserById(userId);
+        if (waitChange == null) {
+            throw new BusinessException("error", "用户不存在！");
+        }
+        if (waitChange.getType() == type) {
+            throw new BusinessException("error", "用户已处于该身份！");
+        }
+        if (Objects.equals(waitChange.getId(), master.getId())) {
+            throw new BusinessException("error", "不能更改自己的身份！");
+        }
+        if (Objects.equals(waitChange.getUsername(), defaultUser)) {
+            throw new BusinessException("error", "更改对象为默认用户！");
+        }
+        if (!userService.changeType(userId, type)) {
+            throw new BusinessException("error", "变更失败，请稍后重试！");
+        }
+        userService.deleteRedisToken(waitChange.getUsername());
+        return Result.success();
     }
 
     /** 删除账号（站长，需站长密码） */
     @DeleteMapping("/delete")
     public Result<String> deleteUser(@RequestParam int userId, @RequestParam String masterPass) {
-        Map<String, Object> error = new HashMap<>();
         String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
-        if (master != null && master.getType() == 0) {
-            if (!Objects.equals(masterPass, masterPassword)) {
-                error.put("error", "站长密码错误！");
-                return Result.error(error);
-            }
-            User waitDelete = userService.findUserById(userId);
-            if (waitDelete == null) {
-                error.put("error", "用户不存在！");
-                return Result.error(error);
-            }
-            if (Objects.equals(waitDelete.getUsername(), defaultUser)) {
-                error.put("error", "无法删除默认账号！");
-                return Result.error(error);
-            }
-            if (userId == master.getId()) {
-                error.put("error", "无法删除自己的账号！");
-                return Result.error(error);
-            }
-            if (userService.deleteUser(userId)) {
-                return Result.success();
-            }
-            error.put("error", "删除失败！");
-            return Result.error(error);
+        if (master == null || master.getType() != 0) {
+            throw new BusinessException("error", "权限不足！");
         }
-        error.put("error", "权限不足！");
-        return Result.error(error);
+        if (!Objects.equals(masterPass, masterPassword)) {
+            throw new BusinessException("error", "站长密码错误！");
+        }
+        User waitDelete = userService.findUserById(userId);
+        if (waitDelete == null) {
+            throw new BusinessException("error", "用户不存在！");
+        }
+        if (Objects.equals(waitDelete.getUsername(), defaultUser)) {
+            throw new BusinessException("error", "无法删除默认账号！");
+        }
+        if (userId == master.getId()) {
+            throw new BusinessException("error", "无法删除自己的账号！");
+        }
+        if (!userService.deleteUser(userId)) {
+            throw new BusinessException("error", "删除失败！");
+        }
+        return Result.success();
     }
 }

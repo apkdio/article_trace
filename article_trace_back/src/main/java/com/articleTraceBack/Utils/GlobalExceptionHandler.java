@@ -31,10 +31,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<String>> handleNotLoggedIn(NotLoggedInException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(ex.getMessage()));
     }
-    /** 预期内的业务失败：按异常携带的字段返回，前端在对应表单项下展示；没有字段名时落 error */
+    /** 预期内的业务失败：按异常携带的字段返回，前端在对应表单项下展示；payload 里的元信息一并带回 */
     @ExceptionHandler(BusinessException.class)
     public Result<Map<String, Object>> handleBusiness(BusinessException ex) {
-        Map<String, Object> errors = new HashMap<>();
+        Map<String, Object> errors = new HashMap<>(ex.payload());
         String field = ex.field() == null || ex.field().isBlank() ? "error" : ex.field();
         errors.put(field, ex.getMessage());
         return Result.error(errors);
