@@ -1,5 +1,6 @@
 package com.articleTraceBack.Utils;
 
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -57,34 +58,40 @@ public class TokenCheck implements AsyncHandlerInterceptor {
         if (token == null) {
             throw new NotLoggedInException();
         }
+        Map<String, Object> userInfo;
         try {
-            Map<String, Object> userInfo = jwtUtil.parseToken(token);
-            if (userInfo.get("type") == null) {
-                throw new NotLoggedInException();
-            }
-            int type = (int) userInfo.get("type");
-            // 未知角色一律拒（token 由服务端签发，正常到不了这里）
-            if (type != 0 && type != 1 && type != 2) {
-                throw new NotLoggedInException();
-            }
-            if (blocked(uri, type, writerNotAllow, readerNotAllow)) {
-                throw new NotLoggedInException();
-            }
-            String redisToken = stringRedisTemplate.opsForValue().get(userInfo.get("name").toString());
-            if (StringUtils.isBlank(redisToken)) {
-                throw new NotLoggedInException();
-            }
-            if (redisToken.equals(token)) {
-                ThreadLocalUtil.set(userInfo);
-                return true;
-            }
-            throw new NotLoggedInException();
-        } catch (NotLoggedInException e) {
-            throw e;
+            userInfo = jwtUtil.parseToken(token);
+        } catch (TokenExpiredException e) {
+            throw new SessionExpiredException();
         } catch (Exception e) {
-            // 解析失败 / Redis 异常：统一按未登录处理，交给全局处理器输出同一份 401 JSON
+            // 签名不对 / 结构损坏：当作「未登录」，不是「过期」
             throw new NotLoggedInException();
         }
+        if (userInfo.get("type") == null) {
+            throw new NotLoggedInException();
+        }
+        int type = (int) userInfo.get("type");
+        // 未知角色一律拒（token 由服务端签发，正常到不了这里）
+        if (type != 0 && type != 1 && type != 2) {
+            throw new NotLoggedInException();
+        }
+        if (blocked(uri, type, writerNotAllow, readerNotAllow)) {
+            // 身份有效，只是这个角色不允许访问：403，前端不该登出
+            throw new ForbiddenException();
+        }
+        String redisToken;
+        try {
+            redisToken = stringRedisTemplate.opsForValue().get(userInfo.get("name").toString());
+        } catch (Exception e) {
+            // Redis 故障时无法确认会话：按过期处理要求重登，避免误放行
+            throw new SessionExpiredException();
+        }
+        if (StringUtils.isBlank(redisToken) || !redisToken.equals(token)) {
+            // 令牌被服务端清掉或被其它设备顶掉：账号还在，会话没了
+            throw new SessionExpiredException();
+        }
+        ThreadLocalUtil.set(userInfo);
+        return true;
     }
 
     /**

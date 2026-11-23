@@ -1,19 +1,28 @@
 package com.articleTraceBack.Utils;
 
+import com.auth0.jwt.exceptions.TokenExpiredException;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.AntPathMatcher;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * 拦截矩阵：规则从测试配置原样加载（与主配置、容器配置同值），URI 取前端 src/api 的真实调用面。
@@ -125,5 +134,55 @@ class TokenCheckTest {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/article/list");
         assertThrows(NotLoggedInException.class,
                 () -> check.preHandle(request, new MockHttpServletResponse(), new Object()));
+    }
+
+    /** JWT 本身过期：会话过期（401 + expired=true），不是「未登录」 */
+    @Test
+    void expiredJwtIsSessionExpired() {
+        JwtUtil jwt = mock(JwtUtil.class);
+        given(jwt.parseToken("t")).willThrow(new TokenExpiredException("expired", Instant.now()));
+        TokenCheck check = new TokenCheck(jwt, mock(StringRedisTemplate.class));
+        assertThrows(SessionExpiredException.class,
+                () -> check.preHandle(request("/article/list", "t"), new MockHttpServletResponse(), new Object()));
+    }
+
+    /** JWT 有效但 Redis 里的令牌没了：被顶号 / 服务端清理，按会话过期处理 */
+    @Test
+    void tokenMissingInRedisIsSessionExpired() {
+        TokenCheck check = withRules(validJwt(), "");
+        assertThrows(SessionExpiredException.class,
+                () -> check.preHandle(request("/article/list", "t"), new MockHttpServletResponse(), new Object()));
+    }
+
+    /** 身份有效但角色不允许：403 的来源，不是会话过期 */
+    @Test
+    void roleBlockedIsForbidden() {
+        TokenCheck check = withRules(validJwt(), "/user/delete/**");
+        assertThrows(ForbiddenException.class,
+                () -> check.preHandle(request("/user/delete", "t"), new MockHttpServletResponse(), new Object()));
+    }
+
+    private JwtUtil validJwt() {
+        JwtUtil jwt = mock(JwtUtil.class);
+        given(jwt.parseToken("t")).willReturn(new HashMap<>(Map.of("id", 1, "name", "u", "type", 1)));
+        return jwt;
+    }
+
+    @SuppressWarnings("unchecked")
+    private TokenCheck withRules(JwtUtil jwt, String writerRule) {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> ops = mock(ValueOperations.class);
+        given(redis.opsForValue()).willReturn(ops);
+        TokenCheck check = new TokenCheck(jwt, redis);
+        ReflectionTestUtils.setField(check, "writerNotAllow",
+                writerRule.isEmpty() ? new String[]{} : new String[]{writerRule});
+        ReflectionTestUtils.setField(check, "readerNotAllow", new String[]{});
+        return check;
+    }
+
+    private MockHttpServletRequest request(String uri, String token) {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", uri);
+        request.setCookies(new Cookie("article_trace_token", token));
+        return request;
     }
 }

@@ -3,6 +3,7 @@ import {ElMessage} from "element-plus";
 import router from "@/router/index.js";
 import {userInfoStore} from "@/stores/userInfo.js";
 import {isAuthHandled, markAuthHandled} from "@/utils/session.js";
+import {errorText} from "@/utils/errorText.js";
 
 const baseUrl = '/api'
 // withCredentials：令牌在 HttpOnly Cookie 里，要允许跨端口/跨域调试时也带上它。
@@ -26,11 +27,13 @@ instance.interceptors.response.use(
                 ElMessage.error("内容过大，未能保存。请删掉一些内嵌图片，或把图片改用封面 / 外链。")
                 return Promise.reject(err)
             }
-            // 401 未授权错误
+            // 401：未登录 / 会话过期。message.expired 区分文案，两种都要清会话并回登录页
             if (err.response.status === 401) {
                 if (!isAuthHandled()) {
                     markAuthHandled()
-                    ElMessage.warning("登录已过期，请重新登录")
+                    const msg = err.response.data?.message
+                    const expired = msg && typeof msg === 'object' && msg.expired === true
+                    ElMessage.warning(expired ? "登录已过期，请重新登录" : "请先登录")
                     userInfoStore().clearUserInfo()
                     // 编辑器等页面收到后先把未提交内容落草稿，登录完回来还能恢复
                     window.dispatchEvent(new CustomEvent('auth:expired'))
@@ -39,6 +42,11 @@ instance.interceptors.response.use(
                         router.push({name: 'Login', query: {redirect: current.fullPath}})
                     }
                 }
+                return Promise.reject(err)
+            }
+            // 403：身份有效但角色不允许，只提示，不登出、不清草稿
+            if (err.response.status === 403) {
+                ElMessage.error(errorText(err.response.data?.message, "无权访问！"))
                 return Promise.reject(err)
             }
         }

@@ -2,6 +2,7 @@ package com.articleTraceBack.Utils;
 
 import com.articleTraceBack.pojo.Result;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
 
@@ -41,5 +42,26 @@ public class BusinessExceptionHandlerTest {
                 new BusinessException("password", "密码错误！", Map.of("needCaptcha", true, "remaining", 2)));
         assertEquals(Map.of("password", "密码错误！", "needCaptcha", true, "remaining", 2),
                 result.getMessage());
+    }
+
+    @Test
+    public void notLoggedInIs401WithExpiredFalse() {
+        ResponseEntity<Result<Map<String, Object>>> response = handler.handleNotLoggedIn(new NotLoggedInException());
+        assertEquals(401, response.getStatusCode().value());
+        assertEquals(Map.of("error", "未登录！", "expired", false), response.getBody().getMessage());
+    }
+
+    @Test
+    public void sessionExpiredIs401WithExpiredTrue() {
+        ResponseEntity<Result<Map<String, Object>>> response = handler.handleSessionExpired(new SessionExpiredException());
+        assertEquals(401, response.getStatusCode().value());
+        assertEquals(Map.of("error", "登录已过期，请重新登录", "expired", true), response.getBody().getMessage());
+    }
+
+    @Test
+    public void forbiddenIs403() {
+        ResponseEntity<Result<Map<String, Object>>> response = handler.handleForbidden(new ForbiddenException());
+        assertEquals(403, response.getStatusCode().value());
+        assertEquals(Map.of("error", "无权访问！"), response.getBody().getMessage());
     }
 }

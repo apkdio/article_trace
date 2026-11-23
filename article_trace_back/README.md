@@ -289,7 +289,9 @@ flowchart LR
 | `HttpMediaTypeNotSupportedException` | 不支持的媒体类型 + 支持的列表 |
 | `HttpMessageNotReadableException` | **保留原始解析失败原因**（见下） |
 | `MethodArgumentTypeMismatchException` | 类型不匹配提示 |
-| `NotLoggedInException` | **401** + `{code:1,message:"未登录！"}`——拦截器校验失败与 `CurrentUser.require()` 走同一个出口 |
+| `NotLoggedInException` | **401** + `{error:"未登录！", expired:false}`——无令牌 / 令牌无法解析 |
+| `SessionExpiredException` | **401** + `{error:"登录已过期，请重新登录", expired:true}`——JWT 到期，或 Redis 里的令牌已被清掉/顶掉 |
+| `ForbiddenException` | **403** + `{error:"无权访问！"}`——身份有效但角色不允许访问该 URL |
 | `DuplicateKeyException` | 唯一约束冲突的统一提示 |
 | `DataIntegrityViolationException` | 外键/长度/非空等约束的统一提示 |
 | `Exception` | 兜底，统一结构，不把堆栈甩给调用方 |

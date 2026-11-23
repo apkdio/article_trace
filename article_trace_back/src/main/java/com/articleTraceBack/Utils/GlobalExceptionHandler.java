@@ -26,10 +26,30 @@ import java.util.stream.Collectors;
 @Slf4j
 // 全局异常处理器
 public class GlobalExceptionHandler {
-    /** 受保护接口取不到当前用户：与 TokenCheck 的 401 保持一致，前端按会话过期处理 */
+    /** 未登录：401 + expired=false，前端按「需要登录」处理 */
     @ExceptionHandler(NotLoggedInException.class)
-    public ResponseEntity<Result<String>> handleNotLoggedIn(NotLoggedInException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(ex.getMessage()));
+    public ResponseEntity<Result<Map<String, Object>>> handleNotLoggedIn(NotLoggedInException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("error", "未登录！");
+        errors.put("expired", false);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(errors));
+    }
+
+    /** 会话过期：同样是 401，但带 expired=true，前端据此提示「登录已过期」 */
+    @ExceptionHandler(SessionExpiredException.class)
+    public ResponseEntity<Result<Map<String, Object>>> handleSessionExpired(SessionExpiredException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("error", ex.getMessage());
+        errors.put("expired", true);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(errors));
+    }
+
+    /** 已登录但角色不允许：403，前端只提示，不登出 */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Result<Map<String, Object>>> handleForbidden(ForbiddenException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Result.error(errors));
     }
     /** 预期内的业务失败：按异常携带的字段返回，前端在对应表单项下展示；payload 里的元信息一并带回 */
     @ExceptionHandler(BusinessException.class)
