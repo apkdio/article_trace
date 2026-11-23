@@ -1,0 +1,39 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/SessionExpiredException.java
+  s_ab74ea15e793d1::t_dee0ef3b26478b 1-8
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_063d5a64a35826 29,31-52
+article_trace_back/src/main/java/com/articleTraceBack/Utils/TokenCheck.java
+  s_ab74ea15e793d1::t_2d5f6d149b6ccb 3
+  s_ab74ea15e793d1::t_4a3c541639e8e5 61,63-65,67-75,78-94
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_04f7a0640ce9da 292-294
+article_trace_back/src/test/java/com/articleTraceBack/Utils/TokenCheckTest.java
+  s_ab74ea15e793d1::t_4b57ed56c70504 16
+  s_ab74ea15e793d1::t_83dfc1092b749b 3-4,7-8,11,17,24-25
+  s_ab74ea15e793d1::t_8f79d98dab7c70 138-142,144-187
+  s_ab74ea15e793d1::t_970540677d6af3 143
+article_trace_front/src/utils/request.js
+  s_ab74ea15e793d1::t_735593d7a9a355 30,34-36,47-49
+  s_ab74ea15e793d1::t_e1f7ff52fb6c28 6
+article_trace_back/src/test/java/com/articleTraceBack/Utils/BusinessExceptionHandlerTest.java
+  s_ab74ea15e793d1::t_425ea242e937d5 46-66
+  s_ab74ea15e793d1::t_776f1d2bf3745c 5
+article_trace_back/src/main/java/com/articleTraceBack/Utils/ForbiddenException.java
+  s_ab74ea15e793d1::t_e1c3a08daa9dc1 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "ecbf8f20b0fd1a5d5c11164b3208038f7fea8644",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
