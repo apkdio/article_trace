@@ -1,0 +1,28 @@
+docker/backend/application-container.yml
+  s_ab74ea15e793d1::t_d6513274606e56 22-25
+article_trace_back/src/main/resources/application_templete.yml
+  s_ab74ea15e793d1::t_86420616742e25 18-21
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_e9ab9a88bce191 42-49
+  s_ab74ea15e793d1::t_e37e1406242f92 19
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_1feb4fe79f7cef 143-145
+  s_ab74ea15e793d1::t_f65a277496da72 80-82
+  s_ab74ea15e793d1::t_5aeb325dfe28aa 222-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "9fb09825976a4c9f8ecb897ad6515c40f31afeee",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
