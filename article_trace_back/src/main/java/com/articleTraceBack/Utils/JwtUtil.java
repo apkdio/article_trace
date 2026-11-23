@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 // JWT相关
@@ -29,6 +30,9 @@ public class JwtUtil {
         }
         return JWT.create()
                 .withClaim("userInfo", claims)
+                // 同一秒内两次登录的 claims 与 exp 完全相同，没有 jti 会签出同一个字符串，
+                // Redis 里也分不清是谁把谁顶掉
+                .withJWTId(UUID.randomUUID().toString())
                 .withExpiresAt(new Date(System.currentTimeMillis() + expireTime))
                 .sign(Algorithm.HMAC256(secret_KEY));
     }
