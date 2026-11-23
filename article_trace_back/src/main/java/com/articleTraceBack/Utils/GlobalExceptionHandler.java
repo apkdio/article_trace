@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,14 @@ public class GlobalExceptionHandler {
     public Result<Map<String, Object>> handleBodyImageLimit(BodyImageLimitException ex) {
         Map<String, Object> errors = new HashMap<>();
         errors.put("content", ex.getMessage());
+        return Result.error(errors);
+    }
+
+    /** multipart 超过上限（正文 JSON + 封面）：给可操作的提示，别落到兜底的「服务器出错」 */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("error", "提交内容过大，请压缩图片或减少图片数量后重试");
         return Result.error(errors);
     }
 

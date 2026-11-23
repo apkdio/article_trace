@@ -77,6 +77,9 @@ public class ArticleController {
     public Result<Map<String, Object>> addArticle(@RequestPart("article") @Validated Article article,
                                                   @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
+        if (coverTooLarge(cover, error)) {
+            return Result.error(error);
+        }
         CurrentUser.Session me = CurrentUser.require();
         int uid = me.id();
         String username = me.username();
@@ -137,6 +140,9 @@ public class ArticleController {
                                               @RequestPart("article") @Validated Article article,
                                               @RequestPart(value = "cover", required = false) MultipartFile cover) {
         Map<String, Object> error = new HashMap<>();
+        if (coverTooLarge(cover, error)) {
+            return Result.error(error);
+        }
         Article art = articleService.findArticleMetaById(id);
         if (art == null) {
             error.put("error", "文章不存在！");
@@ -211,6 +217,15 @@ public class ArticleController {
             error.put("categoryId", "文章类型不存在！");
             return Result.error(error);
         }
+    }
+
+    /** 封面上限：multipart 的 max-file-size 要装得下正文 JSON（5MB 图片），封面改在应用层单独限 3MB */
+    private boolean coverTooLarge(MultipartFile cover, Map<String, Object> error) {
+        if (cover != null && cover.getSize() > 3L * 1024 * 1024) {
+            error.put("cover", "封面图片不能超过 3MB！");
+            return true;
+        }
+        return false;
     }
 
     /** 发布时间排序：1 升序 / -1 降序，其余值按默认顺序 */
