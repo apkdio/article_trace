@@ -1,0 +1,58 @@
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyApprovalTxTest.java
+  s_ab74ea15e793d1::t_c81c288393b182 64-66
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_851740f16da3de 307
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_08f8bbcf1b6a52 22
+  s_ab74ea15e793d1::t_3ddfc4a4be6c7f 457-458
+  s_ab74ea15e793d1::t_4ebda5455f6ada 496
+  s_ab74ea15e793d1::t_3b68d413261e25 170
+  s_ab74ea15e793d1::t_b9de1a9812ee32 522
+  s_ab74ea15e793d1::t_e3317c78ef0fec 437
+  s_ab74ea15e793d1::t_86a6596c2d8eb4 375
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_0099a58fbfab8f 391,394-396
+  s_ab74ea15e793d1::t_5b6e9931940157 159,164,171-173
+  s_ab74ea15e793d1::t_ce6fb24b431f03 5
+  s_ab74ea15e793d1::t_b6ca6f411975e4 311,315,319,326
+  s_ab74ea15e793d1::t_1bcae2af07e1a4 351,355,359-371
+  s_ab74ea15e793d1::t_e91f139498288e 94,104-106
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserService.java
+  s_ab74ea15e793d1::t_5d4809d76d5885 56-57,61-62
+  s_ab74ea15e793d1::t_7c0e4fa6752cb2 12-13,23-24
+  s_ab74ea15e793d1::t_3b4e3416f26035 66-67
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_ea376dc0f43999 59-60
+  s_ab74ea15e793d1::t_6bf22cf456f71a 202-203
+article_trace_back/src/test/java/com/articleTraceBack/PasswordChangeCasTest.java
+  s_ab74ea15e793d1::t_aac2d8b2348217 20
+  s_ab74ea15e793d1::t_3e8a1bea05390d 59-62
+  s_ab74ea15e793d1::t_d9600726ebd53b 75
+  s_ab74ea15e793d1::t_f310a3314e8864 5
+article_trace_back/src/test/java/com/articleTraceBack/UserDeleteCascadeTest.java
+  s_ab74ea15e793d1::t_575c306adc8bcb 88
+  s_ab74ea15e793d1::t_eaf9c4cc9c4acd 68
+article_trace_back/src/test/java/com/articleTraceBack/UserEmailNormalizeTest.java
+  s_ab74ea15e793d1::t_11bd607cda217f 58
+  s_ab74ea15e793d1::t_02c3b86e368f58 39
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_cd5088edd98828 62-63
+article_trace_back/src/main/java/com/articleTraceBack/Service/AuthorApplyServiceImpl.java
+  s_ab74ea15e793d1::t_79d62ea196303b 163-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "8e4db652d795ecde48058eefbe43a16ac0c82d5d",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
