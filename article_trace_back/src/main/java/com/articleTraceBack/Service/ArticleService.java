@@ -11,14 +11,8 @@ import java.util.Map;
 
 
 public interface ArticleService {
-    /**
-     * 新增或更新一篇文章；封面随本次请求一起提交。
-     *
-     * @param cover    新封面文件；为 null 表示不换封面，此时 {@code article.coverImg}
-     *                 只接受「空串 = 删除封面」或「与库中原值一致」，其余一律回退为原值
-     * @param snapshot 更新时的入口快照（状态、旧对象名、版本号）；新增传 null
-     */
-    boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username, ArticleSnapshot snapshot);
+    /** 新增或更新一篇文章；封面随本次请求一起提交。预期内的失败抛 {@code BusinessException}（带字段）。 */
+    void articleAddOrUpdate(Article article, int type, MultipartFile cover, String username, ArticleSnapshot snapshot);
 
     /** 查同一作者是否已有同名文章（标题在作者内唯一，不同作者可同名） */
     Article findArticleByUserAndTitle(int userId, String articleTitle);
@@ -36,7 +30,8 @@ public interface ArticleService {
     /** 轻量读取：{@code content} 仍是对象名、不读对象存储，供保存 / 审核在入口构造快照 */
     Article findArticleMetaById(int id);
 
-    boolean deleteById(int id);
+    /** 删除文章；不存在或删除失败抛 {@code BusinessException} */
+    void deleteById(int id);
 
     /** 删除封面对象；只允许删除自己文章正在引用的封面（key 由客户端传入，不可信） */
     int findAllArticlesCountInMaster(Integer categoryId,
@@ -62,8 +57,8 @@ public interface ArticleService {
     /** 站长角色 type */
     int ROLE_MASTER = 0;
 
-    /** 审核文章：state=1 通过发布，state=3 驳回（必须给理由，会展示给作者）；{@code snapshot} 决定并发条件 */
-    boolean updateState(int id, int state, String rejectReason, ArticleSnapshot snapshot);
+    /** 审核文章：state=1 通过发布，state=3 驳回（必须给理由，会展示给作者）；{@code snapshot} 决定并发条件。失败抛 {@code BusinessException} */
+    void updateState(int id, int state, String rejectReason, ArticleSnapshot snapshot);
 
     /** 判断某角色能否把文章状态从 {@code from} 流转到 {@code to}（站长可跳过审核直接发布，判断需带角色维度）。 */
     boolean canTransfer(int from, int to, int roleType);

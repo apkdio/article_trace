@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -100,7 +102,7 @@ public class CoverAndLogoConsistencyTest {
         // 即便客户端塞了一个可疑的 key，有文件时也一律以服务端生成的对象名为准
         edit.setCoverImg("attacker-supplied-key.png");
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("new.png"), USERNAME, snapshotOf(id)));
+        articleService.articleAddOrUpdate(edit, 1, coverImage("new.png"), USERNAME, snapshotOf(id));
 
         Article after = articleMapper.selectById(id);
         assertNotNull(after.getCoverImg());
@@ -129,7 +131,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setState(ArticleService.STATE_DRAFT);
         edit.setCoverImg("");            // 空串 = 删除封面
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id)));
+        articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id));
 
         assertEquals("", articleMapper.selectById(id).getCoverImg(), "封面指向应当被清空");
         verify(rustFsUtil).delete(oldKey, "image");
@@ -151,7 +153,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setState(ArticleService.STATE_DRAFT);
         edit.setCoverImg(null);          // 没选新封面
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id)));
+        articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id));
 
         assertEquals(oldKey, articleMapper.selectById(id).getCoverImg(),
                 "未提交新封面时应当保持原封面，且旧对象不能被删");
@@ -176,7 +178,8 @@ public class CoverAndLogoConsistencyTest {
         edit.setContent("正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertFalse(articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME, snapshotOf(id)),
+        assertThrows(BusinessException.class,
+                () -> articleService.articleAddOrUpdate(edit, 1, coverImage("x.png"), USERNAME, snapshotOf(id)),
                 "正文上传失败时整次提交应当失败");
 
         // 刚上传的封面必须被回收，不留下无引用对象；对象名按用户 id 归属，不再带 username
@@ -226,7 +229,8 @@ public class CoverAndLogoConsistencyTest {
         MockMultipartFile bad = new MockMultipartFile(
                 "cover", "evil.jsp", "image/png", "x".getBytes());
 
-        assertFalse(articleService.articleAddOrUpdate(edit, 1, bad, USERNAME, snapshotOf(id)),
+        assertThrows(BusinessException.class,
+                () -> articleService.articleAddOrUpdate(edit, 1, bad, USERNAME, snapshotOf(id)),
                 "扩展名不在白名单时应当直接失败");
         verify(rustFsUtil, never()).upload(any(), anyString(), anyString());
         String cover = articleMapper.selectById(id).getCoverImg();
@@ -249,8 +253,7 @@ public class CoverAndLogoConsistencyTest {
         edit.setContent("正文内容");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, coverImage("first.png"), USERNAME, snapshotOf(id)),
-                "原本 cover_img 为 NULL 的文章补封面不应报错");
+        articleService.articleAddOrUpdate(edit, 1, coverImage("first.png"), USERNAME, snapshotOf(id));
         assertNotNull(articleMapper.selectById(id).getCoverImg());
     }
 
@@ -279,9 +282,8 @@ public class CoverAndLogoConsistencyTest {
                 edit.setState(ArticleService.STATE_DRAFT);
                 try {
                     start.await();
-                    if (articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id))) {
-                        ok.incrementAndGet();
-                    }
+                    articleService.articleAddOrUpdate(edit, 1, null, USERNAME, snapshotOf(id));
+                    ok.incrementAndGet();
                 } catch (ArticleConcurrentEditException e) {
                     conflict.incrementAndGet();
                 } catch (InterruptedException e) {

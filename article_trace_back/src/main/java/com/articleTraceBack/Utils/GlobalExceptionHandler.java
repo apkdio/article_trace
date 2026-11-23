@@ -31,11 +31,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<String>> handleNotLoggedIn(NotLoggedInException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(ex.getMessage()));
     }
-    /** 正文图片超限：按正文字段返回，前端在正文表单项下展示 */
-    @ExceptionHandler(BodyImageLimitException.class)
-    public Result<Map<String, Object>> handleBodyImageLimit(BodyImageLimitException ex) {
+    /** 预期内的业务失败：按异常携带的字段返回，前端在对应表单项下展示；没有字段名时落 error */
+    @ExceptionHandler(BusinessException.class)
+    public Result<Map<String, Object>> handleBusiness(BusinessException ex) {
         Map<String, Object> errors = new HashMap<>();
-        errors.put("content", ex.getMessage());
+        String field = ex.field() == null || ex.field().isBlank() ? "error" : ex.field();
+        errors.put(field, ex.getMessage());
         return Result.error(errors);
     }
 

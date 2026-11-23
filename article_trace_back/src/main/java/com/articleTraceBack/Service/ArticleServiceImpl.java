@@ -4,6 +4,7 @@ import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
 import com.articleTraceBack.Utils.BodyImageLimitException;
 import com.articleTraceBack.Utils.BodyImageLimits;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -69,8 +71,8 @@ public class ArticleServiceImpl implements ArticleService {
         return sensitiveWordHolder.get().search(TextNormalizer.forMatch(content));
     }
     @Override
-    public boolean articleAddOrUpdate(Article article, int type, MultipartFile cover, String username,
-                                      ArticleSnapshot snapshot) {
+    public void articleAddOrUpdate(Article article, int type, MultipartFile cover, String username,
+                                   ArticleSnapshot snapshot) {
         // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
         // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
         article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
@@ -84,7 +86,7 @@ public class ArticleServiceImpl implements ArticleService {
         article.setRejectReason(null);
         // 更新必须带入口快照；没有版本号就无法判断「我改的是不是读到的那一版」
         if (type == 1 && (snapshot == null || snapshot.version() == null)) {
-            return false;
+            throw new BusinessException("error", "保存参数缺失，请刷新后重试");
         }
 
         // 0为新增，1为更新
@@ -103,9 +105,6 @@ public class ArticleServiceImpl implements ArticleService {
         String newCoverKey = null;
         if (cover != null && !cover.isEmpty()) {
             newCoverKey = uploadCoverObject(cover, article.getCreateUser(), username);
-            if (newCoverKey == null) {
-                return false;
-            }
             article.setCoverImg(newCoverKey);
         } else {
             // 客户端传来的 coverImg 不可信：只有明确传空串才表示「删除封面」，
@@ -121,7 +120,7 @@ public class ArticleServiceImpl implements ArticleService {
                 if (newCoverKey != null) {
                     rustFsUtil.delete(newCoverKey, "image");
                 }
-                return false;
+                throw new BusinessException("error", "正文上传失败，请稍后重试");
             }
             article.setContent(fileName);
             article.setCreateTime(LocalDateTime.now());
@@ -130,7 +129,7 @@ public class ArticleServiceImpl implements ArticleService {
                 if (newCoverKey != null) {
                     rustFsUtil.delete(newCoverKey, "image");
                 }
-                return false;
+                throw new BusinessException("error", "正文上传失败，请稍后重试");
             }
             article.setUpdateTime(LocalDateTime.now());
             article.setContent(fileName);
@@ -156,6 +155,13 @@ public class ArticleServiceImpl implements ArticleService {
                     throw new ArticleConcurrentEditException("这篇文章刚被改过，请刷新页面后重新提交");
                 }
             }
+        } catch (DuplicateKeyException e) {
+            // 标题在作者内唯一：查重与写入之间被并发抢先，唯一索引兜底后转成字段错误
+            rustFsUtil.delete(fileName, "json");
+            if (newCoverKey != null) {
+                rustFsUtil.delete(newCoverKey, "image");
+            }
+            throw new BusinessException("title", "你已写过同名文章！");
         } catch (Exception e) {
             // 写库失败（如 DuplicateKeyException）：回收本次上传的新文件，旧文件始终没动过，
             // 原样抛出交给上层转成友好提示。
@@ -166,12 +172,12 @@ public class ArticleServiceImpl implements ArticleService {
             throw e;
         }
         if (!saved) {
-            // 没抛异常但也没写成功：同样回收新文件，DB 保持指向旧文件
+            // 没写成功（更新时文章已被并发删除）：同样回收新文件，DB 保持指向旧文件
             rustFsUtil.delete(fileName, "json");
             if (newCoverKey != null) {
                 rustFsUtil.delete(newCoverKey, "image");
             }
-            return false;
+            throw new BusinessException("error", "文章已不存在，请刷新后重试");
         }
 
         // 走到这里说明 DB 已指向新对象；旧对象删除失败只会留下孤儿，不影响可用性。
@@ -194,14 +200,11 @@ public class ArticleServiceImpl implements ArticleService {
 
         // Agent侧
         // 保存成功后标记待同步：已发布 → 待入库，非发布 → 待删除（避免草稿被检索）
-        if (saved) {
-            if (article.getState() != null && article.getState() == 1) {
-                markIngestPending(article.getId());
-            } else {
-                markDeletePending(article.getId());
-            }
+        if (article.getState() != null && article.getState() == 1) {
+            markIngestPending(article.getId());
+        } else {
+            markDeletePending(article.getId());
         }
-        return saved;
     }
 
     @Override
@@ -274,36 +277,38 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public boolean deleteById(int id) {
+    public void deleteById(int id) {
         Article article = articleMapper.selectById(id);
         if (article == null) {
-            return false;
+            throw new BusinessException("error", "文章不存在！");
         }
         // 先删库行再删对象：反过来的话 DB 删除失败会留下指向已删对象的行，正文永久变空且不可逆。
         // 这边删对象失败只是孤儿文件，不影响可用性
         if (articleMapper.deleteById(id) != 1) {
-            return false;
+            throw new BusinessException("error", "删除失败，请稍后重试");
         }
         rustFsUtil.delete(article.getCoverImg(), "image");
         rustFsUtil.delete(article.getContent(), "json");
         stringRedisTemplateArticle.opsForHash().delete(ARTICLE_PENDING_VIEWS_KEY, String.valueOf(id));
         // 标记待删除：由定时任务统一从 agent 移除索引
         markDeletePending(id);
-        return true;
     }
 
-    /** 上传封面对象并返回对象名，校验不通过或上传失败返回 null；对象名由服务端生成，客户端文件名只用于取扩展名。 */
+    /** 上传封面对象并返回对象名；文件不合法或上传失败都抛 {@code BusinessException}（带字段）。 */
     private String uploadCoverObject(MultipartFile cover, Integer userId, String username) {
         if (!FileCheckUtil.isAcceptableImage(cover)) {
             log.warn("reject cover upload: unacceptable image, user={}, name={}, contentType={}",
                     username, cover.getOriginalFilename(), cover.getContentType());
-            return null;
+            throw new BusinessException("cover", "封面图片格式不支持（仅 JPG / PNG / GIF / WebP / BMP）");
         }
         // 与正文同一口径：用用户 id 而非 username（username 允许含 /，会被对象存储当成目录分隔符），
         // 并带随机后缀——只靠毫秒时间戳，同一毫秒的两次保存会撞同一个对象名
         String fileName = System.currentTimeMillis() + "-" + userId + "-"
                 + UUID.randomUUID().toString().substring(0, 8) + FileCheckUtil.extensionOf(cover);
-        return rustFsUtil.upload(cover, "image", fileName) ? fileName : null;
+        if (!rustFsUtil.upload(cover, "image", fileName)) {
+            throw new BusinessException("error", "封面上传失败，请稍后重试");
+        }
+        return fileName;
     }
 
     /** 从对象存储取正文并做白名单清洗，用于覆盖修复前遗留的历史数据（正文会经 {@code v-html} 直接渲染）。 */
@@ -397,20 +402,20 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public boolean updateState(int id, int state, String rejectReason, ArticleSnapshot snapshot) {
+    public void updateState(int id, int state, String rejectReason, ArticleSnapshot snapshot) {
         if (snapshot == null || snapshot.state() == null || snapshot.version() == null) {
-            return false;
+            throw new BusinessException("error", "审核参数缺失，请刷新后重试");
         }
         // 审核入口只做「发布 / 驳回」两类动作；「撤回为草稿」属于作者侧操作，不走这里
         if (state != STATE_PUBLISHED && state != STATE_REJECTED) {
             log.warn("article assess rejected non-assess target: id={}, target={}", id, state);
-            return false;
+            throw new BusinessException("state", "只能通过（1）或驳回（3）！");
         }
         // 驳回必须给理由：作者靠它知道怎么改，空理由等于「不知道为什么被拒」
         String reason = rejectReason == null ? null : rejectReason.trim();
         if (state == STATE_REJECTED && (reason == null || reason.isEmpty())) {
             log.warn("article reject without reason: id={}", id);
-            return false;
+            throw new BusinessException("error", "驳回理由不能为空！");
         }
         // 审核入口只服务站长，且只允许 2→1 / 2→3 / 1→3（1→3 是追回误审）。
         // 不能复用 canTransfer：它给站长放行 0→1 与 1→1，会让「通过」把作者刚撤回的草稿直接发布，
@@ -420,7 +425,7 @@ public class ArticleServiceImpl implements ArticleService {
                 || (from == STATE_PUBLISHED && state == STATE_REJECTED);
         if (!legal) {
             log.warn("illegal article assess transfer rejected: id={}, {} -> {}", id, from, state);
-            return false;
+            throw new BusinessException("error", "当前文章状态不允许该操作，请刷新后重试！");
         }
         UpdateWrapper<Article> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
@@ -434,16 +439,15 @@ public class ArticleServiceImpl implements ArticleService {
             // 再当敏感稿排在待审列表前面毫无意义。命中的词留在 sensitive_words 里，排查与调词表时还要看。
             updateWrapper.set("sensitive_hit", 0);
         }
-        boolean updated = articleMapper.update(null, updateWrapper) == 1;
-        if (updated) {
-            // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除
-            if (state == 1) {
-                markIngestPending(id);
-            } else {
-                markDeletePending(id);
-            }
+        if (articleMapper.update(null, updateWrapper) != 1) {
+            throw new BusinessException("error", "文章可能刚被修改，请刷新后重试！");
         }
-        return updated;
+        // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除
+        if (state == 1) {
+            markIngestPending(id);
+        } else {
+            markDeletePending(id);
+        }
     }
 
     /** 按字符数截断（列宽 200），避免超长理由在写库时抛 Data too long */

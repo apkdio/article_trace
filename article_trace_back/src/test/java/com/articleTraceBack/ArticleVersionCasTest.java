@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
@@ -68,14 +69,14 @@ public class ArticleVersionCasTest {
     }
 
     /** 模拟作者保存：自己读一份最新快照 */
-    private boolean save(int id, int userId, int state, String body) {
+    private void save(int id, int userId, int state, String body) {
         Article edit = new Article();
         edit.setId(id);
         edit.setCreateUser(userId);
         edit.setTitle(uniqueTitle());
         edit.setContent(body);
         edit.setState(state);
-        return articleService.articleAddOrUpdate(edit, 1, null, "zz-test-ver", snapshotOf(id));
+        articleService.articleAddOrUpdate(edit, 1, null, "zz-test-ver", snapshotOf(id));
     }
 
     private Article editWithStaleSnapshot(int id, int userId, int state, String body) {
@@ -98,9 +99,10 @@ public class ArticleVersionCasTest {
         given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
 
         ArticleSnapshot reviewer = snapshotOf(id);
-        assertTrue(save(id, userId, ArticleService.STATE_PENDING, "作者改后的正文"), "作者保存应成功");
+        save(id, userId, ArticleService.STATE_PENDING, "作者改后的正文");
 
-        assertFalse(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, reviewer),
+        assertThrows(BusinessException.class,
+                () -> articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, reviewer),
                 "正文已换、版本已变，审核必须落空");
         Article after = articleMapper.selectById(id);
         assertEquals(ArticleService.STATE_PENDING, after.getState(), "落空的审核不能改变状态");
@@ -117,7 +119,7 @@ public class ArticleVersionCasTest {
         given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
 
         ArticleSnapshot aSnapshot = snapshotOf(id);          // A 进入接口时的读数
-        assertTrue(save(id, userId, ArticleService.STATE_DRAFT, "B 的正文"), "B 先完成");
+        save(id, userId, ArticleService.STATE_DRAFT, "B 的正文");
         Article afterB = articleMapper.selectById(id);
 
         Article aEdit = editWithStaleSnapshot(id, userId, ArticleService.STATE_DRAFT, "A 的正文");
@@ -141,11 +143,12 @@ public class ArticleVersionCasTest {
         given(rustFsUtil.delete(anyString(), anyString())).willReturn(true);
 
         ArticleSnapshot initial = snapshotOf(id);
-        assertTrue(articleService.updateState(id, ArticleService.STATE_REJECTED, "先驳回", initial));
-        assertTrue(save(id, userId, ArticleService.STATE_PENDING, "改完重投"), "3→2 重新送审");
+        articleService.updateState(id, ArticleService.STATE_REJECTED, "先驳回", initial);
+        save(id, userId, ArticleService.STATE_PENDING, "改完重投");
         assertEquals(ArticleService.STATE_PENDING, articleMapper.selectById(id).getState());
 
-        assertFalse(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, initial),
+        assertThrows(BusinessException.class,
+                () -> articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, initial),
                 "状态虽然回到了待审，但版本已经变了，旧审核结果不能复用");
         assertEquals(ArticleService.STATE_PENDING, articleMapper.selectById(id).getState());
     }
@@ -166,7 +169,7 @@ public class ArticleVersionCasTest {
         article.setCreateTime(LocalDateTime.now());
         article.setVersion(999L);
 
-        assertTrue(articleService.articleAddOrUpdate(article, 0, null, "zz-test-ver", null));
+        articleService.articleAddOrUpdate(article, 0, null, "zz-test-ver", null);
         assertEquals(0L, articleMapper.selectById(article.getId()).getVersion(), "新增必须从 0 开始");
     }
 }

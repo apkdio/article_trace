@@ -144,7 +144,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("新正文");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id)), "正常编辑应当成功");
+        articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id));
 
         // 写库成功后旧对象才被清理
         verify(rustFsUtil).delete(eq(oldKey), eq("json"));
@@ -243,7 +243,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setContent("新正文");
         edit.setState(ArticleService.STATE_DRAFT);
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id)));
+        articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id));
         verify(rustFsUtil).evictContentCache(oldKey);
     }
 
@@ -268,7 +268,7 @@ public class ArticleEditAndCacheSafetyTest {
         edit.setViews(0L);
         edit.setCreateTime(before.getCreateTime().minusDays(3));
 
-        assertTrue(articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id)));
+        articleService.articleAddOrUpdate(edit, 1, null, "zz-test-edit", snapshotOf(id));
 
         Article after = articleMapper.selectById(id);
         assertEquals(7L, after.getViews(), "保存不得覆盖期间累加的浏览量");
@@ -283,7 +283,7 @@ public class ArticleEditAndCacheSafetyTest {
 
         given(rustFsUtil.delete(anyString(), anyString())).willReturn(false);
 
-        assertTrue(articleService.deleteById(id), "对象删除失败不阻断：库行已删即成功");
+        articleService.deleteById(id);
         assertNull(articleMapper.selectById(id), "库行必须已删除");
     }
 }

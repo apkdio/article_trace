@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.ArticleMapper;
 import com.articleTraceBack.pojo.Article;
 import com.articleTraceBack.pojo.ArticleSnapshot;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -69,21 +71,25 @@ public class ArticleStateMachineTest {
     public void testUpdateStateRespectsStateMachine() {
         Integer id = insertArticle(ArticleService.STATE_PENDING);
         try {
-            assertFalse(articleService.updateState(id, 99, null, snapshotOf(id)), "非法目标状态应被拒绝");
-            assertFalse(articleService.updateState(id, 0, null, snapshotOf(id)), "站长不能把待审文章改成草稿");
-            assertFalse(articleService.updateState(id, ArticleService.STATE_REJECTED, "  ", snapshotOf(id)),
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, 99, null, snapshotOf(id)), "非法目标状态应被拒绝");
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, 0, null, snapshotOf(id)), "站长不能把待审文章改成草稿");
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, ArticleService.STATE_REJECTED, "  ", snapshotOf(id)),
                     "驳回不给理由应被拒绝（作者要知道怎么改）");
 
-            assertTrue(articleService.updateState(id, ArticleService.STATE_REJECTED, "第二节引用缺少出处", snapshotOf(id)),
-                    "2→3 驳回");
+            articleService.updateState(id, ArticleService.STATE_REJECTED, "第二节引用缺少出处", snapshotOf(id));
             assertEquals("第二节引用缺少出处", articleMapper.selectById(id).getRejectReason(),
                     "驳回理由要落库，作者列表里能看到");
 
-            assertFalse(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, snapshotOf(id)),
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, snapshotOf(id)),
                     "3→1 应被拒绝");
-            assertFalse(articleService.updateState(999999, ArticleService.STATE_PUBLISHED, null,
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(999999, ArticleService.STATE_PUBLISHED, null,
                             new ArticleSnapshot(ArticleService.STATE_PENDING, "x.json", "", 0L)),
-                    "文章不存在应返回 false");
+                    "文章不存在应抛业务异常");
         } finally {
             articleMapper.deleteById(id);
         }
@@ -95,12 +101,13 @@ public class ArticleStateMachineTest {
         Integer draftId = insertArticle(ArticleService.STATE_DRAFT);
         Integer publishedId = insertArticle(ArticleService.STATE_PUBLISHED);
         try {
-            assertFalse(articleService.updateState(draftId, ArticleService.STATE_PUBLISHED, null, snapshotOf(draftId)),
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(draftId, ArticleService.STATE_PUBLISHED, null, snapshotOf(draftId)),
                     "0→1 不属于审核动作：作者撤回的草稿不能靠点「通过」发布");
-            assertFalse(articleService.updateState(publishedId, ArticleService.STATE_PUBLISHED, null, snapshotOf(publishedId)),
+            assertThrows(BusinessException.class,
+                    () -> articleService.updateState(publishedId, ArticleService.STATE_PUBLISHED, null, snapshotOf(publishedId)),
                     "1→1 不是流转：重复点通过应被拒绝");
-            assertTrue(articleService.updateState(publishedId, ArticleService.STATE_REJECTED, "追回误审", snapshotOf(publishedId)),
-                    "1→3 追回误审仍应允许");
+            articleService.updateState(publishedId, ArticleService.STATE_REJECTED, "追回误审", snapshotOf(publishedId));
         } finally {
             articleMapper.deleteById(draftId);
             articleMapper.deleteById(publishedId);
@@ -115,8 +122,7 @@ public class ArticleStateMachineTest {
             // 直接落一条旧理由（模拟上一轮驳回留下的），再从待审通过发布
             articleMapper.update(null, new UpdateWrapper<Article>()
                     .eq("id", id).set("reject_reason", "旧理由"));
-            assertTrue(articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, snapshotOf(id)),
-                    "2→1 审核通过");
+            articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, snapshotOf(id));
             assertNull(articleMapper.selectById(id).getRejectReason(), "通过发布后旧理由应被清空");
         } finally {
             articleMapper.deleteById(id);
