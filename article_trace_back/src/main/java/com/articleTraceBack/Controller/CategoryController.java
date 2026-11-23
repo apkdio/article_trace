@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.CategoryService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.Result;

@@ -1,7 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Utils.CurrentUser;
-import com.articleTraceBack.Utils.NotLoggedInException;
+import com.articleTraceBack.exception.NotLoggedInException;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

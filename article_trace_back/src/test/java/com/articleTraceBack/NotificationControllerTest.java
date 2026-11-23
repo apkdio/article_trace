@@ -2,7 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Controller.NotificationController;
 import com.articleTraceBack.Service.NotificationService;
-import com.articleTraceBack.Utils.NotLoggedInException;
+import com.articleTraceBack.exception.NotLoggedInException;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.pojo.Notification;

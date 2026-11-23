@@ -1,5 +1,8 @@
 package com.articleTraceBack.Utils;
 
+import com.articleTraceBack.exception.ForbiddenException;
+import com.articleTraceBack.exception.NotLoggedInException;
+import com.articleTraceBack.exception.SessionExpiredException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;

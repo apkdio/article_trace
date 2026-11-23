@@ -2,7 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.NotificationService;
 import com.articleTraceBack.Service.Support.SessionExpiryNotifier;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.PageBean;

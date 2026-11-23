@@ -2,7 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Controller.ArticleController;
 import com.articleTraceBack.Service.ArticleService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.mapper.ArticleMapper;

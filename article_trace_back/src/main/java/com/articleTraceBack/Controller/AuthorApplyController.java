@@ -2,7 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.config.SiteFeatureProperties;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;

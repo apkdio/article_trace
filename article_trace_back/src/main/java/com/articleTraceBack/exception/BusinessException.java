@@ -1,4 +1,4 @@
-package com.articleTraceBack.Utils;
+package com.articleTraceBack.exception;
 
 import java.util.Map;
 

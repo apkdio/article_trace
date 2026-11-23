@@ -1,7 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AvatarApplyService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AvatarApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;

@@ -6,7 +6,7 @@ import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.ReaderService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.*;

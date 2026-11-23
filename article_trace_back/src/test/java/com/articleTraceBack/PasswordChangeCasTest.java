@@ -2,7 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.BcryptUtils;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;

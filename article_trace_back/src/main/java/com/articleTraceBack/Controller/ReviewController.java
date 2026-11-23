@@ -5,7 +5,7 @@ import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.ReportService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Result;
 import org.springframework.web.bind.annotation.GetMapping;

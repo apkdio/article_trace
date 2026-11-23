@@ -1,7 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AvatarApplyService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AvatarApply;
 import com.articleTraceBack.pojo.PageBean;

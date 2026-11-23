@@ -1,5 +1,8 @@
 package com.articleTraceBack.Utils;
 
+import com.articleTraceBack.exception.ForbiddenException;
+import com.articleTraceBack.exception.NotLoggedInException;
+import com.articleTraceBack.exception.SessionExpiredException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeAll;

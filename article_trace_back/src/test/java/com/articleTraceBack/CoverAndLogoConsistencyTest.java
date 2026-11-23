@@ -1,8 +1,8 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ArticleService;
-import com.articleTraceBack.Utils.ArticleConcurrentEditException;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.ArticleConcurrentEditException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.ArticleMapper;

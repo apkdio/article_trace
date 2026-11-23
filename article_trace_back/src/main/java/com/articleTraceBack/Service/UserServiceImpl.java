@@ -2,7 +2,7 @@ package com.articleTraceBack.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;

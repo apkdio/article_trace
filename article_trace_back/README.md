@@ -282,6 +282,8 @@ flowchart LR
 
 自定义异常捕获器，统一封装异常为 `Result` 格式返回，前端 `request.js` 响应拦截器据此提示，401 时提示「登录已失效」并跳转首页（凭证在 Cookie 里，由后端清除）。
 
+异常类本身放在 `com.articleTraceBack.exception`：`BusinessException`（业务失败，带字段与 payload）、`NotLoggedInException` / `SessionExpiredException`（401 的两种情形）与 `ForbiddenException`（403）；处理器仍留在 `Utils/*`。
+
 > ⚠️ **它会把 `405 Method Not Allowed` 也包成 `HTTP 200 + code:1`**。所以改后端 HTTP 方法时必须同步改前端调用方，且前端不能只看状态码判断成败——否则会像登出那样**静默失败**（Cookie 没清，用户却以为已退出）。
 
 | 异常 | 返回 |

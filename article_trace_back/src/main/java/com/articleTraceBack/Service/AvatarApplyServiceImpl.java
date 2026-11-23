@@ -1,6 +1,6 @@
 package com.articleTraceBack.Service;
 
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;

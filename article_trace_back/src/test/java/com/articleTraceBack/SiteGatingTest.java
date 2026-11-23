@@ -3,7 +3,7 @@ package com.articleTraceBack;
 import com.articleTraceBack.Controller.AuthorApplyController;
 import com.articleTraceBack.Controller.ReaderController;
 import com.articleTraceBack.Controller.UserController;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.pojo.Comment;
 import com.articleTraceBack.pojo.RegisterUserPojo;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.UserService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ProfileApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;

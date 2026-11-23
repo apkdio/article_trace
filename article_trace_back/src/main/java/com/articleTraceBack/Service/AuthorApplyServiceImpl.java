@@ -1,6 +1,6 @@
 package com.articleTraceBack.Service;
 
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;

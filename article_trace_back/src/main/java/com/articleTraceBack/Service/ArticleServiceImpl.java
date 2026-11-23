@@ -1,10 +1,10 @@
 package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
-import com.articleTraceBack.Utils.ArticleConcurrentEditException;
-import com.articleTraceBack.Utils.BodyImageLimitException;
+import com.articleTraceBack.exception.ArticleConcurrentEditException;
+import com.articleTraceBack.exception.BodyImageLimitException;
 import com.articleTraceBack.Utils.BodyImageLimits;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;

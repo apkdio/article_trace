@@ -1,5 +1,7 @@
 package com.articleTraceBack.Utils;
 
+import com.articleTraceBack.exception.NotLoggedInException;
+
 import java.util.Map;
 
 /**

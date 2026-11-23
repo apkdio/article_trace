@@ -1,7 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AuthorApplyService;
-import com.articleTraceBack.Utils.BusinessException;
+import com.articleTraceBack.exception.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.AuthorApply;
