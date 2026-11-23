@@ -368,7 +368,8 @@ public class UserController {
 
     /** 修改密码（校验原密码，成功后强制重新登录） */
     @PatchMapping("/updatePass")
-    public Result<String> updatePass(@RequestBody @Validated UpdatePassPojo passInfo) {
+    public Result<String> updatePass(@RequestBody @Validated UpdatePassPojo passInfo,
+                                     HttpServletResponse response) {
         String username = CurrentUser.require().username();
         String newPass = passInfo.getNewPass();
         String confirmPass = passInfo.getConfirmPass();
@@ -376,7 +377,7 @@ public class UserController {
             throw new BusinessException("confirmPass", "两次密码不一致！");
         }
         userService.updatePass(username, newPass, passInfo.getOriPass());
-        if (!userService.deleteRedisToken(username)) {
+        if (!endSession(username, response)) {
             throw new BusinessException("Redis", "缓存删除失败！");
         }
         return Result.success();
@@ -410,9 +411,8 @@ public class UserController {
         if (!userService.update(update, 1)) {
             throw new BusinessException("error", "设置新密码失败！请重试！");
         }
-        // 改密后让其现有登录态失效
-        userService.deleteRedisToken(user.getUsername());
-        CookieUtil.clearToken(response,cookieSecure);
+        // 改密后让其现有登录态失效：Redis 令牌与浏览器 Cookie 一起清
+        endSession(user.getUsername(), response);
         return Result.success();
     }
 
@@ -420,9 +420,19 @@ public class UserController {
     @PostMapping("/logout")
     public void logout(HttpServletResponse response) {
         String username = CurrentUser.require().username();
-        userService.deleteRedisToken(username);
-        // 光删 Redis 不够：Cookie 还在浏览器里，得让它一起过期
+        endSession(username, response);
+    }
+
+    /**
+     * 让某个账号的现有会话立即失效：删 Redis 令牌，并清掉请求方浏览器里的 Cookie。
+     * 退出 / 改密 / 找回密码共用同一套；未登录时清 Cookie 也无害（只是下发一个过期 Cookie）。
+     *
+     * @return Redis 令牌是否删除成功；失败时调用方决定要不要提示「缓存未清除」
+     */
+    private boolean endSession(String username, HttpServletResponse response) {
+        boolean cleared = userService.deleteRedisToken(username);
         CookieUtil.clearToken(response, cookieSecure);
+        return cleared;
     }
 
     /** 重置为默认头像 */
