@@ -2,6 +2,8 @@ package com.articleTraceBack.Service;
 
 import com.articleTraceBack.Utils.AhoCorasickUtil;
 import com.articleTraceBack.Utils.ArticleConcurrentEditException;
+import com.articleTraceBack.Utils.BodyImageLimitException;
+import com.articleTraceBack.Utils.BodyImageLimits;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
@@ -72,6 +74,11 @@ public class ArticleServiceImpl implements ArticleService {
         // 富文本落库前按白名单清洗：正文会被前端 v-html 直接渲染，脏 HTML 就是存储型 XSS。
         // 放在这里而不是 Controller，是因为这是唯一的写库点，谁调用都绕不过去。
         article.setContent(RichTextCleaner.cleanToSafeHtml(article.getContent()));
+        // 图片限额放在清洗之后：清洗已剔除非位图 data:，且这里是所有保存路径的唯一入口
+        String imageLimitError = BodyImageLimits.check(article.getContent());
+        if (imageLimitError != null) {
+            throw new BodyImageLimitException(imageLimitError);
+        }
         // 驳回理由只能由审核动作写入：作者保存时一律清空（重新提交后旧理由就过期了，
         // 同时挡住请求体里夹带 rejectReason 的注入）
         article.setRejectReason(null);

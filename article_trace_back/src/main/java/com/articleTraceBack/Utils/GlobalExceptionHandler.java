@@ -30,6 +30,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<String>> handleNotLoggedIn(NotLoggedInException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error(ex.getMessage()));
     }
+    /** 正文图片超限：按正文字段返回，前端在正文表单项下展示 */
+    @ExceptionHandler(BodyImageLimitException.class)
+    public Result<Map<String, Object>> handleBodyImageLimit(BodyImageLimitException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("content", ex.getMessage());
+        return Result.error(errors);
+    }
+
     /** 参数校验失败（@Validated）：取第一条字段错误 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<String> handleMethodArgumentNotValidException
