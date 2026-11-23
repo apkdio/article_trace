@@ -1,0 +1,24 @@
+article_trace_back/src/test/java/com/articleTraceBack/ArticleTitleConflictGuardTest.java
+  s_ab74ea15e793d1::t_805235fa5216ce 102-104,106-108
+  s_ab74ea15e793d1::t_9bcf0685a6d525 22
+  s_ab74ea15e793d1::t_387ecb285408b7 5
+article_trace_back/src/test/java/com/articleTraceBack/SiteGatingTest.java
+  s_ab74ea15e793d1::t_03d41932570071 6,15
+  s_ab74ea15e793d1::t_0b6c167a0b7a25 47-49,54-56,61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "117199d2ac18dd2ab5b361e5ff0f5967f0c41191",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
