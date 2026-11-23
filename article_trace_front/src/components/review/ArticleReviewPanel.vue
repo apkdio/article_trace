@@ -67,13 +67,14 @@ const checkVersions = async () => {
   rows.forEach(row => {
     const current = latest.get(row.id)
     if (current && row.version != null && current.version !== row.version) {
-      next[row.id] = true
+      // 存下最新状态：state 变了是多审核（被别的站长处理），没变是作者又改了稿
+      next[row.id] = current.state
       changed = true
     }
   })
   if (changed) {
     stale.value = next
-    ElMessage.warning('有待审文章在你查看后被修改，请刷新列表后再审')
+    ElMessage.warning('有待审文章在你查看后被修改或处理，请刷新列表')
   }
 }
 
@@ -104,8 +105,8 @@ const openPreview = async (row) => {
 
 /** 通过：直接确认 */
 const approve = (row) => {
-  if (stale.value[row.id]) {
-    ElMessage.warning('这篇文章刚被作者改过，请先刷新列表')
+  if (stale.value[row.id] != null) {
+    ElMessage.warning(stale.value[row.id] === 2 ? '这篇文章刚被作者改过，请先刷新列表' : '这篇文章已被其他站长处理，请刷新列表')
     return
   }
   ElMessageBox.confirm(
@@ -128,8 +129,8 @@ const approve = (row) => {
 
 /** 驳回：必须写理由，理由会展示给作者（作者改完可重投） */
 const reject = (row) => {
-  if (stale.value[row.id]) {
-    ElMessage.warning('这篇文章刚被作者改过，请先刷新列表')
+  if (stale.value[row.id] != null) {
+    ElMessage.warning(stale.value[row.id] === 2 ? '这篇文章刚被作者改过，请先刷新列表' : '这篇文章已被其他站长处理，请刷新列表')
     return
   }
   ElMessageBox.prompt(
@@ -173,8 +174,8 @@ defineExpose({load})
       <el-table-column label="标题" min-width="220">
         <template #default="{ row }">
           <el-button link type="primary" @click="openPreview(row)">{{ row.title }}</el-button>
-          <el-tag v-if="stale[row.id]" size="small" type="warning" disable-transitions
-                  class="hit-tag">作者刚改过
+          <el-tag v-if="stale[row.id] != null" size="small" type="warning" disable-transitions
+                  class="hit-tag">{{ stale[row.id] === 2 ? '作者刚改过' : '已被处理' }}
           </el-tag>
           <el-tag v-if="row.sensitiveHit" size="small" type="danger" disable-transitions
                   class="hit-tag">命中违禁词
@@ -194,9 +195,9 @@ defineExpose({load})
            三个按钮在 200px 里放不下，「驳回」会被挤到第二行 -->
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
-          <el-button type="success" size="small" :icon="Select" :disabled="Boolean(stale[row.id])"
+          <el-button type="success" size="small" :icon="Select" :disabled="stale[row.id] != null"
                      @click="approve(row)">通过</el-button>
-          <el-button type="danger" size="small" :icon="CloseBold" :disabled="Boolean(stale[row.id])"
+          <el-button type="danger" size="small" :icon="CloseBold" :disabled="stale[row.id] != null"
                      @click="reject(row)">驳回</el-button>
         </template>
       </el-table-column>
@@ -224,6 +225,8 @@ defineExpose({load})
       </div>
       <el-alert v-if="previewRow.sensitiveHit" type="warning" :closable="false" show-icon class="preview-alert"
                 :title="'命中违禁词' + (previewRow.sensitiveWords ? '：' + previewRow.sensitiveWords : '')"/>
+      <el-alert v-if="stale[previewRow.id] != null" type="error" :closable="false" show-icon class="preview-alert"
+                title="这篇文章在你打开预览后已被修改或处理，请关闭后刷新列表再操作"/>
       <div ref="previewContentRef" class="preview-content ql-editor" v-html="previewRow.content"></div>
     </el-dialog>
   </div>

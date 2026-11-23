@@ -129,6 +129,21 @@ public class ArticleStateMachineTest {
         }
     }
 
+    /** 两个站长同时审：后点的人拿着旧快照，提示要说明「已被其他站长处理」 */
+    @Test
+    public void secondReviewerOnStaleSnapshotIsToldHandledByAnotherMaster() {
+        Integer id = insertArticle(ArticleService.STATE_PENDING);
+        try {
+            ArticleSnapshot first = snapshotOf(id);
+            articleService.updateState(id, ArticleService.STATE_PUBLISHED, null, first);
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> articleService.updateState(id, ArticleService.STATE_REJECTED, "慢了一步", first));
+            assertTrue(ex.getMessage().contains("已被其他站长处理"), "实际：" + ex.getMessage());
+        } finally {
+            articleMapper.deleteById(id);
+        }
+    }
+
     /** 入口快照：模拟 controller 在请求进入时读到的状态与版本 */
     private ArticleSnapshot snapshotOf(Integer id) {
         Article raw = articleMapper.selectById(id);

@@ -450,6 +450,14 @@ public class ArticleServiceImpl implements ArticleService {
             updateWrapper.set("sensitive_hit", 0);
         }
         if (articleMapper.update(null, updateWrapper) != 1) {
+            // 0 行有两种：状态已经被别人改掉（多审核），或状态没变但版本被推高（作者又改了稿）
+            Article latest = articleMapper.selectById(id);
+            if (latest == null) {
+                throw new BusinessException("error", "文章已被删除，请刷新列表！");
+            }
+            if (!Objects.equals(latest.getState(), snapshot.state())) {
+                throw new BusinessException("error", "这篇文章已被其他站长处理，请刷新列表！");
+            }
             throw new BusinessException("error", "文章可能刚被修改，请刷新后重试！");
         }
         // 审核通过 → 待入库；下架/驳回/转草稿 → 待删除

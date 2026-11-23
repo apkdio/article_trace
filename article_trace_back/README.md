@@ -203,6 +203,7 @@ article_trace_back/
   - **命中违禁词时目标状态被强制改成待审(2)**，站长也一样。**草稿例外**：草稿不进敏感词监测（不判、不打标，写入时会把 `sensitive_hit` 清掉），只有送审 / 发布才判定——草稿是还没打算交出去的私有产物，扫了也不进审核队列。判定规则收在 `Service/Support/ArticleSensitivityGuard`（`shouldCheckSensitive` / `applySensitiveVerdict` / `applyMark`，都与 HTTP 无关），用例见 `ArticleSensitivityGuardTest`。
   - **目标状态与当前一致时跳过状态机**（例如已在待审的稿子再保存）：这不是状态流转，否则会误报「当前文章状态不允许该操作！」。状态机本身的语义不变（见 `ArticleService.canTransfer`）。
 - **版本探针（冲突提前提示）**：`GET /article/version/{id}`（作者本人或站长）与 `POST /article/versions`（站长，批量 ≤50）只回 `version / state / updateTime`，供编辑抽屉与审核列表轮询；前端 15s 一次、页面隐藏时暂停，发现版本变化就禁用保存/审核并提示刷新，避免「作者改完才发现审完了」或「站长审完才发现稿被改过」。真正的并发仍由提交时的 `version` CAS 兜底。
+  - **多审核**：两个站长同时开着列表时，先点的成功；后点的在轮询里会看到该行变成「已被处理」，若在同一窗口期内点下去，`updateState` 的 CAS 落空后会比较最新状态，给出「这篇文章已被其他站长处理，请刷新列表！」；作者在此期间又改稿（状态没变、版本变了）则仍是「文章可能刚被修改，请刷新后重试！」。
 - **封面**：**随文章一次性 multipart 提交**（`POST /article/add`、`PATCH /article/update/{id}` 接收 `article` JSON + 可选 `cover` 文件），不再有独立的封面上传端点。
   - 带文件 → 上传新图，**对象名由服务端生成**（与正文同一口径：`时间戳-用户id-随机后缀`，不用 `username`——它允许含 `/`，会被对象存储当成目录分隔符）；写库成功后旧封面才被删除。
   - 不带文件且 `coverImg` 为空串 → 删除封面（写库成功后删对象）。

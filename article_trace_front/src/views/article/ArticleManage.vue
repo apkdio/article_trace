@@ -920,9 +920,10 @@ const watchArticleVersion = () => {
   stopVersionWatch = startVersionWatch(async () => {
     const res = await getArticleVersionService(id)
     if (res.code !== 0 || !res.data || res.data.version === baseVersion) return
+    // state 变了 = 站长审过；state 没变 = 另一台设备保存过
     versionConflict.value = res.data.state === 2
-        ? '这篇文章刚被站长审核过，当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
-        : '这篇文章在别处被修改过，当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
+        ? '这篇文章在别处被修改过（可能来自另一台设备），当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
+        : '这篇文章刚被站长审核过（已通过或驳回），当前内容无法再保存。请先复制需要保留的内容，再刷新列表。'
     cancelVersionWatch()
     ElMessage.warning('检测到文章版本已变化')
   })
