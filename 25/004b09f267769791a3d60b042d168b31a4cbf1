@@ -1,0 +1,57 @@
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AvatarApplyController.java
+  s_ab74ea15e793d1::t_436630cbdefd6b 60,63,66,69
+  s_ab74ea15e793d1::t_361bacd39fd8fa 4
+  s_ab74ea15e793d1::t_ae3b9a2169f236 48
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ProfileApplyController.java
+  s_ab74ea15e793d1::t_f85ec9a89e4ed4 52,56,59,62
+  s_ab74ea15e793d1::t_46834af2ea4e25 41
+  s_ab74ea15e793d1::t_0efec5c1aaf879 4
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BusinessException.java
+  s_ab74ea15e793d1::t_2c425199c8a32f 3-4,7-8,12,19-22,25,31-33
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_579793154617be 34,37
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_0e16eb65ae31b3 307
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AuthorApplyController.java
+  s_ab74ea15e793d1::t_5e5ce361ec82e9 78,81
+  s_ab74ea15e793d1::t_edb0a9fce686ed 66
+  s_ab74ea15e793d1::t_70773fa553ac7c 5
+  s_ab74ea15e793d1::t_4eef480bf8b0bc 43,48
+article_trace_back/src/test/java/com/articleTraceBack/BoundaryAndExceptionTest.java
+  s_ab74ea15e793d1::t_fd6d860c7a7346 27
+  s_ab74ea15e793d1::t_afc313956ffc4c 133-137
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_bd6258374049c4 232,234
+  s_ab74ea15e793d1::t_e8c9ec98483874 238,240,242-244
+  s_ab74ea15e793d1::t_859e7ac41538e4 278
+  s_ab74ea15e793d1::t_6d8daff12f21b6 138,147,151,154,160,169,172,174
+  s_ab74ea15e793d1::t_e1f02031461c85 357
+  s_ab74ea15e793d1::t_f700613e3eaab3 440,442-443,445
+  s_ab74ea15e793d1::t_cb4bab04413b90 481,483-487,489-506
+  s_ab74ea15e793d1::t_53488b357b12ba 397,403,407,413
+  s_ab74ea15e793d1::t_feffed80dac37a 211
+  s_ab74ea15e793d1::t_b9fee583718fde 306,309,312
+  s_ab74ea15e793d1::t_255b3717c2d2eb 320,323,326-335,337-347,349
+  s_ab74ea15e793d1::t_bd67bf7f4a8608 458-464,466-471
+  s_ab74ea15e793d1::t_3f1614c5fe4656 514-518,520-533
+  s_ab74ea15e793d1::t_fb8b4322139741 376,378-382,384
+  s_ab74ea15e793d1::t_08d38f343b08c5 95,99,102,107,114,119,122
+  s_ab74ea15e793d1::t_9ad0ef189ade56 80
+  s_ab74ea15e793d1::t_c211e15b4f0892 190-191,197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "25004b09f267769791a3d60b042d168b31a4cbf1",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
