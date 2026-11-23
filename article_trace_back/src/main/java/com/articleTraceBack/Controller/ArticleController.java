@@ -3,6 +3,7 @@ package com.articleTraceBack.Controller;
 import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.CategoryService;
 import com.articleTraceBack.Service.Support.ArticlePublishPolicy;
+import com.articleTraceBack.Service.Support.ArticleReviewLock;
 import com.articleTraceBack.Service.Support.ArticleSensitivityGuard;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
@@ -33,14 +34,17 @@ public class ArticleController {
     private final CategoryService categoryService;
     private final ArticleService articleService;
     private final UserService userService;
+    private final ArticleReviewLock articleReviewLock;
     @Value("${Password.masterPass}")
     private String masterPassword;
 
 
-    public ArticleController(CategoryService categoryService, ArticleService articleService, UserService userService) {
+    public ArticleController(CategoryService categoryService, ArticleService articleService, UserService userService,
+                             ArticleReviewLock articleReviewLock) {
         this.categoryService = categoryService;
         this.articleService = articleService;
         this.userService = userService;
+        this.articleReviewLock = articleReviewLock;
     }
 
     /** 我的文章分页（可按分类 / 状态 / 关键词筛选） */
@@ -287,6 +291,33 @@ public class ArticleController {
         return data;
     }
 
+    /** 进入审核：占住这篇文章，避免两个站长同时审；TTL 10 分钟，审核完成或离开时释放 */
+    @PostMapping("/review-lock/{id}")
+    public Result<String> acquireReviewLock(@PathVariable int id) {
+        CurrentUser.Session me = CurrentUser.require();
+        if (me.type() != ArticleService.ROLE_MASTER) {
+            throw new ForbiddenException();
+        }
+        if (articleService.findArticleMetaById(id) == null) {
+            throw new BusinessException("error", "文章不存在！");
+        }
+        if (!articleReviewLock.tryLock(id, me.id(), me.username())) {
+            throw new BusinessException("error", "当前文章审核工作已有其他审核介入");
+        }
+        return Result.success();
+    }
+
+    /** 离开审核：释放占用 */
+    @DeleteMapping("/review-lock/{id}")
+    public Result<String> releaseReviewLock(@PathVariable int id) {
+        CurrentUser.Session me = CurrentUser.require();
+        if (me.type() != ArticleService.ROLE_MASTER) {
+            throw new ForbiddenException();
+        }
+        articleReviewLock.release(id, me.id());
+        return Result.success();
+    }
+
     /** 全站文章分页（站长，支持按标题或作者检索） */
     @GetMapping("/manageArticles")
     public Result<PageBean<Article>> manageArticles(
@@ -321,8 +352,8 @@ public class ArticleController {
     public Result<String> assessArticle(@RequestParam int id, @RequestParam int state,
                                         @RequestParam(required = false) String rejectReason,
                                         @RequestParam(required = false) Long version) {
-        String username = CurrentUser.require().username();
-        User master = userService.findUserByName(username);
+        CurrentUser.Session me = CurrentUser.require();
+        User master = userService.findUserByName(me.username());
         if (master == null || master.getType() != 0) {
             throw new BusinessException("error", "权限不足！");
         }
@@ -342,6 +373,8 @@ public class ArticleController {
         ArticleSnapshot snapshot = new ArticleSnapshot(meta.getState(), meta.getContent(),
                 meta.getCoverImg(), expectedVersion);
         articleService.updateState(id, state, rejectReason, snapshot);
+        // 审核完成即释放占用，不必等 TTL
+        articleReviewLock.release(id, me.id());
         return Result.success();
     }
 }

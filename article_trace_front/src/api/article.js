@@ -51,6 +51,16 @@ export function getArticleVersionsService(ids) {
     return request.post("/article/versions", ids)
 }
 
+/** 进入审核：占住这篇文章（单篇，TTL 10 分钟），返回失败表示已有其他审核介入 */
+export function acquireArticleReviewLockService(id) {
+    return request.post("/article/review-lock/" + id)
+}
+
+/** 离开审核 / 审核完成：释放占用 */
+export function releaseArticleReviewLockService(id) {
+    return request.delete("/article/review-lock/" + id)
+}
+
 /**
  * 审核文章：state=1 通过发布 / 3 驳回（驳回必须带理由，作者会看到）。
  * version 是审阅时那一行的版本号，后端据此拒绝「审的是旧稿」。

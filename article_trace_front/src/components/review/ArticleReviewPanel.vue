@@ -1,10 +1,16 @@
 <script setup>
-import {onBeforeUnmount, onMounted, ref, nextTick} from 'vue'
+import {onBeforeUnmount, onMounted, ref, nextTick, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {CloseBold, Select} from '@element-plus/icons-vue'
 import {errorText} from '@/utils/errorText.js'
 import {renderMathIn} from '@/utils/mathRender.js'
-import {assessArticleService, getArticleVersionsService, getArticleWithConditionsMaster} from '@/api/article.js'
+import {
+  acquireArticleReviewLockService,
+  assessArticleService,
+  getArticleVersionsService,
+  getArticleWithConditionsMaster,
+  releaseArticleReviewLockService
+} from '@/api/article.js'
 import {startVersionWatch} from '@/utils/versionWatch.js'
 
 /*
@@ -28,6 +34,39 @@ const previewContentRef = ref()
 // 列表加载后作者又改过稿：轮询发现版本变化就标出来并禁用这一行的审核，避免白审
 const stale = ref({})
 let stopVersionWatch = null
+
+// 当前占着哪篇文章的审核（后端 TTL 10 分钟）：同一时间只让一个站长审同一篇
+const lockedId = ref(null)
+const lockReview = async (id) => {
+  if (lockedId.value === id) return true
+  if (lockedId.value != null) await releaseLock()
+  try {
+    const res = await acquireArticleReviewLockService(id)
+    if (res.code === 0) {
+      lockedId.value = id
+      return true
+    }
+    ElMessage.error(errorText(res.message, '当前文章审核工作已有其他审核介入'))
+    return false
+  } catch {
+    ElMessage.error('无法进入审核，请稍后重试')
+    return false
+  }
+}
+const releaseLock = async () => {
+  const id = lockedId.value
+  if (id == null) return
+  lockedId.value = null
+  try {
+    await releaseArticleReviewLockService(id)
+  } catch {
+    // 释放失败不要紧：靠 TTL 自然过期
+  }
+}
+
+watch(previewVisible, (visible) => {
+  if (!visible) releaseLock()
+})
 
 const load = async () => {
   loading.value = true
@@ -84,6 +123,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   if (stopVersionWatch) stopVersionWatch()
+  releaseLock()
 })
 
 const onCurrentChange = (num) => {
@@ -97,6 +137,8 @@ const onSizeChange = (size) => {
 }
 
 const openPreview = async (row) => {
+  // 已失效的行只看不占（审核按钮本来也禁用了）
+  if (stale.value[row.id] == null && !(await lockReview(row.id))) return
   previewRow.value = row
   previewVisible.value = true
   await nextTick()
@@ -104,35 +146,42 @@ const openPreview = async (row) => {
 }
 
 /** 通过：直接确认 */
-const approve = (row) => {
+const approve = async (row) => {
   if (stale.value[row.id] != null) {
     ElMessage.warning(stale.value[row.id] === 2 ? '这篇文章刚被作者改过，请先刷新列表' : '这篇文章已被其他站长处理，请刷新列表')
     return
   }
+  if (!(await lockReview(row.id))) return
   ElMessageBox.confirm(
       `通过「${row.title}」并立即对外发布？`,
       '通过审核',
       {type: 'success', confirmButtonText: '通过', cancelButtonText: '取消', center: true}
   ).then(async () => {
-    const res = await assessArticleService(row.id, STATE_PUBLISHED, undefined, row.version)
-    if (res.code === 0) {
-      ElMessage.success('已通过！')
-      await load()
-      emit('handled')
-    } else {
-      ElMessage.error(errorText(res.message, '操作失败！'))
+    try {
+      const res = await assessArticleService(row.id, STATE_PUBLISHED, undefined, row.version)
+      if (res.code === 0) {
+        ElMessage.success('已通过！')
+        await load()
+        emit('handled')
+      } else {
+        ElMessage.error(errorText(res.message, '操作失败！'))
+      }
+    } finally {
+      await releaseLock()
     }
   }).catch((action) => {
+    releaseLock()
     if (action === 'cancel') ElMessage.info('已取消！')
   })
 }
 
 /** 驳回：必须写理由，理由会展示给作者（作者改完可重投） */
-const reject = (row) => {
+const reject = async (row) => {
   if (stale.value[row.id] != null) {
     ElMessage.warning(stale.value[row.id] === 2 ? '这篇文章刚被作者改过，请先刷新列表' : '这篇文章已被其他站长处理，请刷新列表')
     return
   }
+  if (!(await lockReview(row.id))) return
   ElMessageBox.prompt(
       `驳回「${row.title}」？理由会展示给作者，作者可修改后重新投稿。`,
       '驳回文章',
@@ -145,15 +194,20 @@ const reject = (row) => {
         center: true,
       }
   ).then(async ({value}) => {
-    const res = await assessArticleService(row.id, STATE_REJECTED, value.trim(), row.version)
-    if (res.code === 0) {
-      ElMessage.success('已驳回！')
-      await load()
-      emit('handled')
-    } else {
-      ElMessage.error(errorText(res.message, '操作失败！'))
+    try {
+      const res = await assessArticleService(row.id, STATE_REJECTED, value.trim(), row.version)
+      if (res.code === 0) {
+        ElMessage.success('已驳回！')
+        await load()
+        emit('handled')
+      } else {
+        ElMessage.error(errorText(res.message, '操作失败！'))
+      }
+    } finally {
+      await releaseLock()
     }
   }).catch((action) => {
+    releaseLock()
     // 校验不通过时 action 不是 'cancel'，别误报「已取消」
     if (action === 'cancel') ElMessage.info('已取消！')
   })
