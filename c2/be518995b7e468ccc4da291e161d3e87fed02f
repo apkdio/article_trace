@@ -1,0 +1,19 @@
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_afb7716796c78a 67-69,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "c2be518995b7e468ccc4da291e161d3e87fed02f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
