@@ -1,0 +1,19 @@
+article_trace_front/README.md
+  s_ab74ea15e793d1::t_399e0393581360 222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "f65205f17790e909db9c592a248757419fcd284d",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
