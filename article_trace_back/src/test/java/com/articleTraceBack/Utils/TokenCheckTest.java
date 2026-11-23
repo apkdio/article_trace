@@ -2,6 +2,8 @@ package com.articleTraceBack.Utils;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.util.AntPathMatcher;
 import org.yaml.snakeyaml.Yaml;
 
@@ -10,6 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -36,8 +39,7 @@ class TokenCheckTest {
 
     /** 作者的写作与自助接口，一条都不能被拦 */
     @Test
-    void writersCanUseAuthorEndpoints() {
-        for (String uri : new String[]{
+    void writersCanUseAuthorEndpoints() {        for (String uri : new String[]{
                 "/article/list", "/article/add", "/article/update/12", "/article/delete",
                 "/category", "/category/add", "/category/update/3", "/category/delete/3",
                 "/applyAuthor", "/applyAuthor/mine", "/avatar/mine", "/report",
@@ -114,5 +116,14 @@ class TokenCheckTest {
         assertFalse(matcher.match("/review", "/review/summary"));
         assertTrue(matcher.match("/review/**", "/review/summary"));
         assertTrue(matcher.match("/applyAuthor/manage/**", "/applyAuthor/manage/review/3"));
+    }
+
+    /** 没有令牌：抛 NotLoggedInException，由全局处理器输出 401 + Result，而不是拦截器自己写空 body */
+    @Test
+    void missingTokenThrowsNotLoggedIn() {
+        TokenCheck check = new TokenCheck(null, null);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/article/list");
+        assertThrows(NotLoggedInException.class,
+                () -> check.preHandle(request, new MockHttpServletResponse(), new Object()));
     }
 }

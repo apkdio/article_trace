@@ -13,7 +13,8 @@ import java.util.*;
 
 @Component
 // 请求拦截器
-// 窝腰验Token
+// 校验失败一律抛 NotLoggedInException，由 GlobalExceptionHandler 输出 401 + Result JSON——
+// 拦截器里直接 setStatus(401) 会得到空 body，前端与调用方要维护两套解析
 public class TokenCheck implements AsyncHandlerInterceptor {
     // 规则按 Ant 通配符语义匹配（配置里写 /xxx/**），字面 contains 对带通配符的规则恒不命中
     private static final AntPathMatcher MATCHER = new AntPathMatcher();
@@ -54,37 +55,35 @@ public class TokenCheck implements AsyncHandlerInterceptor {
             }
         }
         if (token == null) {
-            response.setStatus(401);
-            return false;
+            throw new NotLoggedInException();
         }
         try {
             Map<String, Object> userInfo = jwtUtil.parseToken(token);
             if (userInfo.get("type") == null) {
-                response.setStatus(401);
-                return false;
+                throw new NotLoggedInException();
             }
             int type = (int) userInfo.get("type");
             // 未知角色一律拒（token 由服务端签发，正常到不了这里）
             if (type != 0 && type != 1 && type != 2) {
-                response.setStatus(401);
-                return false;
+                throw new NotLoggedInException();
             }
             if (blocked(uri, type, writerNotAllow, readerNotAllow)) {
-                response.setStatus(401);
-                return false;
+                throw new NotLoggedInException();
             }
             String redisToken = stringRedisTemplate.opsForValue().get(userInfo.get("name").toString());
             if (StringUtils.isBlank(redisToken)) {
-                throw new Exception();
+                throw new NotLoggedInException();
             }
             if (redisToken.equals(token)) {
                 ThreadLocalUtil.set(userInfo);
                 return true;
             }
-            throw new Exception();
+            throw new NotLoggedInException();
+        } catch (NotLoggedInException e) {
+            throw e;
         } catch (Exception e) {
-            response.setStatus(401);
-            return false;
+            // 解析失败 / Redis 异常：统一按未登录处理，交给全局处理器输出同一份 401 JSON
+            throw new NotLoggedInException();
         }
     }
 
