@@ -42,12 +42,15 @@ const updateUserPass = () => {
               await userInfoStore().clearUserInfo()
               ElMessage.success("修改成功！请重新登录！");
               router.push('/login')
-            } else if (result.code === 1 && ('Redis' in result.message)) {
+            } else if (typeof result.message === 'string') {
+              // 纯文本失败（如参数校验）：不能拿去做 `in` 判断，否则 TypeError 会把真实原因吞掉
+              ElMessage.error(result.message)
+            } else if (result.code === 1 && result.message && 'Redis' in result.message) {
               ElMessage.warning("密码已更改！缓存未删除，请重新登录一次更新缓存！")
-            } else if (result.code === 1 && !("error" in result.message)) {
+            } else if (result.code === 1 && result.message && !("error" in result.message)) {
               errorList.value = result.message
             } else {
-              ElMessage.error(result.message.error)
+              ElMessage.error(result.message?.error || "修改失败！")
             }
           } catch (err) {
             ElMessage.error("服务器响应失败！")

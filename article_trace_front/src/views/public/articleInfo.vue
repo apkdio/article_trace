@@ -25,6 +25,7 @@ import {logout as doLogout} from "@/utils/auth.js";
 import {searchConditions} from "@/stores/searchConditions.js";
 import {getSiteFeatures} from "@/api/site.js";
 import {renderMathIn} from "@/utils/mathRender.js";
+import {errorText} from "@/utils/errorText.js";
 
 const props = defineProps(["id"])
 const loading = ref(true)
@@ -148,9 +149,7 @@ const AddComment = async () => {
       commentConditions.value.pageNum = 1
       await getComments()
     } else {
-      if (res.message.error) {
-        ElMessage.error("发表失败! " + res.message.error)
-      }
+      ElMessage.error(`发表失败！${errorText(res.message, '请稍后重试')}`)
     }
   } catch (e) {
     ElMessage.error("服务器响应失败！")

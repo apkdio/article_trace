@@ -930,7 +930,7 @@ const deleteArticle = (id, createUser) => {
           ElMessage.success("删除成功！")
           await refreshAfterDelete()
         } else {
-          ElMessage.error(result.message.error ? result.message.error : "删除失败！")
+          ElMessage.error(errorText(result.message, "删除失败！"))
         }
         return
       }
@@ -938,7 +938,7 @@ const deleteArticle = (id, createUser) => {
       if (result.code === 0) {
         ElMessage.success("删除成功！")
         await refreshAfterDelete()
-      } else ElMessage.error("删除失败！")
+      } else ElMessage.error(errorText(result.message, "删除失败！"))
     } catch (error) {
       ElMessage.error("服务端响应失败！")
     }

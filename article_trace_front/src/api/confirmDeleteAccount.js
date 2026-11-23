@@ -1,6 +1,7 @@
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {deleteAccountService} from "@/api/user.js";
 import {promptMasterPassword} from "@/utils/confirm.js";
+import {errorText} from "@/utils/errorText.js";
 
 export const confirmDeleteAccount = (id, username) => {
     return new Promise((resolve, reject) => {
@@ -27,8 +28,9 @@ export const confirmDeleteAccount = (id, username) => {
                             ElMessage.success("删除成功！")
                             resolve()
                         } else {
-                            ElMessage.error(result.message?.error || "删除失败")
-                            reject(new Error(result.message?.error || "删除失败"))
+                            const text = errorText(result.message, "删除失败")
+                            ElMessage.error(text)
+                            reject(new Error(text))
                         }
                     }).catch(err => {
                         ElMessage.error("服务端响应失败！")
@@ -36,11 +38,11 @@ export const confirmDeleteAccount = (id, username) => {
                     })
                 })
                     .catch(() => {
-                        ElMessage.primary("取消删除！")
+                        ElMessage.info("取消删除！")
                     })
             })
                 .catch(() => {
-                    ElMessage.primary("取消删除！")
+                    ElMessage.info("取消删除！")
                     reject(new Error('cancel')) // 用户取消删除
                 })
 

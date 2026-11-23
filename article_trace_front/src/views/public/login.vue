@@ -49,6 +49,15 @@ const codeCountdown = ref(0)
 let countdownTimer = null
 const errorsList = ref({})
 
+/** 失败的 message 可能是字段映射，也可能是一句纯文本（如「本站暂不开放注册！」）：纯文本直接提示，不能赋给字段 */
+const applyFieldErrors = (message) => {
+  if (typeof message === 'string') {
+    ElMessage.error(message)
+    return
+  }
+  errorsList.value = message || {}
+}
+
 // 图形验证码（人机校验，发送邮箱验证码前一道门槛）
 const captchaId = ref('')
 const captchaImage = ref('')
@@ -252,7 +261,7 @@ function register() {
           isRegister.value = true
           FormRef.value.resetFields()
         } else {
-          errorsList.value = result.message || {}
+          applyFieldErrors(result.message)
         }
       })
           .catch(() => ElMessage.warning("服务器响应失败！"))
@@ -291,6 +300,10 @@ function login() {
           }, 800)
         } else {
           isLoading.value = false
+          if (typeof result.message === 'string') {
+            ElMessage.error(result.message)
+            return
+          }
           const msg = result.message || {}
           errorsList.value = msg
 
@@ -331,7 +344,7 @@ function resetPassword() {
           resetPass.value = false
           FormRef.value.resetFields()
         } else {
-          errorsList.value = result.message || {}
+          applyFieldErrors(result.message)
         }
       })
           .catch(() => ElMessage.error("服务器响应失败！"))

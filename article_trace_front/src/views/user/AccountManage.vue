@@ -91,7 +91,7 @@ const getAccounts = async () => {
       accountData.value = data.data.items
       total.value = data.data.total
     } else {
-      ElMessage.error(data.message)
+      ElMessage.error(errorText(data.message, '数据获取失败！'))
     }
   } catch (error) {
     ElMessage.error("数据获取失败！")
@@ -133,7 +133,7 @@ const changeUserType = (id, type) => {
             if (result.code === 0) {
               ElMessage.success("操作成功！")
               await getAccounts()
-            } else ElMessage.error(result.message.error ? result.message.error : "操作失败！")
+            } else ElMessage.error(errorText(result.message, "操作失败！"))
           })
               .catch(() => {
                 ElMessage.info("取消操作！")

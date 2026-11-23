@@ -77,7 +77,8 @@ const updateUserInfo = () => {
           }
           await freshUserInfo()
         }
-        else if(result.code === 1 && result.message && ('nickname' in result.message)){
+        else if (result.code === 1 && result.message && typeof result.message === 'object'
+            && ('nickname' in result.message || 'signature' in result.message)) {
           errorList.value = result.message
         }
         else {
