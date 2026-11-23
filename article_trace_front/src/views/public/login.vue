@@ -70,7 +70,7 @@ async function loadCaptcha() {
       captchaImage.value = result.data.image
     }
     else{
-      ElMessage.warning(result.message);
+      ElMessage.warning(errorText(result.message, "验证码获取失败！"));
     }
   } catch {
     ElMessage.error("获取验证码失败！请重试！");

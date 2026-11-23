@@ -51,7 +51,6 @@ public class ArticleController {
             @RequestParam(required = false) Integer state,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer timeOrder) {
-        Map<String, Object> error = new HashMap<>();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         timeOrder = normalizeTimeOrder(timeOrder);
@@ -123,7 +122,6 @@ public class ArticleController {
     public Result<Map<String, Object>> update(@PathVariable("id") int id,
                                               @RequestPart("article") @Validated Article article,
                                               @RequestPart(value = "cover", required = false) MultipartFile cover) {
-        Map<String, Object> error = new HashMap<>();
         // 同上：先认登录态，未登录时不暴露「文章是否存在」
         CurrentUser.Session me = CurrentUser.require();
         ensureCoverSize(cover);

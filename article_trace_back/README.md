@@ -156,7 +156,8 @@ article_trace_back/
 
 - **JWT 有效期**：勾选「记住我」为 72 小时（`longTime`），否则 24 小时（`shortTime`）。Cookie 的 `Max-Age` 与之一致，避免出现「Cookie 还在、Redis 已不认」。
 - **Cookie 安全开关**：`JWT.cookieSecure`（容器侧由 `JWT_COOKIE_SECURE` 透传）。本地 http 调试必须为 `false`，置 `true` 浏览器不会保存 Cookie、登录会一直失败；站点上 HTTPS 后改 `true`。
-- **双重校验**：拦截器解析 JWT 后，再与 Redis 中存储的 Token 比对，实现单点登录（一处登录、他处失效）。
+- **双重校验**：拦截器解析 JWT 后，再与 Redis 中存储的 Token 比对，实现单点登录（一处登录、他处失效）。JWT 带随机 `jti`——同一秒内两次登录的 claims 与 `exp` 完全相同，没有它就会签出同一个字符串，旧令牌顶不掉、Redis 比对也分不清。
+- **校验失败分三种**：无令牌 / 解析失败 → `NotLoggedInException`（401 + `expired:false`）；JWT 到期，或 Redis 里的令牌被清掉/顶掉 → `SessionExpiredException`（401 + `expired:true`）；身份有效但角色不允许 → `ForbiddenException`（403）。前端只对 401 清会话登出，403 只提示。
 - **ThreadLocal**：校验通过后，用户信息写入 `ThreadLocalUtil`，业务层无侵入读取；请求结束在 `afterCompletion` 中清理。
 - **权限分级**（`spring.tokenCheck.notAllowUrl`）：
 

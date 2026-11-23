@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -96,11 +98,27 @@ public class GlobalExceptionHandler {
         return Result.error(errors);
     }
 
-    /** 缺少必填请求参数（RequestParam 缺失） */
+    /** 缺必填请求参数（RequestParam 缺失） */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public Result<Map<String, Object>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex) {
         Map<String, Object> errors = new HashMap<>();
         errors.put(ex.getParameterName(), "参数缺失！");
+        return Result.error(errors);
+    }
+
+    /** 缺必填的 multipart 部件（如 article） */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public Result<Map<String, Object>> handleMissingPart(MissingServletRequestPartException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put(ex.getRequestPartName(), "缺少请求部件！");
+        return Result.error(errors);
+    }
+
+    /** 请求方法不支持（例如把 PATCH 接口按 POST 调）：给出明确提示，而不是「服务器出错」 */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public Result<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        Map<String, Object> errors = new HashMap<>();
+        errors.put("error", "请求方法不支持：" + ex.getMethod());
         return Result.error(errors);
     }
 

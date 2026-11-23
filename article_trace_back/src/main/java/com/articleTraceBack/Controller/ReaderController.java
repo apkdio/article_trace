@@ -47,7 +47,6 @@ public class ReaderController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer searchType,
             @RequestParam(required = false) String nickName) {
-        Map<String, Object> error = new HashMap<>();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         if (searchType != null && search == null) {
@@ -193,7 +192,6 @@ public class ReaderController {
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam Integer articleId) {
-        Map<String, Object> error = new HashMap<>();
         pageNum = PageUtil.normalizePageNum(pageNum);
         pageSize = PageUtil.normalizePageSize(pageSize);
         int totalComments = readerService.findAllCommentsCount(articleId);

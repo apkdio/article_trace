@@ -65,8 +65,12 @@ function addOrUpdate() {
           clearInfo()
           getCategories()
         } else {
-          errorList.value = result.message || {}
-          ElMessage.error("操作失败！")
+          if (typeof result.message === 'string') {
+            ElMessage.error(result.message)
+          } else {
+            errorList.value = result.message || {}
+            ElMessage.error("操作失败！")
+          }
         }
       }).catch(() => ElMessage.error("系统响应异常"))
     }

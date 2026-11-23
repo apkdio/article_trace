@@ -818,6 +818,11 @@ const alertSensitiveHit = (data) => {
  * 用户点完提交什么都不会发生，也看不到为什么。这里统一补一次提示。
  */
 const handleSubmitError = (message) => {
+  // 极少数路径仍可能给一段纯文本（如参数解析失败）：不能按字段展开，否则会弹出「文；章；…」乱码
+  if (typeof message === 'string') {
+    ElMessage.error(message)
+    return
+  }
   const msg = message || {}
   errorList.value = msg
   const shown = []
