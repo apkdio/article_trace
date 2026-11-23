@@ -40,7 +40,15 @@ public interface UserService {
      *
      * @return 被替换掉的旧头像对象名，供调用方清理；原本无头像、用户不存在或更新失败时为 null
      */
-    String updateUserPic(int userId, String newPic);
+    /**
+     * 更新头像指向。
+     * {@code ok=false} 表示没写进库（用户不存在或影响 0 行）；{@code oldPic} 只有在成功时才有意义，
+     * 用户本来没有头像时是 null——所以不能只看返回值为 null 判断成败。
+     */
+    record UpdateUserPicResult(boolean ok, String oldPic) {
+    }
+
+    UpdateUserPicResult updateUserPic(int userId, String newPic);
 
     boolean setRedisToken(String username, String token, int type);
 

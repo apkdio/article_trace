@@ -130,7 +130,13 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         }
         // 先换 DB 指向、拿到旧头像名，成功后再删旧对象——反过来的话，写库失败会让
         // user_pic 指向一个已删除的对象，头像变裂图且用户自己恢复不了。
-        String oldPic = userService.updateUserPic(userId, pendingPic);
+        UserService.UpdateUserPicResult switched = userService.updateUserPic(userId, pendingPic);
+        if (!switched.ok()) {
+            // 写库没生效：回收刚搬到 pic 的那份，avatar 桶的待审对象保持不动，交给审核侧回滚
+            rustFsUtil.delete(pendingPic, TYPE_IMAGE);
+            return false;
+        }
+        String oldPic = switched.oldPic();
         if (oldPic != null && !oldPic.isEmpty() && !rustFsUtil.delete(oldPic, TYPE_IMAGE)) {
             log.warn("old user logo delete failed, may be orphan: userId={}, key={}", userId, oldPic);
         }

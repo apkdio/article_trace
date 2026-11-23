@@ -258,10 +258,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String updateUserPic(int userId, String newPic) {
+    public UpdateUserPicResult updateUserPic(int userId, String newPic) {
         User user = userMapper.selectById(userId);
         if (user == null) {
-            return null;
+            return new UpdateUserPicResult(false, null);
         }
         String oldPic = user.getUserPic();
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
@@ -269,9 +269,9 @@ public class UserServiceImpl implements UserService {
                 .set("user_pic", newPic)
                 .set("update_time", LocalDateTime.now());
         if (userMapper.update(updateWrapper) != 1) {
-            return null;
+            return new UpdateUserPicResult(false, null);
         }
-        return oldPic;
+        return new UpdateUserPicResult(true, oldPic);
     }
 
     @Override
