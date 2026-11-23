@@ -284,6 +284,7 @@ flowchart LR
 
 | 异常 | 返回 |
 |---|---|
+| `BusinessException`（含 `BodyImageLimitException` / `ArticleConcurrentEditException`） | **按异常携带的字段名**返回 `{field: 文案}`，没有字段名时落 `error` |
 | `MethodArgumentNotValidException` / `HandlerMethodValidationException` | 按字段汇总校验错误 |
 | `MissingServletRequestParameterException` | 「参数缺失！」 |
 | `HttpMediaTypeNotSupportedException` | 不支持的媒体类型 + 支持的列表 |
@@ -302,6 +303,8 @@ flowchart LR
    `substring(0, -1)` 直接越界，在异常处理器里再抛一次。
 2. **`DuplicateKeyException` 不谎称是某个字段冲突**。异常里只有约束名，指不出调用方该改哪个字段，
    所以给统一提示；需要更精确话术的写入点（文章标题、分类名、邮箱等）自行 `catch` 后转换。
+
+> **业务失败统一抛 `BusinessException`，由这里唯一出口返回**：写操作不再用 `boolean` 表示失败（`false` 丢原因、Controller 只能拼「xxx失败！」），成功返回 `void`/结果，预期内的失败 `throw new BusinessException(field, 文案)`；Controller 只保留入口校验，同样用抛异常表达。查询/判断类（`findArticleById`、`canTransfer`、`verify`、`owns` 等）继续返回 `boolean`。迁移按模块进行：文章模块已完成，用户/申请、读者/举报/通知待迁移。
 
 ### 11. 管理员自动初始化（AdminInitializer）
 
