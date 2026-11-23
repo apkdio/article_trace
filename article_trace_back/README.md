@@ -207,6 +207,8 @@ article_trace_back/
   - 不带文件且 `coverImg` 为 null 或其它值 → **回退为库中原值**，客户端无法指定任意 key。
   - 写库失败时回收本次上传的新文件，DB 与对象存储始终保持一致。
   - 这样用户中途放弃发布**不会在服务端留下无引用对象**（此前"选图即上传"会产生这类垃圾）。
+- **正文图片限额**：正文图片仍是 base64 内联，保存时在 `RichTextCleaner.cleanToSafeHtml` 之后、上传正文对象之前由 `Utils/BodyImageLimits.check` 校验：单张 400KB、单篇 5MB（均按 base64 长度）、最多 15 张；只统计位图 `data:` 图片，外链与 SVG 不计。超限抛 `BodyImageLimitException`，由 `GlobalExceptionHandler` 转成 `{"content": "…"}` 字段错误（前端显示在正文表单项下），不会走到 multipart 的 413；校验在任何上传之前，不会产生孤儿对象。数字与前端 `utils/bodyImages.js` 成对修改。
+  - **multipart 上限要装得下正文 JSON**：前端把正文装在 Blob 里传，带 filename，会按**文件部件**算，所以 `max-file-size` 同时是正文 JSON 的上限——已从 3MB 提到 **8MB**（5MB 图片 + JSON 开销约 5.5MB）；`max-request-size` 保持 10MB；封面改在 Controller 限 **3MB**（`coverTooLarge`，字段 `cover`）；真撞上请求上限时 `MaxUploadSizeExceededException` 回「提交内容过大，请压缩图片或减少图片数量后重试」，不再落到兜底的「服务器出错」。
 - **审核**：站长通过 `assess` 接口审核，只接受目标 `1`（通过）/ `3`（驳回）；先校验前置状态（只允许 `2→1`、`2→3`、`1→3`；`0→1` 与 `1→1` 不属于审核动作），再用入口快照的 `version` 条件更新 —— 作者在审阅期间改过稿，审核会落空而不是发布新正文。
   - `assess` 可带 `version`（前端传审阅那一行的版本）；不带时回退到本次请求入口读到的版本。
   - **驳回必须写理由**（`rejectReason` 请求参数，接口与 service 各校验一次空白），理由会展示给作者：`article.reject_reason`，超 200 字截断。通过发布、作者重新保存/重投都会清空它，避免「已发布」还挂着旧理由。
