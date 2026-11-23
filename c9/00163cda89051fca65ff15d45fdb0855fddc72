@@ -1,0 +1,27 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/TokenCheck.java
+  s_ab74ea15e793d1::t_7027db7f5e2c6f 16-17
+  s_ab74ea15e793d1::t_0bbf3c252e249b 58,63,68,71,75,81-83,85-86
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_04a4a4ced2e458 292
+  s_ab74ea15e793d1::t_d173973f273f2f 288
+article_trace_back/src/test/java/com/articleTraceBack/Utils/TokenCheckTest.java
+  s_ab74ea15e793d1::t_95c05fa9d75f3d 5-6,15
+  s_ab74ea15e793d1::t_3f1084e6ad3675 42
+  s_ab74ea15e793d1::t_6e4cbaad12f63e 120-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "c900163cda89051fca65ff15d45fdb0855fddc72",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
