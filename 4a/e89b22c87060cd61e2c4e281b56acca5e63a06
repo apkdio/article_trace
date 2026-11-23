@@ -1,0 +1,73 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_ab74ea15e793d1::t_7001b39747ea55 74-75
+  s_ab74ea15e793d1::t_2ea2db701d1825 7
+  s_ab74ea15e793d1::t_28fa69adc006e9 405,407,412,418,428,442-449
+  s_ab74ea15e793d1::t_a97f96268356aa 89
+  s_ab74ea15e793d1::t_48eda7d5f5bce0 123,132
+  s_ab74ea15e793d1::t_a901333aa5130f 280,283,288,297,302,308-311
+  s_ab74ea15e793d1::t_e3c3d272c43533 203-206
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BodyImageLimitException.java
+  s_ab74ea15e793d1::t_d947b28fc1b3e5 4,6
+article_trace_back/src/test/java/com/articleTraceBack/ArticleEditAndCacheSafetyTest.java
+  s_ab74ea15e793d1::t_f58d4b9519fc57 286
+  s_ab74ea15e793d1::t_414ee1d8e1641f 147
+  s_ab74ea15e793d1::t_9e5188ac46e9f7 246,271
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_baef03fe735b71 34-36,38-39
+article_trace_back/src/test/java/com/articleTraceBack/ArticleVersionCasTest.java
+  s_ab74ea15e793d1::t_29a1b862b54de4 146-147,150-151
+  s_ab74ea15e793d1::t_429cc657ae338b 5
+  s_ab74ea15e793d1::t_5a0d9dcdc27e46 172
+  s_ab74ea15e793d1::t_a511edf20c3b0e 102,104-105
+  s_ab74ea15e793d1::t_f46f8c5c462a94 122
+  s_ab74ea15e793d1::t_0c56f7d3c91f4f 72,79
+article_trace_back/src/test/java/com/articleTraceBack/CoverAndLogoConsistencyTest.java
+  s_ab74ea15e793d1::t_077e2b9d98577d 28
+  s_ab74ea15e793d1::t_929fadd1e38139 256
+  s_ab74ea15e793d1::t_c47de7f959c53c 134,156
+  s_ab74ea15e793d1::t_c36b8dee8838d7 181-182
+  s_ab74ea15e793d1::t_2b2018c29a1552 105
+  s_ab74ea15e793d1::t_cfb580e6ccc4bb 5
+  s_ab74ea15e793d1::t_ce405a1def4dc5 285-286
+  s_ab74ea15e793d1::t_247ca8c39f073c 232-233
+article_trace_back/src/test/java/com/articleTraceBack/Utils/BusinessExceptionHandlerTest.java
+  s_ab74ea15e793d1::t_8f9d56a8fce69c 1-37
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleService.java
+  s_ab74ea15e793d1::t_9e25d39c9e1e55 60-61
+  s_ab74ea15e793d1::t_7201b40dfcb11e 14-15
+article_trace_back/src/test/java/com/articleTraceBack/ArticleSensitiveFlagTest.java
+  s_ab74ea15e793d1::t_7f59d96215ae90 46-47
+article_trace_back/src/main/java/com/articleTraceBack/Utils/ArticleConcurrentEditException.java
+  s_ab74ea15e793d1::t_c6b776713a8219 3-4,6
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BusinessException.java
+  s_ab74ea15e793d1::t_8b2b915d6e9462 1-22
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_8b4c1292885e11 9
+  s_ab74ea15e793d1::t_48244b831e92f5 129,132,134-156,158-182
+  s_ab74ea15e793d1::t_98b687bc37eb74 260-269,271-274,284-297,299-303
+  s_ab74ea15e793d1::t_f80fe41a42e811 186,188
+  s_ab74ea15e793d1::t_fa3eef0bfc10a5 80,89,92,94-104,106-118
+  s_ab74ea15e793d1::t_5de2e25c82561d 216-221,223-224,227-228
+article_trace_back/src/test/java/com/articleTraceBack/ArticleStateMachineTest.java
+  s_ab74ea15e793d1::t_adfb5d7ad88fc0 4
+  s_ab74ea15e793d1::t_d93a8eb10c2a5d 18
+  s_ab74ea15e793d1::t_2faa9db313d225 104-105,107-108,110
+  s_ab74ea15e793d1::t_046c9110c074b6 74-79,82,86-87,89-90,92
+  s_ab74ea15e793d1::t_caa300e4de9426 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "4ae89b22c87060cd61e2c4e281b56acca5e63a06",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
