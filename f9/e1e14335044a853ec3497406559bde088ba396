@@ -1,0 +1,28 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_f99dd8a17587a7 13,21
+  s_ab74ea15e793d1::t_5cde36bea29ddc 101,109-121
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_1599bc585a18f6 821-825
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_1599bc585a18f6 159-160
+article_trace_front/src/views/public/login.vue
+  s_ab74ea15e793d1::t_ece8acef4487dd 73
+article_trace_front/src/views/article/ArticleCategory.vue
+  s_ab74ea15e793d1::t_1599bc585a18f6 68-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "f9e1e14335044a853ec3497406559bde088ba396",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
