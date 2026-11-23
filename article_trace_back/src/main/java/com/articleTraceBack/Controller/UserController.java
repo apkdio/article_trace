@@ -320,8 +320,9 @@ public class UserController {
                     // 仍然分清状态——只回「成功」的话用户会以为昵称已经改了
                     return Result.success(Map.of("status", "PENDING", "message", result.reason()));
                 }
-                // 被拒 / 锁定期内：挂在昵称字段上，前端就地显示在输入框下方
-                error.put("nickname", result.reason());
+                // 按服务端给的字段落位：个签的错误不能显示在昵称输入框下；没有字段名才落到通用 key
+                String field = result.field() == null || result.field().isBlank() ? "error" : result.field();
+                error.put(field, result.reason());
                 return Result.error(error);
             } catch (DuplicateKeyException e) {
                 // 并发下由唯一索引兜底：昵称可重复，只有邮箱有唯一约束
