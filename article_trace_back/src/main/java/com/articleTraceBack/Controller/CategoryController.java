@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.CategoryService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Category;
 import com.articleTraceBack.pojo.Result;
@@ -25,91 +26,71 @@ public class CategoryController {
     @PostMapping("/add")
     public Result<String> addCategory(@RequestBody @Validated Category category) {
         int id = CurrentUser.require().id();
-        Map<String, Object> error = new HashMap<>();
-        if (categoryService.findCategoryByName(category.getCategoryName()) == null) {
-            category.setCreateUser(id);
-            try {
-                if (categoryService.insert(category)) {
-                    return Result.success();
-                }
-            } catch (DuplicateKeyException e) {
-                // 并发下由唯一索引 uk_category_name 兜底
-                error.put("categoryName", "文章分类已存在！");
-                return Result.error(error);
-            }
-            error.put("error", "插入失败！请重试！");
-            return Result.error(error);
+        if (categoryService.findCategoryByName(category.getCategoryName()) != null) {
+            throw new BusinessException("categoryName", "文章分类已存在！");
         }
-        error.put("categoryName", "文章分类已存在！");
-        return Result.error(error);
+        category.setCreateUser(id);
+        try {
+            if (!categoryService.insert(category)) {
+                throw new BusinessException("error", "插入失败！请重试！");
+            }
+        } catch (DuplicateKeyException e) {
+            // 并发下由唯一索引 uk_category_name 兜底
+            throw new BusinessException("categoryName", "文章分类已存在！");
+        }
+        return Result.success();
     }
 
     /** 分类列表 */
     @GetMapping()
     public Result<List<Category>> findAllCategory() {
-        List<Category> allCategory = categoryService.findAllCategory();
-        if (allCategory == null) {
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", "列表为空！");
-            return Result.error(error);
-        }
-        return Result.success(allCategory);
+        return Result.success(categoryService.findAllCategory());
     }
 
     /** 更新分类（仅创建人） */
     @PatchMapping("/update/{id}")
     public Result<String> updateCategory(@RequestBody @Validated Category category,
                                          @PathVariable("id") int id) {
-        Map<String, Object> error = new HashMap<>();
         int uid = CurrentUser.require().id();
         Category existing = categoryService.findById(id);
         if (existing == null) {
-            error.put("error", "类别不存在！");
-            return Result.error(error);
+            throw new BusinessException("error", "类别不存在！");
         }
         // 与 deleteCategory 保持一致：只能改自己创建的分类
         if (!Objects.equals(existing.getCreateUser(), uid)) {
-            error.put("error", "非法用户更新请求！");
-            return Result.error(error);
+            throw new BusinessException("error", "非法用户更新请求！");
         }
         String newCategoryName = category.getCategoryName();
         Category categoryByName = categoryService.findCategoryByName(newCategoryName);
         if (categoryByName != null && !Objects.equals(categoryByName.getId(), id)) {
-            error.put("categoryName", "分类名已存在！");
-            return Result.error(error);
+            throw new BusinessException("categoryName", "分类名已存在！");
         }
         category.setId(id);
         try {
-            if (categoryService.update(category, uid, existing.getUpdateTime())) {
-                return Result.success();
+            if (!categoryService.update(category, uid, existing.getUpdateTime())) {
+                // 条件更新落空：进入接口后别人改过这个分类
+                throw new BusinessException("error", "分类刚被修改，请刷新后重试！");
             }
         } catch (DuplicateKeyException e) {
-            error.put("categoryName", "分类名已存在！");
-            return Result.error(error);
+            throw new BusinessException("categoryName", "分类名已存在！");
         }
-        // 走到这里说明条件更新落空：进入接口后别人改过这个分类
-        error.put("error", "分类刚被修改，请刷新后重试！");
-        return Result.error(error);
+        return Result.success();
     }
 
     /** 删除分类（仅创建人），关联文章的分类置空 */
     @DeleteMapping("/delete/{id}")
     public Result<String> deleteCategory(@PathVariable("id") int id) {
-        Map<String, Object> error = new HashMap<>();
         int uid = CurrentUser.require().id();
         Category ca = categoryService.findById(id);
         if (ca == null) {
-            error.put("error", "文章类别不存在！");
-            return Result.error(error);
+            throw new BusinessException("error", "文章类别不存在！");
         }
         if (ca.getCreateUser() != uid) {
-            error.put("error", "非法用户删除请求！");
-            return Result.error(error);
+            throw new BusinessException("error", "非法用户删除请求！");
         }
-        if (categoryService.delete(id)) {
-            return Result.success();
+        if (!categoryService.delete(id)) {
+            throw new BusinessException("error", "删除失败！");
         }
-        error.put("error", "删除失败！");
-        return Result.error(error);
+        return Result.success();
     }
 }

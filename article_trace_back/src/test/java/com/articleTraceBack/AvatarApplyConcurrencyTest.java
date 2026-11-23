@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AvatarApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AvatarApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
@@ -107,9 +108,10 @@ public class AvatarApplyConcurrencyTest {
             pool.submit(() -> {
                 try {
                     startGate.await();
-                    if (avatarApplyService.submit(testUserId, png())) {
-                        successCount.incrementAndGet();
-                    }
+                    avatarApplyService.submit(testUserId, png());
+                    successCount.incrementAndGet();
+                } catch (BusinessException e) {
+                    // 已有待审：落空
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
@@ -131,7 +133,7 @@ public class AvatarApplyConcurrencyTest {
 
     @Test
     public void testConcurrentReviewOnlyOneWins() throws Exception {
-        assertTrue(avatarApplyService.submit(testUserId, png()), "提交应成功");
+        avatarApplyService.submit(testUserId, png());
         AvatarApply mine = avatarApplyService.findMine(testUserId);
         Integer applyId = mine.getId();
 
@@ -147,9 +149,10 @@ public class AvatarApplyConcurrencyTest {
             pool.submit(() -> {
                 try {
                     startGate.await();
-                    if (avatarApplyService.review(applyId, pass, "并发场景", testUserId)) {
-                        successCount.incrementAndGet();
-                    }
+                    avatarApplyService.review(applyId, pass, "并发场景", testUserId);
+                    successCount.incrementAndGet();
+                } catch (BusinessException e) {
+                    // 另一个站长先审完：落空
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {

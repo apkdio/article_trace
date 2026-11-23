@@ -26,8 +26,7 @@ public interface ProfileApplyService {
 
     /**
      * 审批：CAS 置为通过或拒绝；通过则写回 user.nickname 并起 7 天锁定期。
-     *
-     * @return 是否处理成功；记录不存在或已被处理过时返回 false
+     * 记录不存在或已被处理过时抛 {@code BusinessException}。
      */
-    boolean review(int applyId, boolean pass, String rejectReason, Integer reviewerId);
+    void review(int applyId, boolean pass, String rejectReason, Integer reviewerId);
 }

@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AuthorApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.AuthorApply;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -63,7 +65,8 @@ public class AuthorApplyApprovalTxTest {
         org.mockito.BDDMockito.given(userService.changeType(userId, 1)).willReturn(false);
         org.mockito.BDDMockito.given(userService.findUserById(userId)).willReturn(reader);
 
-        assertFalse(applyService.review(applyId, true, null, 1), "提权失败时审批应返回失败");
+        assertThrows(BusinessException.class, () -> applyService.review(applyId, true, null, 1),
+                "提权失败时审批应失败并回滚");
 
         AuthorApply after = applyMapper.selectById(applyId);
         assertEquals(AuthorApply.STATUS_PENDING, after.getStatus(),
@@ -84,7 +87,8 @@ public class AuthorApplyApprovalTxTest {
 
         org.mockito.BDDMockito.given(userService.findUserById(userId)).willReturn(reader);
 
-        assertFalse(applyService.review(applyId, true, null, 1), "已被处理的申请不能再审");
+        assertThrows(BusinessException.class, () -> applyService.review(applyId, true, null, 1),
+                "已被处理的申请不能再审");
 
         applyMapper.deleteById(applyId);
     }

@@ -1,5 +1,6 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.pojo.AuthorApply;
 import com.articleTraceBack.pojo.PageBean;
@@ -45,12 +46,12 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
     }
 
     @Override
-    public boolean submit(int userId, String reason) {
+    public void submit(int userId, String reason) {
         // 已有待审申请 → 不允许重复提交
         QueryWrapper<AuthorApply> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId).eq("status", AuthorApply.STATUS_PENDING);
         if (applyMapper.selectCount(wrapper) > 0) {
-            return false;
+            throw new BusinessException("已有待审核的申请，请勿重复提交！");
         }
 
         AuthorApply apply = new AuthorApply();
@@ -60,13 +61,13 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
         apply.setCreateTime(LocalDateTime.now());
         try {
             if (applyMapper.insert(apply) != 1) {
-                return false;
+                throw new BusinessException("提交失败，请稍后重试！");
             }
         } catch (DuplicateKeyException e) {
             // 并发下两个请求可能同时通过上面的查重；
             // 由唯一索引 uk_pending(user_id, pending_flag) 兜底，这里只当作「已有待审」处理
             log.info("author apply rejected by unique index: userId={}", userId);
-            return false;
+            throw new BusinessException("已有待审核的申请，请勿重复提交！");
         }
 
         // 通知所有站长（配置为 both：站内 + 邮件）
@@ -77,7 +78,6 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
         notificationService.notifyRole(ROLE_MASTER, SCENE_SUBMITTED, "新的作者申请",
                 who + " 提交了作者申请，请及时处理。");
         log.info("author apply submitted: userId={}, applyId={}", userId, apply.getId());
-        return true;
     }
 
     @Override
@@ -105,11 +105,11 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
     }
 
     @Override
-    public boolean review(int applyId, boolean pass, String rejectReason, int reviewerId) {
+    public void review(int applyId, boolean pass, String rejectReason, int reviewerId) {
         // 只为拿申请人 id（后续提权/通知要用）；状态判断不依赖这次读取
         AuthorApply apply = applyMapper.selectById(applyId);
         if (apply == null || apply.getUserId() == null) {
-            return false;
+            throw new BusinessException("申请不存在或已处理！");
         }
         int applicantId = apply.getUserId();
 
@@ -118,14 +118,15 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
             // 此前 changeType 返回值被丢弃——会出现「记录已通过、人没提权、通知照发」且无法重试。
             // 通知与令牌失效不进事务：邮件线程异步跑，未提交的事务里它读不到刚落的行。
             User applicant = userService.findUserById(applicantId);
-            if (applicant == null || !approveAtomically(applyId, reviewerId, applicantId)) {
-                return false;
+            if (applicant == null) {
+                throw new BusinessException("申请不存在或已处理！");
             }
+            approveAtomically(applyId, reviewerId, applicantId);
             userService.deleteRedisToken(applicant.getUsername());
             notificationService.notify(applicantId, SCENE_APPROVED, "作者申请已通过",
                     "恭喜！你的作者申请已通过，现在可以发布文章了。");
             log.info("author apply approved: applyId={}, userId={}", applyId, applicantId);
-            return true;
+            return;
         }
 
         // 拒绝：单表 CAS + 通知；通知失败不产生状态不一致，维持无事务
@@ -138,18 +139,17 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
                 .set("reject_reason", rejectReason);
         if (applyMapper.update(null, updateWrapper) != 1) {
             log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
-            return false;
+            throw new BusinessException("申请不存在或已处理！");
         }
         String reason = (rejectReason == null || rejectReason.isBlank()) ? "未说明原因" : rejectReason;
         notificationService.notify(applicantId, SCENE_REJECTED, "作者申请未通过",
                 "很遗憾，你的作者申请未通过。原因：" + reason);
         log.info("author apply rejected: applyId={}, userId={}", applyId, applicantId);
-        return true;
     }
 
-    /** 通过路径的事务单元：CAS 置 approved + 提权，任一步失败回滚到待审 */
-    private boolean approveAtomically(int applyId, int reviewerId, int applicantId) {
-        return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+    /** 通过路径的事务单元：CAS 置 approved + 提权，任一步失败抛异常回滚到待审 */
+    private void approveAtomically(int applyId, int reviewerId, int applicantId) {
+        transactionTemplate.executeWithoutResult(status -> {
             UpdateWrapper<AuthorApply> cas = new UpdateWrapper<>();
             cas.eq("id", applyId)
                     .eq("status", AuthorApply.STATUS_PENDING)
@@ -158,15 +158,12 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
                     .set("review_time", LocalDateTime.now());
             if (applyMapper.update(null, cas) != 1) {
                 log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
-                status.setRollbackOnly();
-                return false;
+                throw new BusinessException("申请不存在或已处理！");
             }
             if (!userService.changeType(applicantId, ROLE_AUTHOR)) {
                 log.warn("promote to author failed, approval rolled back: applyId={}, userId={}", applyId, applicantId);
-                status.setRollbackOnly();
-                return false;
+                throw new BusinessException("提权失败，请稍后重试！");
             }
-            return true;
-        }));
+        });
     }
 }

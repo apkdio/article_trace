@@ -58,9 +58,7 @@ public class ProfileApplyController {
         if (rejectReason != null && rejectReason.length() > MAX_REASON_LENGTH) {
             throw new BusinessException("拒绝理由过长（最多 " + MAX_REASON_LENGTH + " 字）！");
         }
-        if (!profileApplyService.review(id, pass, rejectReason, reviewerId)) {
-            throw new BusinessException("记录不存在或已处理！");
-        }
+        profileApplyService.review(id, pass, rejectReason, reviewerId);
         return Result.success();
     }
 

@@ -1,5 +1,6 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.RustFsUtil;
@@ -53,22 +54,22 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
     }
 
     @Override
-    public boolean submit(int userId, MultipartFile file) {
+    public void submit(int userId, MultipartFile file) {
         // 已有待审记录 → 不允许重复提交
         QueryWrapper<AvatarApply> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId).eq("status", AvatarApply.STATUS_PENDING);
         if (applyMapper.selectCount(wrapper) > 0) {
-            return false;
+            throw new BusinessException("已有待审核的头像，请勿重复提交！");
         }
 
         String extension = FileCheckUtil.extensionOf(file);
         if (extension == null) {
-            return false;
+            throw new BusinessException("图片格式不支持！");
         }
         String fileName = System.currentTimeMillis() + userId + "avatar" + extension;
         if (!rustFsUtil.upload(file, TYPE_AVATAR, fileName)) {
             log.error("avatar upload failed: userId={}, key={}", userId, fileName);
-            return false;
+            throw new BusinessException("上传失败，请稍后重试！");
         }
 
         AvatarApply apply = new AvatarApply();
@@ -79,14 +80,14 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         try {
             if (applyMapper.insert(apply) != 1) {
                 reclaim(fileName);
-                return false;
+                throw new BusinessException("提交失败，请稍后重试！");
             }
         } catch (DuplicateKeyException e) {
             // 并发下两个请求可能同时通过上面的查重，由唯一索引 uk_pending(user_id, pending_flag) 兜底。
             // 记录没建成，刚上传的对象要回收，否则又是在存储里留孤儿。
             log.info("avatar apply rejected by unique index: userId={}", userId);
             reclaim(fileName);
-            return false;
+            throw new BusinessException("已有待审核的头像，请勿重复提交！");
         }
         log.info("avatar apply submitted: userId={}, applyId={}", userId, apply.getId());
 
@@ -97,36 +98,36 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
                 : (applicant.getNickname() + "（" + applicant.getUsername() + "）");
         notificationService.notifyRole(ROLE_MASTER, SCENE_SUBMITTED, "有新的头像待审核",
                 who + " 提交了新的头像，请及时审核。");
-        return true;
     }
 
     @Override
-    public boolean submitDirect(int userId, MultipartFile file) {
+    public void submitDirect(int userId, MultipartFile file) {
         String extension = FileCheckUtil.extensionOf(file);
         if (extension == null) {
-            return false;
+            throw new BusinessException("图片格式不支持！");
         }
         String fileName = System.currentTimeMillis() + userId + "avatar" + extension;
         if (!rustFsUtil.upload(file, TYPE_AVATAR, fileName)) {
             log.error("avatar upload failed: userId={}, key={}", userId, fileName);
-            return false;
+            throw new BusinessException("上传失败，请稍后重试！");
         }
         // 站长的头像不排队，但「搬运 → 换 user_pic → 清旧图与待审对象」这套副作用一次都不能少，
         // 所以和审核通过共用 promote——少写一步就是裂图或孤儿对象。
-        if (!promote(userId, fileName)) {
+        try {
+            promote(userId, fileName);
+        } catch (RuntimeException e) {
             reclaim(fileName);
-            return false;
+            throw e;
         }
         log.info("avatar applied directly (master): userId={}, key={}", userId, fileName);
-        return true;
     }
 
     /** 把待审对象提升为生效头像：搬到 pic 桶 → 写 user_pic → 清掉旧图与待审对象；审核通过与站长直通共用此方法。 */
-    private boolean promote(int userId, String pendingPic) {
+    private void promote(int userId, String pendingPic) {
         // 待审对象在 avatar 桶，而 user_pic 的读取侧（签名、重置、缩略图补齐）一律按 pic 桶解析，
         // 所以先把它搬到 pic 桶再写 user_pic，否则头像会变成裂图。
         if (!rustFsUtil.copyTo(pendingPic, TYPE_AVATAR, TYPE_IMAGE)) {
-            return false;
+            throw new BusinessException("头像转换失败，请稍后重试！");
         }
         // 先换 DB 指向、拿到旧头像名，成功后再删旧对象——反过来的话，写库失败会让
         // user_pic 指向一个已删除的对象，头像变裂图且用户自己恢复不了。
@@ -134,7 +135,7 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         if (!switched.ok()) {
             // 写库没生效：回收刚搬到 pic 的那份，avatar 桶的待审对象保持不动，交给审核侧回滚
             rustFsUtil.delete(pendingPic, TYPE_IMAGE);
-            return false;
+            throw new BusinessException("头像写入失败，请稍后重试！");
         }
         String oldPic = switched.oldPic();
         if (oldPic != null && !oldPic.isEmpty() && !rustFsUtil.delete(oldPic, TYPE_IMAGE)) {
@@ -144,7 +145,6 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         if (!rustFsUtil.delete(pendingPic, TYPE_AVATAR)) {
             log.warn("pending avatar cleanup failed, may be orphan: key={}", pendingPic);
         }
-        return true;
     }
 
     @Override
@@ -173,11 +173,11 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
     }
 
     @Override
-    public boolean review(int applyId, boolean pass, String rejectReason, int reviewerId) {
+    public void review(int applyId, boolean pass, String rejectReason, int reviewerId) {
         // 只为拿申请人 id 与待审对象名；状态判断不依赖这次读取
         AvatarApply apply = applyMapper.selectById(applyId);
         if (apply == null || apply.getUserId() == null) {
-            return false;
+            throw new BusinessException("记录不存在或已处理！");
         }
         int applicantId = apply.getUserId();
         String pendingPic = apply.getPendingPic();
@@ -195,16 +195,18 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
         }
         if (applyMapper.update(null, updateWrapper) != 1) {
             log.info("avatar apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
-            return false;
+            throw new BusinessException("记录不存在或已处理！");
         }
 
         if (pass) {
-            if (!promote(applicantId, pendingPic)) {
+            try {
+                promote(applicantId, pendingPic);
+            } catch (RuntimeException e) {
                 // 搬不动就不要往下走：退回待审，站长还可以重试。
                 // 留下一条 approved 但 user_pic 没换的记录反而更难收拾。
                 rollbackToPending(applyId);
                 log.error("avatar promote failed, rolled back to pending: applyId={}, key={}", applyId, pendingPic);
-                return false;
+                throw e;
             }
             // 通过是「已生效」的轻量告知，只发站内信（场景配置为 inbox）
             notificationService.notify(applicantId, SCENE_APPROVED, "头像审核已通过",
@@ -223,7 +225,6 @@ public class AvatarApplyServiceImpl implements AvatarApplyService {
                     Map.of("reason", reason, "nickname", nicknameOf(applicantId)));
             log.info("avatar apply rejected: applyId={}, userId={}", applyId, applicantId);
         }
-        return true;
     }
 
     /** 填充待审头像的访问链接（原图 + 缩略图），供审核列表展示 */

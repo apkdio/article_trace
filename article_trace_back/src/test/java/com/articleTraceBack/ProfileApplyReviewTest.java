@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.UserService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ProfileApplyMapper;
 import com.articleTraceBack.mapper.UserMapper;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 昵称审核：通过写回昵称并起锁定期、拒绝只记理由且不动用户、重复处理被 CAS 挡住。 */
@@ -73,7 +75,7 @@ public class ProfileApplyReviewTest {
         int userId = fixtures.ensureUser(2);
         ProfileApply pending = submitPending(userId, "微信abc123");
 
-        assertTrue(profileApplyService.review(pending.getId(), true, null, 1));
+        profileApplyService.review(pending.getId(), true, null, 1);
         assertEquals("微信abc123", userMapper.selectById(userId).getNickname(), "通过后应当写回待审值");
         assertEquals(ProfileApply.STATUS_APPROVED, profileApplyMapper.selectById(pending.getId()).getStatus());
 
@@ -81,7 +83,8 @@ public class ProfileApplyReviewTest {
         assertNotNull(ttl);
         assertTrue(ttl > 6 * 24 * 3600 && ttl <= 7 * 24 * 3600, "通过后应当起 7 天锁定期，实际 TTL=" + ttl);
 
-        assertFalse(profileApplyService.review(pending.getId(), true, null, 1), "同一条不能处理两次");
+        assertThrows(BusinessException.class, () -> profileApplyService.review(pending.getId(), true, null, 1),
+                "同一条不能处理两次");
     }
 
     @Test
@@ -90,7 +93,7 @@ public class ProfileApplyReviewTest {
         String before = userMapper.selectById(userId).getNickname();
         ProfileApply pending = submitPending(userId, "看我主页 www.spam.cn");
 
-        assertTrue(profileApplyService.review(pending.getId(), false, "昵称里不要放链接", 1));
+        profileApplyService.review(pending.getId(), false, "昵称里不要放链接", 1);
         ProfileApply after = profileApplyMapper.selectById(pending.getId());
         assertEquals(ProfileApply.STATUS_REJECTED, after.getStatus());
         assertEquals("昵称里不要放链接", after.getRejectReason());
@@ -121,7 +124,7 @@ public class ProfileApplyReviewTest {
         profileApplyMapper.update(null, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<ProfileApply>()
                 .eq("id", pending.getId()).set("base_value", null));
 
-        assertTrue(profileApplyService.review(pending.getId(), true, null, 1), "审批本身应成功");
+        profileApplyService.review(pending.getId(), true, null, 1);
         assertEquals("微信abc123", userMapper.selectById(userId).getNickname(),
                 "没有 base_value 时，用户未改过就应当写回");
     }
@@ -143,7 +146,7 @@ public class ProfileApplyReviewTest {
         userMapper.update(direct, new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User>()
                 .eq("id", userId));
 
-        assertTrue(profileApplyService.review(pending.getId(), true, null, 1), "审批本身应成功");
+        profileApplyService.review(pending.getId(), true, null, 1);
         assertEquals("我自己刚改的", userMapper.selectById(userId).getNickname(),
                 "用户后来自己改的值必须保留，不能被待审值覆盖");
         assertFalse(stringRedisTemplate.hasKey(RedisKeys.PROFILE_NICKNAME_LOCK + userId),

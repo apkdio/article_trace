@@ -1,5 +1,6 @@
 package com.articleTraceBack.Service;
 
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.constant.RedisKeys;
 import com.articleTraceBack.mapper.ProfileApplyMapper;
@@ -87,11 +88,11 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
     }
 
     @Override
-    public boolean review(int applyId, boolean pass, String rejectReason, Integer reviewerId) {
+    public void review(int applyId, boolean pass, String rejectReason, Integer reviewerId) {
         ProfileApply apply = profileApplyMapper.selectById(applyId);
         // 只处理昵称与个签两类；个签目前没有提交入口以外的用法
         if (apply == null || apply.getType() == null || apply.getType() > ProfileApply.TYPE_SIGNATURE) {
-            return false;
+            throw new BusinessException("记录不存在或已处理！");
         }
         String item = apply.getType() == ProfileApply.TYPE_SIGNATURE ? "个签" : "昵称";
         UpdateWrapper<ProfileApply> cas = new UpdateWrapper<>();
@@ -103,7 +104,7 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
             cas.set("reject_reason", rejectReason);
         }
         if (profileApplyMapper.update(null, cas) != 1) {
-            return false;
+            throw new BusinessException("记录不存在或已处理！");
         }
         if (!pass) {
             // 理由要送到用户手上，所以场景配成站内信 + 邮件
@@ -113,7 +114,7 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
                     TEMPLATE_REJECTED,
                     Map.of("reason", reason, "item", item, "nickname", nicknameOf(apply.getUserId())));
             log.info("profile apply rejected: applyId={}, userId={}", applyId, apply.getUserId());
-            return true;
+            return;
         }
         // 通过：写回待审值并起锁定期（昵称与个签同一个锁）。写回带条件——
         // 该字段仍是申请时的旧值才写；用户若已自己改过（改库成功的那一刻起）就不覆盖他的新值。
@@ -133,7 +134,7 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
             if (current == null) {
                 log.info("profile apply user gone, skip write-back: applyId={}, userId={}",
                         applyId, apply.getUserId());
-                return true;
+                return;
             }
             anchor = apply.getType() == ProfileApply.TYPE_SIGNATURE
                     ? current.getSignature() : current.getNickname();
@@ -147,7 +148,7 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
         if (userMapper.update(user, writeBack) != 1) {
             log.info("profile apply write-back skipped, user changed {} meanwhile: userId={}",
                     column, apply.getUserId());
-            return true;
+            return;
         }
         stringRedisTemplate.opsForValue().set(RedisKeys.PROFILE_NICKNAME_LOCK + apply.getUserId(),
                 "1", RedisKeys.PROFILE_NICKNAME_LOCK_DAYS, TimeUnit.DAYS);
@@ -155,7 +156,6 @@ public class ProfileApplyServiceImpl implements ProfileApplyService {
         notificationService.notify(apply.getUserId(), SCENE_APPROVED, item + "审核已通过",
                 "你的新" + item + "已通过审核，现在已经在使用了。");
         log.info("profile apply approved: applyId={}, userId={}", applyId, apply.getUserId());
-        return true;
     }
 
     /** 称呼用的当前昵称；取不到就退回用户名 */

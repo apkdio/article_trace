@@ -7,11 +7,11 @@ import org.springframework.web.multipart.MultipartFile;
 /** 头像上传审核：待审头像存 avatar 桶，通过后才写入 {@code user.user_pic}，待审期间用户侧仍显示旧头像。 */
 public interface AvatarApplyService {
 
-    /** 提交待审头像；已有待审记录或对象上传失败时返回 false */
-    boolean submit(int userId, MultipartFile file);
+    /** 提交待审头像；已有待审记录或对象上传失败抛 {@code BusinessException} */
+    void submit(int userId, MultipartFile file);
 
-    /** 站长直通：上传后直接生效，不进审核队列（他是唯一能审的人，审自己没有意义） */
-    boolean submitDirect(int userId, MultipartFile file);
+    /** 站长直通：上传后直接生效，不进审核队列（他是唯一能审的人，审自己没有意义）；失败抛 {@code BusinessException} */
+    void submitDirect(int userId, MultipartFile file);
 
     /** 我的最新一条记录（无则 null） */
     AvatarApply findMine(int userId);
@@ -22,6 +22,6 @@ public interface AvatarApplyService {
     /** 待审数量 */
     int pendingCount();
 
-    /** 审批：pass=true 通过并把待审头像设为用户头像，false 拒绝 */
-    boolean review(int applyId, boolean pass, String rejectReason, int reviewerId);
+    /** 审批：pass=true 通过并把待审头像设为用户头像，false 拒绝；失败抛 {@code BusinessException} */
+    void review(int applyId, boolean pass, String rejectReason, int reviewerId);
 }

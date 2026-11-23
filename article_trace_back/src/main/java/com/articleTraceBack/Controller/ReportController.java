@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.ReportService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.PageBean;
 import com.articleTraceBack.pojo.Report;
@@ -38,17 +39,18 @@ public class ReportController {
     public Result<String> submit(@RequestBody Report report) {
         Integer reporterId = currentUserId();
         if (report.getTargetType() == null || report.getTargetId() == null) {
-            return Result.error("举报对象不能为空！");
+            throw new BusinessException("举报对象不能为空！");
         }
         String reason = report.getReason() == null ? "" : report.getReason().trim();
         if (reason.isEmpty()) {
-            return Result.error("请填写举报理由！");
+            throw new BusinessException("请填写举报理由！");
         }
         if (reason.length() > MAX_REASON_LENGTH) {
-            return Result.error("举报理由过长（最多 " + MAX_REASON_LENGTH + " 字）！");
+            throw new BusinessException("举报理由过长（最多 " + MAX_REASON_LENGTH + " 字）！");
         }
         if (!reportService.submit(reporterId, report.getTargetType(), report.getTargetId(), reason)) {
-            return Result.error("举报失败：对象不存在、不能举报自己，或你已经举报过了。");
+            // submit 的 false 覆盖：类型不支持 / 对象不存在 / 不能举报自己 / 已举报过 / 写库失败
+            throw new BusinessException("举报失败：对象不存在或类型不支持、不能举报自己，或你已经举报过了。");
         }
         return Result.success();
     }
@@ -59,7 +61,7 @@ public class ReportController {
                                          @RequestParam(defaultValue = "1") int pageNum,
                                          @RequestParam(defaultValue = "10") int pageSize) {
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         return Result.success(reportService.list(status, pageNum, pageSize));
     }
@@ -69,10 +71,10 @@ public class ReportController {
     public Result<String> handle(@PathVariable int id, @RequestParam boolean handled) {
         Integer handlerId = currentUserId();
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         if (!reportService.handle(id, handled, handlerId)) {
-            return Result.error("记录不存在或已处理！");
+            throw new BusinessException("记录不存在或已处理！");
         }
         return Result.success();
     }

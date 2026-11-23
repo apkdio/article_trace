@@ -6,6 +6,7 @@ import com.articleTraceBack.Service.ArticleService;
 import com.articleTraceBack.Service.ReaderService;
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.AhoCorasickUtil;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.PageUtil;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.*;
@@ -55,8 +56,7 @@ public class ReaderController {
         int totalArticles = articleService.findAllArticlesCountInPublic(categoryId, 1, search, searchType, nickName);
         int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
-            error.put("error", "无数据！");
-            return Result.error(error);
+            throw new BusinessException("无数据！");
         }
         if (pageNum > pageTotal) {
             pageNum = pageTotal;
@@ -70,29 +70,24 @@ public class ReaderController {
     /** 公开文章详情（未发布不可见） */
     @GetMapping("/article/{id}")
     public Result<Article> getArticleById(@PathVariable int id) {
-        Map<String, Object> error = new HashMap<>();
-        if (articleService.findArticleById(id)) {
-            Article article = articleService.findArticleByIdWithEntity(id);
-            if (article.getState() != 1) {
-                error.put("error", "文章未发布！");
-                return Result.error(error);
-            }
-            article.setViews(article.getViews() != null ? article.getViews() : 0L);
-            return Result.success(article);
+        if (!articleService.findArticleById(id)) {
+            throw new BusinessException("文章不存在!");
         }
-        error.put("error", "文章不存在!");
-        return Result.error(error);
+        Article article = articleService.findArticleByIdWithEntity(id);
+        if (article.getState() != 1) {
+            throw new BusinessException("文章未发布！");
+        }
+        article.setViews(article.getViews() != null ? article.getViews() : 0L);
+        return Result.success(article);
     }
 
     /** 作者信息（头像、发文数等） */
     @GetMapping("/writerInfo")
     public Result<WriterInfo> getWriterInfo(@RequestParam String nickName) {
-        Map<String, Object> error = new HashMap<>();
         WriterInfo writer = new WriterInfo();
         User user = readerService.findUserByNickName(nickName);
         if (user == null) {
-            error.put("error", "用户不存在！");
-            return Result.error(error);
+            throw new BusinessException("用户不存在！");
         }
         int publishCount = readerService.findPublishCounts(user.getId());
         writer.setId(user.getId());
@@ -111,6 +106,9 @@ public class ReaderController {
     public Result<WriterInfo> getMasterInfo() {
         WriterInfo writer = new WriterInfo();
         User user = userService.findUserByName(masterUserName);
+        if (user == null) {
+            throw new BusinessException("站长账号不存在！");
+        }
         int publishCount = readerService.findPublishCounts(user.getId());
         writer.setId(user.getId());
         writer.setType(user.getType());
@@ -126,83 +124,66 @@ public class ReaderController {
     /** 发表评论（需登录，含敏感词与长度校验） */
     @PostMapping("/addComment")
     public Result<String> addComment(@RequestBody @Validated Comment comment) {
-        Map<String, Object> error = new HashMap<>();
         // 单用户态下关闭「新增」评论；列表接口 getComments 不动，历史评论照常展示
         if (!siteFeatures.isCommentEnabled()) {
-            error.put("error", "评论功能暂未开放！");
-            return Result.error(error);
+            throw new BusinessException("评论功能暂未开放！");
         }
         int id = CurrentUser.require().id();
         User addComment = userService.findUserById(id);
-        if (addComment.getNickname() == null || addComment.getEmail() == null) {
-            error.put("error", "请完善用户信息！");
-            return Result.error(error);
+        if (addComment == null || addComment.getNickname() == null || addComment.getEmail() == null) {
+            throw new BusinessException("请完善用户信息！");
         }
         String commentWord = comment.getContent();
         List<AhoCorasickUtil.Match> matches = articleService.containsSensitive(commentWord);
         if (!matches.isEmpty()) {
-            error.put("error", "评论内容含有敏感词！");
-            return Result.error(error);
+            throw new BusinessException("评论内容含有敏感词！");
         }
         if (comment.getContent().length() > 200) {
-            error.put("error", "评论内容过长！");
-            return Result.error(error);
+            throw new BusinessException("评论内容过长！");
         }
-        if (Objects.equals(comment.getUserId(), id)) {
-            boolean result = readerService.addComment(comment);
-            if (result) return Result.success();
-            else {
-                error.put("error", "添加失败！");
-                return Result.error(error);
-            }
+        if (!Objects.equals(comment.getUserId(), id)) {
+            throw new BusinessException("非本人添加！");
         }
-        error.put("error", "非本人添加！");
-        return Result.error(error);
+        if (!readerService.addComment(comment)) {
+            throw new BusinessException("添加失败！");
+        }
+        return Result.success();
     }
 
     /** 删除评论（站长 / 文章作者 / 评论本人） */
     @DeleteMapping("/deleteComment")
     public Result<String> deleteComment(@RequestParam int commentId,
                                         @RequestParam int articleId) {
-        Map<String, Object> error = new HashMap<>();
         CurrentUser.Session me = CurrentUser.require();
         int userId = me.id();
         int type = me.type();
         if (type == 0) {
-            boolean result = readerService.deleteComment(commentId);
-            if (result) return Result.success();
-            else {
-                error.put("error", "删除失败！");
-                return Result.error(error);
+            if (!readerService.deleteComment(commentId)) {
+                throw new BusinessException("删除失败！");
             }
+            return Result.success();
         } else if (type == 1) {
             // 文章可能已被并发删除，取不到就当「作者这一路」不成立，继续往下走评论人判定
             Article article = articleService.findArticleByIdWithEntity(articleId);
             if (article != null && userId == article.getCreateUser()) {
-                boolean result = readerService.deleteComment(commentId);
-                if (result) return Result.success();
-                else {
-                    error.put("error", "删除失败！");
-                    return Result.error(error);
+                if (!readerService.deleteComment(commentId)) {
+                    throw new BusinessException("删除失败！");
                 }
+                return Result.success();
             }
         }
         // 评论已被删除（重复点删除）时没有归属可判，直接当作删除失败
         Comment comment = readerService.findCommentById(commentId);
         if (comment == null) {
-            error.put("error", "评论不存在或已被删除！");
-            return Result.error(error);
+            throw new BusinessException("评论不存在或已被删除！");
         }
         if (userId == comment.getUserId()) {
-            boolean result = readerService.deleteComment(commentId);
-            if (result) return Result.success();
-            else {
-                error.put("error", "删除失败！");
-                return Result.error(error);
+            if (!readerService.deleteComment(commentId)) {
+                throw new BusinessException("删除失败！");
             }
+            return Result.success();
         }
-        error.put("error", "非本人删除！");
-        return Result.error(error);
+        throw new BusinessException("非本人删除！");
     }
 
     /** 文章评论分页 */
@@ -217,8 +198,7 @@ public class ReaderController {
         int totalComments = readerService.findAllCommentsCount(articleId);
         PageBean<Comment> allComments = new PageBean<>();
         if (totalComments == 0) {
-            error.put("error", "无评论！");
-            return Result.error(error);
+            throw new BusinessException("无评论！");
         }
         int pageTotal = PageUtil.pageTotal(totalComments, pageSize);
         if (pageNum > pageTotal) pageNum = pageTotal;

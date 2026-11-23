@@ -166,7 +166,9 @@ public class UserController {
         registerUser.setEmail(email);
         registerUser.setType(ROLE_READER);
         try {
-            userService.userRegister(registerUser);
+            if (!userService.userRegister(registerUser)) {
+                throw new BusinessException("error", "注册失败！请重试！");
+            }
         } catch (DuplicateKeyException e) {
             // 并发下两个请求可能同时通过查重，由唯一索引（uk_email）兜底
             throw new BusinessException("email", "该邮箱已被注册！");
@@ -331,9 +333,7 @@ public class UserController {
         // 站长改自己的头像不进审核队列：他是唯一能审的人，审自己没意义，
         // 还会让待审状态卡在自己身上。副作用与审核通过完全一致（见 submitDirect）。
         if (CurrentUser.require().type() == 0) {
-            if (!avatarApplyService.submitDirect(userId, userLogo)) {
-                throw new BusinessException("error", "提交失败，请稍后重试！");
-            }
+            avatarApplyService.submitDirect(userId, userLogo);
             return Result.success();
         }
         // 头像不再直接生效：先进 avatar 桶等待审核，通过后才写进 user_pic。
@@ -343,9 +343,7 @@ public class UserController {
         if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
             throw new BusinessException("error", "已有待审核的头像，请勿重复提交！");
         }
-        if (!avatarApplyService.submit(userId, userLogo)) {
-            throw new BusinessException("error", "提交失败，请稍后重试！");
-        }
+        avatarApplyService.submit(userId, userLogo);
         return Result.success();
     }
 

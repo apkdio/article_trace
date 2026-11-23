@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AuthorApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.mapper.UserMapper;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,20 +88,21 @@ public class AuthorApplyServiceTest {
     @Test
     public void testSubmitAndApprove() {
         // 1. 提交申请
-        assertTrue(applyService.submit(testUserId, "想写文章"), "首次提交应成功");
+        applyService.submit(testUserId, "想写文章");
         AuthorApply mine = applyService.findMine(testUserId);
         assertNotNull(mine, "应能查到我提交的申请");
         assertEquals(AuthorApply.STATUS_PENDING, mine.getStatus());
         assertEquals("想写文章", mine.getReason());
 
         // 2. 重复提交被拒
-        assertFalse(applyService.submit(testUserId, "再提交一次"), "有待审申请时不应允许重复提交");
+        assertThrows(BusinessException.class, () -> applyService.submit(testUserId, "再提交一次"),
+                "有待审申请时不应允许重复提交");
 
         // 3. 待审数量
         assertTrue(applyService.pendingCount() >= 1);
 
         // 4. 审批通过
-        assertTrue(applyService.review(mine.getId(), true, null, testUserId));
+        applyService.review(mine.getId(), true, null, testUserId);
 
         // 5. 状态变为通过，且用户被提升为作者
         AuthorApply after = applyMapper.selectById(mine.getId());
@@ -113,15 +116,16 @@ public class AuthorApplyServiceTest {
         assertTrue(notificationMapper.selectCount(nw) >= 1, "申请人应收到通过通知");
 
         // 7. 已处理的申请不能重复审批
-        assertFalse(applyService.review(mine.getId(), true, null, testUserId), "已处理的申请不应能重复审批");
+        assertThrows(BusinessException.class,
+                () -> applyService.review(mine.getId(), true, null, testUserId), "已处理的申请不应能重复审批");
     }
 
     @Test
     public void testSubmitAndReject() {
-        assertTrue(applyService.submit(testUserId, "申请理由"));
+        applyService.submit(testUserId, "申请理由");
         AuthorApply mine = applyService.findMine(testUserId);
 
-        assertTrue(applyService.review(mine.getId(), false, "暂不符合要求", testUserId));
+        applyService.review(mine.getId(), false, "暂不符合要求", testUserId);
 
         AuthorApply after = applyMapper.selectById(mine.getId());
         assertEquals(AuthorApply.STATUS_REJECTED, after.getStatus());
@@ -130,6 +134,6 @@ public class AuthorApplyServiceTest {
         assertEquals(2, userMapper.selectById(testUserId).getType(), "拒绝后身份不应变化");
 
         // 被拒后可重新申请
-        assertTrue(applyService.submit(testUserId, "再次申请"), "被拒后应允许重新申请");
+        applyService.submit(testUserId, "再次申请");
     }
 }

@@ -34,4 +34,12 @@ public class BusinessExceptionHandlerTest {
                 handler.handleBusiness(new BodyImageLimitException("正文最多 15 张图片"));
         assertEquals(Map.of("content", "正文最多 15 张图片"), result.getMessage());
     }
+
+    @Test
+    public void payloadIsMergedWithFieldMessage() {
+        Result<Map<String, Object>> result = handler.handleBusiness(
+                new BusinessException("password", "密码错误！", Map.of("needCaptcha", true, "remaining", 2)));
+        assertEquals(Map.of("password", "密码错误！", "needCaptcha", true, "remaining", 2),
+                result.getMessage());
+    }
 }

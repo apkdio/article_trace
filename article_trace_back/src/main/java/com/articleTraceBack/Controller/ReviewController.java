@@ -5,6 +5,7 @@ import com.articleTraceBack.Service.AuthorApplyService;
 import com.articleTraceBack.Service.AvatarApplyService;
 import com.articleTraceBack.Service.ProfileApplyService;
 import com.articleTraceBack.Service.ReportService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Result;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,7 +51,7 @@ public class ReviewController {
     @GetMapping("/summary")
     public Result<Map<String, Integer>> summary() {
         if (!isMaster()) {
-            return Result.error("权限不足！");
+            throw new BusinessException("权限不足！");
         }
         Map<String, Integer> data = new LinkedHashMap<>();
         // 站长的待办是「全站还有多少没处理」，所以文章这一项不按当前用户过滤（userId 传 null）

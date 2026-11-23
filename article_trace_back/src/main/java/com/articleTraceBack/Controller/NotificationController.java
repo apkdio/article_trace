@@ -2,6 +2,7 @@ package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.NotificationService;
 import com.articleTraceBack.Service.Support.SessionExpiryNotifier;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.Notification;
 import com.articleTraceBack.pojo.PageBean;
@@ -58,7 +59,7 @@ public class NotificationController {
         Integer userId = currentUserId();
         if (!notificationService.markRead(userId, id)) {
             // markRead 的条件同时含 receiver_id：别把「不是你的消息」说成「不存在」
-            return Result.error("消息不存在、无权操作或已读！");
+            throw new BusinessException("消息不存在、无权操作或已读！");
         }
         return Result.success();
     }
@@ -75,7 +76,7 @@ public class NotificationController {
     public Result<String> delete(@PathVariable int id) {
         Integer userId = currentUserId();
         if (!notificationService.delete(userId, id)) {
-            return Result.error("消息不存在或无权操作！");
+            throw new BusinessException("消息不存在或无权操作！");
         }
         return Result.success();
     }

@@ -59,8 +59,7 @@ public class ArticleController {
         int totalArticles = articleService.findAllArticlesWithConditions(uid, categoryId, state, search);
         int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
-            error.put("error", "无数据！");
-            return Result.error(error);
+            throw new BusinessException("无数据！");
         }
         if (pageNum > pageTotal) {
             pageNum = pageTotal;

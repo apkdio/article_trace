@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AvatarApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.mapper.AvatarApplyMapper;
 import com.articleTraceBack.mapper.NotificationMapper;
@@ -24,6 +25,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -116,7 +118,7 @@ public class AvatarApplyServiceTest {
     @Test
     public void testSubmitThenApprove() {
         // 提交成功，记录处于待审，且对象确实传进了 avatar 桶
-        assertTrue(avatarApplyService.submit(testUserId, png()), "首次提交应成功");
+        avatarApplyService.submit(testUserId, png());
         AvatarApply mine = avatarApplyService.findMine(testUserId);
         assertNotNull(mine, "应能查到我提交的记录");
         assertEquals(AvatarApply.STATUS_PENDING, mine.getStatus());
@@ -128,7 +130,8 @@ public class AvatarApplyServiceTest {
                 "待审期间 user_pic 不应改变");
 
         // 重复提交被拒
-        assertFalse(avatarApplyService.submit(testUserId, png()), "有待审记录时不应允许重复提交");
+        assertThrows(BusinessException.class, () -> avatarApplyService.submit(testUserId, png()),
+                "有待审记录时不应允许重复提交");
 
         // 待审数量
         assertTrue(avatarApplyService.pendingCount() >= 1);
@@ -139,7 +142,7 @@ public class AvatarApplyServiceTest {
         assertTrue(notificationMapper.selectCount(masterNw) >= 1, "提交后站长应收到待审通知");
 
         // 通过：先把待审对象搬到 pic 桶，再换 user_pic，最后清理旧头像与 avatar 桶那份
-        assertTrue(avatarApplyService.review(mine.getId(), true, null, testUserId));
+        avatarApplyService.review(mine.getId(), true, null, testUserId);
         AvatarApply after = applyMapper.selectById(mine.getId());
         assertEquals(AvatarApply.STATUS_APPROVED, after.getStatus());
         assertNotNull(after.getReviewTime());
@@ -155,19 +158,21 @@ public class AvatarApplyServiceTest {
         assertTrue(notificationMapper.selectCount(approvedNw) >= 1, "通过后申请人应收到站内信");
 
         // 已处理的记录不能重复审批
-        assertFalse(avatarApplyService.review(mine.getId(), true, null, testUserId),
+        assertThrows(BusinessException.class,
+                () -> avatarApplyService.review(mine.getId(), true, null, testUserId),
                 "已处理的记录不应能重复审批");
     }
 
     @Test
     public void testApprovePromoteFailureRollsBackToPending() {
         // 对象搬不到 pic 桶就不该写成 approved——否则 user_pic 要么没换、要么指向 pic 桶里不存在的对象
-        assertTrue(avatarApplyService.submit(testUserId, png()));
+        avatarApplyService.submit(testUserId, png());
         AvatarApply mine = avatarApplyService.findMine(testUserId);
         given(rustFsUtil.copyTo(anyString(), anyString(), anyString())).willReturn(false);
 
-        assertFalse(avatarApplyService.review(mine.getId(), true, null, testUserId),
-                "转正失败时审批应返回失败");
+        assertThrows(BusinessException.class,
+                () -> avatarApplyService.review(mine.getId(), true, null, testUserId),
+                "转正失败时审批应失败");
 
         AvatarApply after = applyMapper.selectById(mine.getId());
         assertEquals(AvatarApply.STATUS_PENDING, after.getStatus(), "转正失败应退回待审，便于站长重试");
@@ -185,11 +190,11 @@ public class AvatarApplyServiceTest {
 
     @Test
     public void testSubmitThenReject() {
-        assertTrue(avatarApplyService.submit(testUserId, png()));
+        avatarApplyService.submit(testUserId, png());
         AvatarApply mine = avatarApplyService.findMine(testUserId);
         String pendingPic = mine.getPendingPic();
 
-        assertTrue(avatarApplyService.review(mine.getId(), false, "图片不清晰", testUserId));
+        avatarApplyService.review(mine.getId(), false, "图片不清晰", testUserId);
 
         AvatarApply after = applyMapper.selectById(mine.getId());
         assertEquals(AvatarApply.STATUS_REJECTED, after.getStatus());
@@ -210,7 +215,7 @@ public class AvatarApplyServiceTest {
         assertEquals(Notification.TYPE_AUDIT, rejected.get(0).getType(), "应归入审核类型");
 
         // 被拒后可重新提交；再提交时旧记录不再占着待审位
-        assertTrue(avatarApplyService.submit(testUserId, png()), "被拒后应允许重新提交");
+        avatarApplyService.submit(testUserId, png());
     }
 
     @Test
@@ -219,9 +224,9 @@ public class AvatarApplyServiceTest {
         userMapper.update(null, new UpdateWrapper<User>()
                 .eq("id", testUserId).set("user_pic", ""));
 
-        assertTrue(avatarApplyService.submit(testUserId, png()));
+        avatarApplyService.submit(testUserId, png());
         AvatarApply mine = avatarApplyService.findMine(testUserId);
-        assertTrue(avatarApplyService.review(mine.getId(), true, null, testUserId));
+        avatarApplyService.review(mine.getId(), true, null, testUserId);
 
         assertEquals(mine.getPendingPic(), userMapper.selectById(testUserId).getUserPic());
         verify(rustFsUtil, never()).delete(eq(""), eq("image"));
@@ -233,7 +238,8 @@ public class AvatarApplyServiceTest {
         // 对象没传上去就不该留下待审记录，否则用户会卡在「待审」且没有可审的图
         given(rustFsUtil.upload(any(), anyString(), anyString())).willReturn(false);
 
-        assertFalse(avatarApplyService.submit(testUserId, png()), "上传失败时提交应失败");
+        assertThrows(BusinessException.class, () -> avatarApplyService.submit(testUserId, png()),
+                "上传失败时提交应失败");
         assertNull(avatarApplyService.findMine(testUserId), "上传失败不应留下待审记录");
     }
 }

@@ -44,9 +44,7 @@ public class AuthorApplyController {
         }
         Integer userId = currentUserId();
         String reason = (body == null) ? null : body.get("reason");
-        if (!applyService.submit(userId, reason)) {
-            throw new BusinessException("已有待审核的申请，请勿重复提交！");
-        }
+        applyService.submit(userId, reason);
         return Result.success();
     }
 
@@ -77,9 +75,7 @@ public class AuthorApplyController {
         if (!isMaster()) {
             throw new BusinessException("权限不足！");
         }
-        if (!applyService.review(id, pass, rejectReason, reviewerId)) {
-            throw new BusinessException("申请不存在或已处理！");
-        }
+        applyService.review(id, pass, rejectReason, reviewerId);
         return Result.success();
     }
 

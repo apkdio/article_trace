@@ -1,6 +1,7 @@
 package com.articleTraceBack;
 
 import com.articleTraceBack.Service.AuthorApplyService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.AuthorApplyMapper;
 import com.articleTraceBack.mapper.NotificationMapper;
 import com.articleTraceBack.mapper.UserMapper;
@@ -88,7 +89,7 @@ public class AuthorApplyConcurrencyTest {
 
     @Test
     public void testConcurrentReviewOnlyOneWins() throws Exception {
-        assertTrue(applyService.submit(testUserId, "并发测试申请"), "提交申请应成功");
+        applyService.submit(testUserId, "并发测试申请");
         AuthorApply mine = applyService.findMine(testUserId);
         Integer applyId = mine.getId();
 
@@ -104,9 +105,10 @@ public class AuthorApplyConcurrencyTest {
             pool.submit(() -> {
                 try {
                     startGate.await();
-                    if (applyService.review(applyId, pass, "并发场景", testUserId)) {
-                        successCount.incrementAndGet();
-                    }
+                    applyService.review(applyId, pass, "并发场景", testUserId);
+                    successCount.incrementAndGet();
+                } catch (BusinessException e) {
+                    // 另一个站长先审完：落空
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
@@ -147,9 +149,10 @@ public class AuthorApplyConcurrencyTest {
             pool.submit(() -> {
                 try {
                     startGate.await();
-                    if (applyService.submit(testUserId, "并发提交")) {
-                        successCount.incrementAndGet();
-                    }
+                    applyService.submit(testUserId, "并发提交");
+                    successCount.incrementAndGet();
+                } catch (BusinessException e) {
+                    // 已有待审：落空
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {

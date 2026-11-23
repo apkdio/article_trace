@@ -304,7 +304,7 @@ flowchart LR
 2. **`DuplicateKeyException` 不谎称是某个字段冲突**。异常里只有约束名，指不出调用方该改哪个字段，
    所以给统一提示；需要更精确话术的写入点（文章标题、分类名、邮箱等）自行 `catch` 后转换。
 
-> **业务失败统一抛 `BusinessException`，由这里唯一出口返回**：写操作不再用 `boolean` 表示失败（`false` 丢原因、Controller 只能拼「xxx失败！」），成功返回 `void`/结果，预期内的失败 `throw new BusinessException(field, 文案)`（登录的 `needCaptcha` / `remaining` / `blocked` 走 `payload` 一并带回）；Controller 只保留入口校验，同样用抛异常表达。查询/判断类（`findArticleById`、`canTransfer`、`verify`、`owns` 等）继续返回 `boolean`。迁移按模块进行：文章模块与用户/三条申请线已完成，读者/举报/通知待迁移。
+> **业务失败统一抛 `BusinessException`，由这里唯一出口返回**：写操作不再用 `boolean` 表示失败（`false` 丢原因、Controller 只能拼「xxx失败！」），成功返回 `void`/结果，预期内的失败 `throw new BusinessException(field, 文案)`（登录的 `needCaptcha` / `remaining` / `blocked` 走 `payload` 一并带回）；Controller 只保留入口校验，同样用抛异常表达。查询/判断类（`findArticleById`、`canTransfer`、`verify`、`owns` 等）继续返回 `boolean`。迁移按模块进行：文章、用户/三条申请线、读者/举报/通知/审核中心已完成；用户域仍有少量 boolean（注册、改密等）与空列表语义、401 两种形态待处理。
 
 ### 11. 管理员自动初始化（AdminInitializer）
 

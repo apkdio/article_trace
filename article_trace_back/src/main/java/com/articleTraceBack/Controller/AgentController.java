@@ -1,6 +1,7 @@
 package com.articleTraceBack.Controller;
 
 import com.articleTraceBack.Service.AgentSessionService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.CurrentUser;
 import com.articleTraceBack.pojo.AgentAskRequest;
 import com.articleTraceBack.pojo.AgentChatMessage;
@@ -85,7 +86,7 @@ public class AgentController {
     public Result<List<AgentSession>> listSessions() {
         String userId = currentUserId();
         if (!agentClient.isEnabled()) {
-            return Result.error("AI 助手未启用");
+            throw new BusinessException("AI 助手未启用");
         }
         List<String> sessionIds = agentSessionService.listSessionIds(userId);
         if (sessionIds.isEmpty()) {
@@ -93,7 +94,7 @@ public class AgentController {
         }
         ListSessionsReply reply = agentClient.listSessions(sessionIds);
         if (!reply.getOk()) {
-            return Result.error("获取会话列表失败：" + reply.getMessage());
+            throw new BusinessException("获取会话列表失败：" + reply.getMessage());
         }
         List<AgentSession> sessions = new ArrayList<>();
         for (SessionSummary s : reply.getSessionsList()) {
@@ -114,14 +115,14 @@ public class AgentController {
             @RequestParam(required = false, defaultValue = "0") int limit) {
         String userId = currentUserId();
         if (!agentClient.isEnabled()) {
-            return Result.error("AI 助手未启用");
+            throw new BusinessException("AI 助手未启用");
         }
         if (!agentSessionService.owns(userId, sessionId)) {
-            return Result.error("会话不存在或无权访问！");
+            throw new BusinessException("会话不存在或无权访问！");
         }
         GetSessionMessagesReply reply = agentClient.getSessionMessages(sessionId, limit);
         if (!reply.getOk()) {
-            return Result.error("获取会话消息失败：" + reply.getMessage());
+            throw new BusinessException("获取会话消息失败：" + reply.getMessage());
         }
         List<AgentChatMessage> messages = new ArrayList<>();
         for (ChatMessage m : reply.getMessagesList()) {
@@ -139,14 +140,14 @@ public class AgentController {
     public Result<String> deleteSession(@PathVariable String sessionId) {
         String userId = currentUserId();
         if (!agentClient.isEnabled()) {
-            return Result.error("AI 助手未启用");
+            throw new BusinessException("AI 助手未启用");
         }
         if (!agentSessionService.owns(userId, sessionId)) {
-            return Result.error("会话不存在或无权访问！");
+            throw new BusinessException("会话不存在或无权访问！");
         }
         DeleteSessionReply reply = agentClient.deleteSession(sessionId);
         if (!reply.getOk()) {
-            return Result.error("删除会话失败：" + reply.getMessage());
+            throw new BusinessException("删除会话失败：" + reply.getMessage());
         }
         agentSessionService.forget(userId, sessionId);
         return Result.success();

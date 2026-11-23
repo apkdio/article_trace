@@ -6,8 +6,8 @@ import com.articleTraceBack.pojo.PageBean;
 /** 作者申请-审批：通过后把申请人提升为作者（type=1）并强制重新登录；提交与审批结果均发通知。 */
 public interface AuthorApplyService {
 
-    /** 提交申请；已有待审申请时返回 false */
-    boolean submit(int userId, String reason);
+    /** 提交申请；已有待审申请或写库失败抛 {@code BusinessException} */
+    void submit(int userId, String reason);
 
     /** 我的最新一条申请（无则 null） */
     AuthorApply findMine(int userId);
@@ -18,6 +18,6 @@ public interface AuthorApplyService {
     /** 待审数量 */
     int pendingCount();
 
-    /** 审批：pass=true 通过并提升为作者，false 拒绝 */
-    boolean review(int applyId, boolean pass, String rejectReason, int reviewerId);
+    /** 审批：pass=true 通过并提升为作者，false 拒绝；不存在 / 已处理 / 提权失败抛 {@code BusinessException} */
+    void review(int applyId, boolean pass, String rejectReason, int reviewerId);
 }
