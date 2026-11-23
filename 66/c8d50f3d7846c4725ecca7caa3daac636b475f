@@ -1,0 +1,105 @@
+article_trace_back/src/test/java/com/articleTraceBack/BoundaryAndExceptionTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/test/java/com/articleTraceBack/CoverAndLogoConsistencyTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4-5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReviewController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 8
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyApprovalTxTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyServiceTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 9
+article_trace_back/src/main/java/com/articleTraceBack/Utils/GlobalExceptionHandler.java
+  s_ab74ea15e793d1::t_24b2f405f7e3ca 3-6
+article_trace_back/src/test/java/com/articleTraceBack/Utils/BusinessExceptionHandlerTest.java
+  s_ab74ea15e793d1::t_41d6010cfe1521 3-7
+article_trace_back/src/main/java/com/articleTraceBack/Controller/NotificationController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/test/java/com/articleTraceBack/NotificationControllerTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 9-10
+article_trace_back/src/main/java/com/articleTraceBack/Service/AvatarApplyServiceImpl.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 3
+article_trace_back/src/main/java/com/articleTraceBack/exception/ArticleConcurrentEditException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/main/java/com/articleTraceBack/Service/UserServiceImpl.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ProfileApplyController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/main/java/com/articleTraceBack/exception/BodyImageLimitException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/main/java/com/articleTraceBack/Service/AuthorApplyServiceImpl.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 3
+article_trace_back/src/main/java/com/articleTraceBack/Service/ProfileApplyServiceImpl.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 3
+article_trace_back/src/main/java/com/articleTraceBack/Utils/TokenCheck.java
+  s_ab74ea15e793d1::t_e9062a22f90d92 3-5
+article_trace_back/src/test/java/com/articleTraceBack/ArticleTitleConflictGuardTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/test/java/com/articleTraceBack/ArticleVersionCasTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4-5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/CategoryController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/Utils/TokenCheckTest.java
+  s_ab74ea15e793d1::t_435e893b476437 3-5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/main/java/com/articleTraceBack/exception/NotLoggedInException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/main/java/com/articleTraceBack/exception/SessionExpiredException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/test/java/com/articleTraceBack/SiteGatingTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 6
+article_trace_back/src/main/java/com/articleTraceBack/exception/ForbiddenException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AuthorApplyController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReportController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/main/java/com/articleTraceBack/exception/BusinessException.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 1
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AvatarApplyController.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/main/java/com/articleTraceBack/Service/ArticleServiceImpl.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4-5,7
+article_trace_back/src/test/java/com/articleTraceBack/ArticleEditAndCacheSafetyTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/AvatarApplyConcurrencyTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/CurrentUserTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/PasswordChangeCasTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/main/java/com/articleTraceBack/Utils/CurrentUser.java
+  s_ab74ea15e793d1::t_4b5556ae80aacb 3-4
+article_trace_back/src/test/java/com/articleTraceBack/ArticleStateMachineTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyConcurrencyTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/AvatarApplyServiceTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 4
+article_trace_back/src/test/java/com/articleTraceBack/ProfileApplyReviewTest.java
+  s_ab74ea15e793d1::t_17ba7d492a8f93 5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_404131c776e049 4
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_c0a9552fbd9107 285-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "66c8d50f3d7846c4725ecca7caa3daac636b475f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
