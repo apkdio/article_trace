@@ -17,6 +17,14 @@ import {checkPersonInfo} from "@/api/checkPersonInfo.js";
 import router from "@/router/index.js";
 import {checkType} from "@/api/user.js";
 import {CROP_PRESETS, checkImageFile, MAX_IMAGE_SIZE, MAX_SOURCE_IMAGE_SIZE} from "@/utils/upload.js";
+import {
+  BODY_IMAGE_MAX_BASE64,
+  BODY_IMAGE_MAX_BASE64_TEXT,
+  base64Length,
+  bodyImageLimitError,
+  compressBodyImage,
+  measureBodyImages
+} from "@/utils/bodyImages.js";
 import {confirmCompleteProfile, promptMasterPassword} from "@/utils/confirm.js";
 import {errorText} from "@/utils/errorText.js";
 import {markdownToHtml, sanitizeImportedHtml, splitMarkdownTables} from "@/utils/markdown.js";
@@ -88,6 +96,7 @@ const onQuillReady = () => {
   applyTableMatcher()
   applyToolbarTitles()
   applyInlineCodeExit()
+  applyBodyImageEntry()
 }
 
 /**
@@ -116,6 +125,94 @@ const currentQuill = () => {
   } catch {
     return null
   }
+}
+
+/**
+ * 正文插图：工具栏 / 粘贴 / 拖拽共用这一个入口，压缩与限额只写一份。
+ * 逐张串行处理——并发压缩多张大图容易把主线程卡住，也分不清哪张失败。
+ */
+const insertBodyImages = async (files, quill, startIndex) => {
+  const images = Array.from(files || []).filter(file => file && file.type && file.type.startsWith('image/'))
+  if (!images.length) return
+  let stats = measureBodyImages(quill.root.innerHTML)
+  let index = typeof startIndex === 'number'
+      ? startIndex
+      : (quill.getSelection(true)?.index ?? quill.getLength())
+  for (const file of images) {
+    const countError = bodyImageLimitError(stats, 1, 0)
+    if (countError) {
+      ElMessage.warning(countError)
+      break
+    }
+    try {
+      const {dataUrl} = await compressBodyImage(file)
+      const size = base64Length(dataUrl)
+      // 动图不压缩，compressBodyImage 里已拦过一次；这里兜住其余漏网的超限图
+      if (size > BODY_IMAGE_MAX_BASE64) {
+        ElMessage.error(`单张图片不能超过 ${BODY_IMAGE_MAX_BASE64_TEXT}`)
+        continue
+      }
+      const totalError = bodyImageLimitError(stats, 1, size)
+      if (totalError) {
+        ElMessage.warning(totalError)
+        break
+      }
+      quill.insertEmbed(index, 'image', dataUrl, 'user')
+      index += 1
+      stats = {count: stats.count + 1, totalBytes: stats.totalBytes + size}
+    } catch (error) {
+      ElMessage.error(error?.message || '图片处理失败')
+    }
+  }
+  quill.setSelection(Math.min(index, Math.max(0, quill.getLength() - 1)), 0, 'silent')
+}
+
+const openBodyImagePicker = () => {
+  const quill = currentQuill()
+  if (!quill) return
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.multiple = true
+  input.addEventListener('change', () => insertBodyImages(input.files, quill))
+  input.click()
+}
+
+/**
+ * 粘贴 / 拖拽插图：在编辑器外层捕获，先于 Quill 的剪贴板模块拦下图片文件。
+ * 挂在容器而不是 .ql-editor 上——同一元素上的监听按注册顺序执行，压不住 Quill 已注册的 paste。
+ */
+const applyBodyImageEntry = () => {
+  const quill = currentQuill()
+  const container = editorContainerRef.value
+  if (!quill || !container || container.dataset.bodyImageBound === '1') return
+  container.dataset.bodyImageBound = '1'
+  // 截图/复制图片时有的浏览器只给 items 不给 files，两条都取
+  const imageFiles = (dataTransfer) => {
+    const files = Array.from(dataTransfer?.files || [])
+        .filter(file => file.type && file.type.startsWith('image/'))
+    if (files.length) return files
+    return Array.from(dataTransfer?.items || [])
+        .filter(item => item.kind === 'file' && item.type && item.type.startsWith('image/'))
+        .map(item => item.getAsFile())
+        .filter(Boolean)
+  }
+  const onPaste = (event) => {
+    const files = imageFiles(event.clipboardData)
+    if (!files.length) return
+    event.preventDefault()
+    event.stopPropagation()
+    insertBodyImages(files, quill)
+  }
+  const onDrop = (event) => {
+    const files = imageFiles(event.dataTransfer)
+    if (!files.length) return
+    event.preventDefault()
+    event.stopPropagation()
+    insertBodyImages(files, quill)
+  }
+  container.addEventListener('paste', onPaste, true)
+  container.addEventListener('drop', onDrop, true)
 }
 
 const previewDrawer = ref(false)
@@ -352,7 +449,8 @@ const quillToolbar = {
   ],
   handlers: {
     formula: openFormulaDialog,
-    markdown: openMarkdownDialog
+    markdown: openMarkdownDialog,
+    image: openBodyImagePicker
   }
 }
 
