@@ -65,7 +65,7 @@ public class UserDeleteCascadeTest {
         countWrapper.eq("user_id", userId);
         assertEquals(2L, applyMapper.selectCount(countWrapper).longValue(), "前置：应有 2 条申请");
 
-        assertTrue(userService.deleteUser(userId), "注销应成功");
+        userService.deleteUser(userId);
 
         assertEquals(0L, applyMapper.selectCount(countWrapper).longValue(), "注销后其作者申请应一并删除");
     }
@@ -85,7 +85,7 @@ public class UserDeleteCascadeTest {
 
         stringRedisTemplate.opsForValue().set(username, "token-to-be-cleared");
 
-        assertTrue(userService.deleteUser(user.getId()), "注销应成功");
+        userService.deleteUser(user.getId());
         assertNull(stringRedisTemplate.opsForValue().get(username), "注销后 Redis 令牌应被清除");
     }
 }

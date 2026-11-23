@@ -56,7 +56,8 @@ public class ReaderController {
         int totalArticles = articleService.findAllArticlesCountInPublic(categoryId, 1, search, searchType, nickName);
         int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
-            throw new BusinessException("无数据！");
+            // 空结果不是错误：返回空页，前端渲染空状态
+            return Result.success(new PageBean<>(0, List.of()));
         }
         if (pageNum > pageTotal) {
             pageNum = pageTotal;
@@ -198,7 +199,8 @@ public class ReaderController {
         int totalComments = readerService.findAllCommentsCount(articleId);
         PageBean<Comment> allComments = new PageBean<>();
         if (totalComments == 0) {
-            throw new BusinessException("无评论！");
+            // 空评论不是错误：返回空页，前端显示「暂无评论」占位
+            return Result.success(new PageBean<>(0, List.of()));
         }
         int pageTotal = PageUtil.pageTotal(totalComments, pageSize);
         if (pageNum > pageTotal) pageNum = pageTotal;

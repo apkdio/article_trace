@@ -2,6 +2,7 @@ package com.articleTraceBack.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import com.articleTraceBack.Utils.BcryptUtils;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.EmailNormalizer;
 import com.articleTraceBack.Utils.FileCheckUtil;
 import com.articleTraceBack.Utils.JwtUtil;
@@ -90,7 +91,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean userRegister(User user) {
+    public void userRegister(User user) {
         String encoderPass = BcryptUtils.encodePass(user.getPassword());
         LocalDateTime now = LocalDateTime.now();
         user.setCreateTime(now);
@@ -100,7 +101,9 @@ public class UserServiceImpl implements UserService {
         if (StringUtils.isBlank(user.getNickname())) {
             user.setNickname(genDefaultNickname());
         }
-        return userMapper.insert(user) == 1;
+        if (userMapper.insert(user) != 1) {
+            throw new BusinessException("注册失败！请重试！");
+        }
     }
 
     /** 默认昵称：文迹探索者 + 6 位随机串，如「文迹探索者k7m2x9」 */
@@ -153,19 +156,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean updatePass(String username, String newPass, String oriPass) {
+    public void updatePass(String username, String newPass, String oriPass) {
         // 把当前哈希写进 WHERE：两人同时改密时，后写者更新 0 行，
         // 而不是静默覆盖先写者的新密码（原先两端都返回成功）。
         String current = selectColumn(username, "password");
         if (current == null || !BcryptUtils.checkPass(oriPass, current)) {
-            return false;
+            throw new BusinessException("oriPass", "原密码不正确，或已在其它设备改过，请重新登录后重试");
         }
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("username", username)
                 .eq("password", current)
                 .set("password", BcryptUtils.encodePass(newPass))
                 .set("update_time", LocalDateTime.now());
-        return userMapper.update(null, updateWrapper) == 1;
+        if (userMapper.update(null, updateWrapper) != 1) {
+            throw new BusinessException("oriPass", "密码已在其它设备修改，请重新登录后重试");
+        }
     }
 
     /** 取单列字符串；用户不存在（或并发注销）时 selectObjs 为空，不能直接 getFirst 取 */
@@ -303,27 +308,26 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean removeUserLogo(String username) {
+    public void removeUserLogo(String username) {
         User user = userMapper.selectOne(
                 new QueryWrapper<User>().eq("username", username));
         if (user == null) {
-            return false;
+            throw new BusinessException("用户不存在！");
         }
         String userPic = user.getUserPic();
         if (StringUtils.isBlank(userPic)) {
-            return false;
+            throw new BusinessException("当前没有头像可重置！");
         }
         // 先清 DB 指向，成功后再删对象：反过来的话，写库失败会让 DB 指向一个已删除的对象，
         // 用户头像会变成裂图且自己恢复不了（与文章正文的处理保持一致）。
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("username", username).set("user_pic", "");
         if (userMapper.update(updateWrapper) != 1) {
-            return false;
+            throw new BusinessException("重置失败！");
         }
         if (!rustFsUtil.delete(userPic, "image")) {
             log.warn("user logo object delete failed, may be orphan: username={}, key={}", username, userPic);
         }
-        return true;
     }
 
     @Override
@@ -344,29 +348,28 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean deleteUser(int id) {
+    public void deleteUser(int id) {
         // 删行前先取登录名：注销后要清 Redis 令牌，否则旧 Cookie 在 JWT 有效期内仍通过双校验
         User user = userMapper.selectById(id);
         if (user == null) {
-            return false;
+            throw new BusinessException("用户不存在！");
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("id", id);
-        boolean deleted = userMapper.delete(queryWrapper) == 1;
-        if (deleted) {
-            deleteRedisToken(user.getUsername());
-            // 账号注销后，同步清理该用户在 agent 侧的会话数据与归属索引
-            agentSessionService.clearAll(String.valueOf(id));
-            // 以及其作者申请：留着会变成没有对应用户的悬挂记录，
-            // 站长列表里查不到申请人、角标也清不掉
-            QueryWrapper<AuthorApply> applyWrapper = new QueryWrapper<>();
-            applyWrapper.eq("user_id", id);
-            int removed = authorApplyMapper.delete(applyWrapper);
-            if (removed > 0) {
-                log.info("removed author applies on user deletion: userId={}, count={}", id, removed);
-            }
+        if (userMapper.delete(queryWrapper) != 1) {
+            throw new BusinessException("删除失败！");
         }
-        return deleted;
+        deleteRedisToken(user.getUsername());
+        // 账号注销后，同步清理该用户在 agent 侧的会话数据与归属索引
+        agentSessionService.clearAll(String.valueOf(id));
+        // 以及其作者申请：留着会变成没有对应用户的悬挂记录，
+        // 站长列表里查不到申请人、角标也清不掉
+        QueryWrapper<AuthorApply> applyWrapper = new QueryWrapper<>();
+        applyWrapper.eq("user_id", id);
+        int removed = authorApplyMapper.delete(applyWrapper);
+        if (removed > 0) {
+            log.info("removed author applies on user deletion: userId={}, count={}", id, removed);
+        }
     }
 
     @Override
@@ -385,10 +388,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean changeType(int userId, int type) {
+    public void changeType(int userId, int type) {
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", userId).set("type", type);
-        return userMapper.update(updateWrapper) == 1;
+        if (userMapper.update(updateWrapper) != 1) {
+            throw new BusinessException("变更失败，请稍后重试！");
+        }
     }
 
     @Override

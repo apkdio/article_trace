@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Service.UserService;
 import com.articleTraceBack.Utils.BcryptUtils;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.mapper.UserMapper;
 import com.articleTraceBack.pojo.User;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -16,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -55,9 +56,10 @@ public class PasswordChangeCasTest {
             pool.execute(() -> {
                 try {
                     start.await();
-                    if (userService.updatePass(name, newPass, oldPass)) {
-                        ok.incrementAndGet();
-                    }
+                    userService.updatePass(name, newPass, oldPass);
+                    ok.incrementAndGet();
+                } catch (BusinessException e) {
+                    // 另一个请求先改成功：落空
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
@@ -70,7 +72,7 @@ public class PasswordChangeCasTest {
         pool.shutdown();
 
         assertEquals(1, ok.get(), "同时改密只应有一个成功");
-        assertFalse(userService.updatePass(name, "another-pass", oldPass),
+        assertThrows(BusinessException.class, () -> userService.updatePass(name, "another-pass", oldPass),
                 "赢家已换掉密码，拿旧密码再改必须失败");
     }
 }

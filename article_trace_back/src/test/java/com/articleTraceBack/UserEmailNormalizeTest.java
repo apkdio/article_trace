@@ -36,7 +36,7 @@ public class UserEmailNormalizeTest {
         u.setPassword("pass123456");
         u.setType(ROLE_READER);
         u.setEmail("  MiXeD." + tag + "@Example.INVALID  ");
-        assertTrue(userService.userRegister(u), "注册应当成功");
+        userService.userRegister(u);
         try {
             assertEquals("mixed." + tag + "@example.invalid",
                     userMapper.selectById(u.getId()).getEmail(), "注册落库前要 trim + 小写");
@@ -55,7 +55,7 @@ public class UserEmailNormalizeTest {
         u.setPassword("pass123456");
         u.setType(ROLE_READER);
         u.setEmail("lower." + tag + "@example.invalid");
-        assertTrue(userService.userRegister(u), "注册应当成功");
+        userService.userRegister(u);
         try {
             User edit = new User();
             edit.setUsername(u.getUsername());

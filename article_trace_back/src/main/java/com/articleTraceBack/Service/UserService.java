@@ -9,7 +9,8 @@ import java.util.Map;
 public interface UserService {
     User findUserByName(String name);
 
-    boolean userRegister(User user);
+    /** 注册；写库失败抛 {@code BusinessException}（唯一键冲突由调用方按 DuplicateKeyException 处理） */
+    void userRegister(User user);
 
     String genToken(Map<String, Object> map, int type);
 
@@ -19,8 +20,8 @@ public interface UserService {
 
     boolean checkPass(String oriPass, String username, String checkColumn);
 
-    /** 校验原密码并改密；原密码已变（并发改密）时返回 false，不覆盖先写者的新密码 */
-    boolean updatePass(String username, String newPass, String oriPass);
+    /** 校验原密码并改密；原密码不符或并发改密落空时抛 {@code BusinessException}，不覆盖先写者的新密码 */
+    void updatePass(String username, String newPass, String oriPass);
 
     /** 昵称修改的四种结果：决定上层怎么提示（成功 / 待审 / 被拒 / 锁定期内） */
     record ProfileUpdateResult(Kind kind, String reason, String field) {
@@ -35,11 +36,6 @@ public interface UserService {
 
     boolean isValidFile(MultipartFile file);
 
-    /**
-     * 把用户头像换成新的对象名。
-     *
-     * @return 被替换掉的旧头像对象名，供调用方清理；原本无头像、用户不存在或更新失败时为 null
-     */
     /**
      * 更新头像指向。
      * {@code ok=false} 表示没写进库（用户不存在或影响 0 行）；{@code oldPic} 只有在成功时才有意义，
@@ -57,15 +53,18 @@ public interface UserService {
     /** 已发布文章数：首页「我的发布」算的是产出，草稿、待审、已驳回都不计 */
     int countPublishedArticles(int uid);
 
-    boolean removeUserLogo(String username);
+    /** 重置为默认头像；用户不存在 / 没有头像 / 写库失败抛 {@code BusinessException} */
+    void removeUserLogo(String username);
 
     int findAllAccounts();
 
-    boolean deleteUser(int id);
+    /** 注销账号并清理关联数据；用户不存在或删除失败抛 {@code BusinessException} */
+    void deleteUser(int id);
 
     PageBean<User> findAllAccountsWithPage(int pageNum, int pageSize);
 
-    boolean changeType(int userId, int type);
+    /** 变更身份；写库失败抛 {@code BusinessException} */
+    void changeType(int userId, int type);
 
     User findUserById(int userId);
 

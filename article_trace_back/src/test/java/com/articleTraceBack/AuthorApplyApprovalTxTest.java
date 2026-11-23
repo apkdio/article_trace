@@ -61,8 +61,9 @@ public class AuthorApplyApprovalTxTest {
         int userId = fixtures.ensureUser(2);
         User reader = userMapper.selectById(userId);
         int applyId = pendingApply(userId);
-        // changeType 返回 false：模拟提权失败（旧实现会丢弃返回值，留下已通过但没提权的记录）
-        org.mockito.BDDMockito.given(userService.changeType(userId, 1)).willReturn(false);
+        // changeType 抛异常：模拟提权失败（旧实现会丢弃返回值，留下已通过但没提权的记录）
+        org.mockito.Mockito.doThrow(new BusinessException("变更失败，请稍后重试！"))
+                .when(userService).changeType(userId, 1);
         org.mockito.BDDMockito.given(userService.findUserById(userId)).willReturn(reader);
 
         assertThrows(BusinessException.class, () -> applyService.review(applyId, true, null, 1),

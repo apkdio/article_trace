@@ -59,7 +59,8 @@ public class ArticleController {
         int totalArticles = articleService.findAllArticlesWithConditions(uid, categoryId, state, search);
         int pageTotal = PageUtil.pageTotal(totalArticles, pageSize);
         if (pageTotal == 0) {
-            throw new BusinessException("无数据！");
+            // 没有数据不是错误：空页让前端渲染空状态，而不是弹「无数据」的红框
+            return Result.success(new PageBean<>(0, List.of()));
         }
         if (pageNum > pageTotal) {
             pageNum = pageTotal;

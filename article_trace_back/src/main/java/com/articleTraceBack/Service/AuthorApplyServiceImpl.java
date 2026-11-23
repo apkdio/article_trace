@@ -160,10 +160,8 @@ public class AuthorApplyServiceImpl implements AuthorApplyService {
                 log.info("author apply already handled, skip: applyId={}, reviewerId={}", applyId, reviewerId);
                 throw new BusinessException("申请不存在或已处理！");
             }
-            if (!userService.changeType(applicantId, ROLE_AUTHOR)) {
-                log.warn("promote to author failed, approval rolled back: applyId={}, userId={}", applyId, applicantId);
-                throw new BusinessException("提权失败，请稍后重试！");
-            }
+            // 提权失败会抛 BusinessException，事务整体回滚到待审
+            userService.changeType(applicantId, ROLE_AUTHOR);
         });
     }
 }

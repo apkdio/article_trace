@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -166,9 +167,7 @@ public class UserController {
         registerUser.setEmail(email);
         registerUser.setType(ROLE_READER);
         try {
-            if (!userService.userRegister(registerUser)) {
-                throw new BusinessException("error", "注册失败！请重试！");
-            }
+            userService.userRegister(registerUser);
         } catch (DuplicateKeyException e) {
             // 并发下两个请求可能同时通过查重，由唯一索引（uk_email）兜底
             throw new BusinessException("email", "该邮箱已被注册！");
@@ -373,9 +372,7 @@ public class UserController {
         if (!newPass.equals(confirmPass)) {
             throw new BusinessException("confirmPass", "两次密码不一致！");
         }
-        if (!userService.updatePass(username, newPass, passInfo.getOriPass())) {
-            throw new BusinessException("oriPass", "原密码不正确，或已在其它设备改过，请重新登录后重试");
-        }
+        userService.updatePass(username, newPass, passInfo.getOriPass());
         if (!userService.deleteRedisToken(username)) {
             throw new BusinessException("Redis", "缓存删除失败！");
         }
@@ -437,9 +434,7 @@ public class UserController {
         if (mine != null && mine.getStatus() == AvatarApply.STATUS_PENDING) {
             throw new BusinessException("error", "有待审核的头像，请等审核结果出来再重置！");
         }
-        if (!userService.removeUserLogo(username)) {
-            throw new BusinessException("error", "重置失败！");
-        }
+        userService.removeUserLogo(username);
         return Result.success();
     }
 
@@ -459,7 +454,8 @@ public class UserController {
         int total = userService.findAllAccounts();
         int pageTotal = PageUtil.pageTotal(total, pageSize);
         if (pageTotal == 0) {
-            throw new BusinessException("error", "无数据！");
+            // 空列表不是错误：返回空页，前端渲染空表
+            return Result.success(new PageBean<>(0, List.of()));
         }
         if (pageNum > pageTotal) {
             pageNum = pageTotal;
@@ -497,9 +493,7 @@ public class UserController {
         if (Objects.equals(waitChange.getUsername(), defaultUser)) {
             throw new BusinessException("error", "更改对象为默认用户！");
         }
-        if (!userService.changeType(userId, type)) {
-            throw new BusinessException("error", "变更失败，请稍后重试！");
-        }
+        userService.changeType(userId, type);
         userService.deleteRedisToken(waitChange.getUsername());
         return Result.success();
     }
@@ -525,9 +519,7 @@ public class UserController {
         if (userId == master.getId()) {
             throw new BusinessException("error", "无法删除自己的账号！");
         }
-        if (!userService.deleteUser(userId)) {
-            throw new BusinessException("error", "删除失败！");
-        }
+        userService.deleteUser(userId);
         return Result.success();
     }
 }
