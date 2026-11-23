@@ -1,0 +1,27 @@
+article_trace_front/src/views/article/ArticleManage.vue
+  s_ab74ea15e793d1::t_bfe5d5b3d9e187 1194-1200
+  s_ab74ea15e793d1::t_1965b70a0a716c 161
+  s_ab74ea15e793d1::t_9463f3c85a7913 1544-1555
+  s_ab74ea15e793d1::t_541776de6da5b4 836-841
+  s_ab74ea15e793d1::t_4ea12728db9f9b 148
+  s_ab74ea15e793d1::t_cbf9ab7d940473 5,23-25,29
+  s_ab74ea15e793d1::t_cf8da859d8a2f0 239-246
+article_trace_front/src/utils/bodyImages.js
+  s_ab74ea15e793d1::t_71e31a2d75ea28 46,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "c626b87b65ef06080d8bc2c82cc82d2b0a92244f",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
