@@ -1,0 +1,119 @@
+article_trace_back/src/main/java/com/articleTraceBack/Service/AvatarApplyServiceImpl.java
+  s_ab74ea15e793d1::t_729a2e1c3ee764 3
+  s_ab74ea15e793d1::t_82d73660497e81 176,180,198,202-204,209
+  s_ab74ea15e793d1::t_9562f6ca126a3f 57,62,67,72,83,90,104,107,112,116-118,120,126,130,138
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReviewController.java
+  s_ab74ea15e793d1::t_e6d6f1499ab7f8 8
+  s_ab74ea15e793d1::t_fa594e8ab2da3c 54
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyConcurrencyTest.java
+  s_ab74ea15e793d1::t_1b987e5b90a76f 92
+  s_ab74ea15e793d1::t_d1f5827652bf8c 4
+  s_ab74ea15e793d1::t_b0e863a4f034c6 108-111
+  s_ab74ea15e793d1::t_65f67a201e10b1 152-155
+article_trace_back/src/test/java/com/articleTraceBack/ProfileApplyReviewTest.java
+  s_ab74ea15e793d1::t_3fc950205ef1d9 96
+  s_ab74ea15e793d1::t_4916327a44d877 78,86-87
+  s_ab74ea15e793d1::t_cf1c593d770141 5
+  s_ab74ea15e793d1::t_a01b4b23f3a793 127
+  s_ab74ea15e793d1::t_625327b9ec59d4 149
+article_trace_back/src/main/java/com/articleTraceBack/Service/AvatarApplyService.java
+  s_ab74ea15e793d1::t_4979ddb0863c1f 25-26
+  s_ab74ea15e793d1::t_76fe253818e81f 10-11,13-14
+article_trace_back/src/main/java/com/articleTraceBack/Service/ProfileApplyServiceImpl.java
+  s_ab74ea15e793d1::t_7e1b8d7774af04 137
+  s_ab74ea15e793d1::t_9ba5232f12f04e 151
+  s_ab74ea15e793d1::t_e7f8bc3fb4666c 91,95
+  s_ab74ea15e793d1::t_b4585d4a08a6d4 107,117
+  s_ab74ea15e793d1::t_498d1998ea4095 3
+article_trace_back/src/test/java/com/articleTraceBack/Utils/BusinessExceptionHandlerTest.java
+  s_ab74ea15e793d1::t_4767b8535ab36a 37-44
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyApprovalTxTest.java
+  s_ab74ea15e793d1::t_7696204b31afe0 4
+  s_ab74ea15e793d1::t_6958a4c646860d 91
+  s_ab74ea15e793d1::t_8c662a240a73da 20
+article_trace_back/README.md
+  s_ab74ea15e793d1::t_0be46cf37c0134 307
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReaderController.java
+  s_ab74ea15e793d1::t_83c9cbb54ffe50 90
+  s_ab74ea15e793d1::t_423c3e3ed1bb90 73-78,80-81
+  s_ab74ea15e793d1::t_30c4648cfffd7c 161-162,164,169-170,172,178,181-182,184,186
+  s_ab74ea15e793d1::t_cd127079a97feb 129,133-134,139,142-145,147-150
+  s_ab74ea15e793d1::t_76ecc1b44c67ed 201
+  s_ab74ea15e793d1::t_83d72eac4782c2 9
+  s_ab74ea15e793d1::t_d8a7bd61b2e55e 109-111
+  s_ab74ea15e793d1::t_124879731eae30 59
+article_trace_back/src/main/java/com/articleTraceBack/Service/ProfileApplyService.java
+  s_ab74ea15e793d1::t_b584409f3aa317 29,31
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ProfileApplyController.java
+  s_ab74ea15e793d1::t_27f978c2f65b65 61
+article_trace_back/src/main/java/com/articleTraceBack/Service/AuthorApplyService.java
+  s_ab74ea15e793d1::t_e18c5abc112285 9-10
+  s_ab74ea15e793d1::t_ff6851cd155194 21-22
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_759d2803496f97 346
+  s_ab74ea15e793d1::t_0cdd75607ed68c 336
+  s_ab74ea15e793d1::t_c0698cf0833ec1 169-171
+article_trace_back/src/main/java/com/articleTraceBack/Controller/NotificationController.java
+  s_ab74ea15e793d1::t_104b7dde2b6512 79
+  s_ab74ea15e793d1::t_21dffa01324471 5
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_29ad7bf17c75a4 62
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AuthorApplyController.java
+  s_ab74ea15e793d1::t_6b7c80c7795354 47
+  s_ab74ea15e793d1::t_58ba4fbfba79e2 78
+article_trace_back/src/main/java/com/articleTraceBack/Controller/CategoryController.java
+  s_ab74ea15e793d1::t_4841ca5c32244e 29-35,37-39,41,47
+  s_ab74ea15e793d1::t_226baff5cf487c 57,61,66,70-72,75,77,86,89,91-92,94
+  s_ab74ea15e793d1::t_712e8f6a729e5e 4
+article_trace_back/src/test/java/com/articleTraceBack/AuthorApplyServiceTest.java
+  s_ab74ea15e793d1::t_89ecb5acfa3a38 119-120,125,128
+  s_ab74ea15e793d1::t_d1b1e7fe4d4550 91,98-99,105
+  s_ab74ea15e793d1::t_d89ead004a289c 23
+  s_ab74ea15e793d1::t_d2ba7429fa0b1e 137
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AvatarApplyController.java
+  s_ab74ea15e793d1::t_c3a4b66aa1b0e3 68
+article_trace_back/src/test/java/com/articleTraceBack/AvatarApplyServiceTest.java
+  s_ab74ea15e793d1::t_08d963de56d427 227,229
+  s_ab74ea15e793d1::t_9dc3c12ce6d3db 241-242
+  s_ab74ea15e793d1::t_f814e9e0d4defb 28
+  s_ab74ea15e793d1::t_55728b2c38ae81 161-162
+  s_ab74ea15e793d1::t_e1825125976ceb 193,197
+  s_ab74ea15e793d1::t_5ebb95fe30d78f 145
+  s_ab74ea15e793d1::t_51aa0bb367fca3 218
+  s_ab74ea15e793d1::t_76a3602641858a 121,133-134
+  s_ab74ea15e793d1::t_8b899dacc59581 169,173-175
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ReportController.java
+  s_ab74ea15e793d1::t_3e1a87d2649899 74,77
+  s_ab74ea15e793d1::t_6cc8ab58974867 42,46,49,52-53
+  s_ab74ea15e793d1::t_100fbcca3da12f 4
+article_trace_back/src/main/java/com/articleTraceBack/Service/AuthorApplyServiceImpl.java
+  s_ab74ea15e793d1::t_269441a89a9f66 49,54,64,70
+  s_ab74ea15e793d1::t_fbc58630b0b5e1 121,129,167
+  s_ab74ea15e793d1::t_b6e687cbc7de8a 3
+article_trace_back/src/main/java/com/articleTraceBack/Controller/AgentController.java
+  s_ab74ea15e793d1::t_3909e609b61c62 89,97
+  s_ab74ea15e793d1::t_75f3b1dcf3630a 118,121,125
+  s_ab74ea15e793d1::t_0f98444994d179 4
+  s_ab74ea15e793d1::t_4caa1e68f7e1fc 143,146,150
+article_trace_back/src/test/java/com/articleTraceBack/AvatarApplyConcurrencyTest.java
+  s_ab74ea15e793d1::t_f482dad8616a13 136
+  s_ab74ea15e793d1::t_1a1e3e10844d6e 111-114
+  s_ab74ea15e793d1::t_2691da2bd10853 4
+  s_ab74ea15e793d1::t_67d18de2de7ce3 152-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "08dc5b933b6d51cfabd726a86d25ce441c8834ed",
+  "prompts": {},
+  "sessions": {
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
