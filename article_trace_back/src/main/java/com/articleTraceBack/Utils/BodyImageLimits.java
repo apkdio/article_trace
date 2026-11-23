@@ -13,6 +13,7 @@ public final class BodyImageLimits {
     public static final int MAX_SINGLE_BASE64 = 400 * 1024;
     /** 单篇正文所有图片的 base64 总量上限 */
     public static final long MAX_TOTAL_BASE64 = 5L * 1024 * 1024;
+    public static final String MAX_TOTAL_BASE64_TEXT = (MAX_TOTAL_BASE64 / 1024 / 1024) + "MB";
     /** 单篇正文的图片张数上限 */
     public static final int MAX_COUNT = 15;
 
@@ -46,7 +47,7 @@ public final class BodyImageLimits {
             }
             total += size;
             if (total > MAX_TOTAL_BASE64) {
-                return "正文图片总量不能超过 " + (MAX_TOTAL_BASE64 / 1024 / 1024) + "MB";
+                return "正文图片总量不能超过 " + MAX_TOTAL_BASE64_TEXT;
             }
         }
         return null;

@@ -181,9 +181,12 @@ public class ArticleController {
     }
 
     /** 封面上限：multipart 的 max-file-size 要装得下正文 JSON（5MB 图片），封面改在应用层单独限 3MB */
+    private static final long MAX_COVER_SIZE = 3L * 1024 * 1024;
+    private static final String MAX_COVER_SIZE_TEXT = (MAX_COVER_SIZE / 1024 / 1024) + "MB";
+
     private void ensureCoverSize(MultipartFile cover) {
-        if (cover != null && cover.getSize() > 3L * 1024 * 1024) {
-            throw new BusinessException("cover", "封面图片不能超过 3MB！");
+        if (cover != null && cover.getSize() > MAX_COVER_SIZE) {
+            throw new BusinessException("cover", "封面图片不能超过 " + MAX_COVER_SIZE_TEXT + "！");
         }
     }
 

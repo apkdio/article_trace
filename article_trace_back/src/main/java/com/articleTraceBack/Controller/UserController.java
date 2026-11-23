@@ -39,6 +39,9 @@ public class UserController {
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
+    /** 头像上限：与前端 utils/upload.js 的 MAX_IMAGE_SIZE 同口径，`>=` 即拒（恰好 2MB 也不放行） */
+    private static final long MAX_LOGO_SIZE = 2L * 1024 * 1024;
+
     private final UserService userService;
     private final AvatarApplyService avatarApplyService;
     private final EmailCodeService emailCodeService;
@@ -323,8 +326,8 @@ public class UserController {
         if (userLogo.getContentType() == null || !userLogo.getContentType().contains("image")) {
             throw new BusinessException("file", "文件不是图片文件！");
         }
-        if (userLogo.getSize() >= 2 * 1024 * 1024) {
-            throw new BusinessException("file", "文件过大（>=2MB）!");
+        if (userLogo.getSize() >= MAX_LOGO_SIZE) {
+            throw new BusinessException("file", "文件过大（不能超过 " + (MAX_LOGO_SIZE / 1024 / 1024) + "MB）！");
         }
         if (!userService.isValidFile(userLogo)) {
             throw new BusinessException("file", "不是一个图片文件！");
@@ -379,10 +382,10 @@ public class UserController {
         return Result.success();
     }
 
-    /** 忘记密码：凭重置码设置新密码 */
+    /** 忘记密码：使用邮件验证码设置新密码 */
     @PostMapping("/forgetPass")
     public Result<String> forgetPass(@RequestBody @Validated ForgetPassPojo passInfo,
-                                     HttpServletRequest request) {
+                                     HttpServletRequest request,HttpServletResponse response) {
         String email = passInfo.getEmail();
         String emailCode = passInfo.getEmailCode();
         String newPass = passInfo.getPassword();
@@ -409,6 +412,7 @@ public class UserController {
         }
         // 改密后让其现有登录态失效
         userService.deleteRedisToken(user.getUsername());
+        CookieUtil.clearToken(response,cookieSecure);
         return Result.success();
     }
 
