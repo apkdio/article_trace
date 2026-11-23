@@ -3,16 +3,16 @@ package com.articleTraceBack;
 import com.articleTraceBack.Controller.AuthorApplyController;
 import com.articleTraceBack.Controller.ReaderController;
 import com.articleTraceBack.Controller.UserController;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.pojo.Comment;
 import com.articleTraceBack.pojo.RegisterUserPojo;
-import com.articleTraceBack.pojo.Result;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.HashMap;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -44,22 +44,22 @@ public class SiteGatingTest {
 
     @Test
     public void registerIsRejected() {
-        Result<String> result = userController.register(new RegisterUserPojo(), null);
-        assertEquals(1, result.getCode(), "注册关闭时必须拒");
-        assertTrue(String.valueOf(result.getMessage()).contains("暂不开放注册"), "提示要说明注册已关");
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> userController.register(new RegisterUserPojo(), null), "注册关闭时必须拒");
+        assertTrue(ex.getMessage().contains("暂不开放注册"), "提示要说明注册已关");
     }
 
     @Test
     public void commentIsRejected() {
-        Result<String> result = readerController.addComment(new Comment());
-        assertEquals(1, result.getCode(), "评论关闭时必须拒");
-        assertTrue(String.valueOf(result.getMessage()).contains("暂未开放"), "提示要说明评论已关");
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> readerController.addComment(new Comment()), "评论关闭时必须拒");
+        assertTrue(ex.getMessage().contains("暂未开放"), "提示要说明评论已关");
     }
 
     @Test
     public void authorApplyIsRejected() {
-        Result<String> result = authorApplyController.submit(new HashMap<>());
-        assertEquals(1, result.getCode(), "作者申请关闭时必须拒");
-        assertTrue(String.valueOf(result.getMessage()).contains("暂不开放作者申请"), "提示要说明申请已关");
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> authorApplyController.submit(new HashMap<>()), "作者申请关闭时必须拒");
+        assertTrue(ex.getMessage().contains("暂不开放作者申请"), "提示要说明申请已关");
     }
 }

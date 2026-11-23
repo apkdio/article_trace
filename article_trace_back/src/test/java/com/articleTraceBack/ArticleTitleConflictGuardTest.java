@@ -2,6 +2,7 @@ package com.articleTraceBack;
 
 import com.articleTraceBack.Controller.ArticleController;
 import com.articleTraceBack.Service.ArticleService;
+import com.articleTraceBack.Utils.BusinessException;
 import com.articleTraceBack.Utils.RustFsUtil;
 import com.articleTraceBack.Utils.ThreadLocalUtil;
 import com.articleTraceBack.mapper.ArticleMapper;
@@ -18,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -97,15 +99,13 @@ public class ArticleTitleConflictGuardTest {
         edit.setCategoryId(categoryId);
         edit.setState(ArticleService.STATE_DRAFT);
 
-        Result<Map<String, Object>> result = articleController.update(target, edit, null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> articleController.update(target, edit, null),
+                "开启事务造成 DB 行变化，重名必须在这一步被拦在对象存储之外");
 
-        // 返回重名提示（Controller 的失败响应把字段错误装在 Map 里返回）
-        assertEquals(1, result.getCode(), "应当返回失败码");
-        assertTrue(result.getMessage() instanceof Map, "失败响应应当携带字段错误");
-        Map<?, ?> errors = (Map<?, ?>) result.getMessage();
-        assertTrue(errors.containsKey("title"), "应当提示 title 字段冲突，实际：" + errors);
-        assertTrue(String.valueOf(errors.get("title")).contains("同名"),
-                "应当是重名提示，实际：" + errors.get("title"));
+        // 返回重名提示（字段错误由全局处理器统一输出，这里直接看异常）
+        assertEquals("title", ex.field(), "应当提示 title 字段冲突");
+        assertTrue(ex.getMessage().contains("同名"), "应当是重名提示，实际：" + ex.getMessage());
 
         // 核心：对象存储一个操作都没发生（既没上传也没删旧）
         verify(rustFsUtil, never()).upload(any(), anyString(), anyString());
