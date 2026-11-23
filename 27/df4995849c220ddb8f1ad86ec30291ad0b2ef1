@@ -1,0 +1,36 @@
+article_trace_back/src/main/java/com/articleTraceBack/Utils/BodyImageLimits.java
+  s_ab74ea15e793d1::t_4d7dded9efcbb3 50
+  s_ab74ea15e793d1::t_9ffe987fdb840d 16
+article_trace_back/src/main/java/com/articleTraceBack/Controller/UserController.java
+  s_ab74ea15e793d1::t_9a8439312bb389 42
+  s_2aa26f7552b3ae::t_6fd7cb975cc4a3 43-44
+  s_ab74ea15e793d1::t_d20089d5098bb3 330,385,388,415
+  s_2aa26f7552b3ae::t_2e79518bcd4d6b 329
+article_trace_back/src/main/java/com/articleTraceBack/Controller/ArticleController.java
+  s_ab74ea15e793d1::t_d039e33ada23c4 185,189
+  s_ab74ea15e793d1::t_bbc2089830397f 184,186,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.52-trip",
+  "base_commit_sha": "27df4995849c220ddb8f1ad86ec30291ad0b2ef1",
+  "prompts": {},
+  "sessions": {
+    "s_2aa26f7552b3ae": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_tgz6hflc6489",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    },
+    "s_ab74ea15e793d1": {
+      "agent_id": {
+        "tool": "chengxiaobang",
+        "id": "s_3fjnag03revr",
+        "model": "auto(free)"
+      },
+      "human_author": "apkdio <apkdio@163.com>"
+    }
+  }
+}
