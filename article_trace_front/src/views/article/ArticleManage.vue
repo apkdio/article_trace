@@ -245,6 +245,14 @@ const bodyImageNearLimit = computed(() => {
       || totalBytes >= BODY_IMAGE_TOTAL_MAX_BASE64 * 0.8
 })
 
+// 正文字数：去标签、去空白后的字符数（中英文都按字符算，emoji 按 1 个）
+const wordCount = computed(() => {
+  const html = articleModel.value.content || ''
+  if (!html) return 0
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ')
+  return Array.from(text.replace(/\s+/g, '')).length
+})
+
 // 封面延后到提交时才上传：选好文件先本地预览，避免「还没决定发布就落存储」产生孤儿对象
 const pendingCover = ref(null)
 const coverPreviewUrl = ref('')
@@ -1249,12 +1257,15 @@ const refreshAfterDelete = async () => {
                 @ready="onQuillReady"
                 @blur="handleEditorBlur"
             />
-            <div
-                v-if="bodyImageStats.count"
-                class="body-image-meter"
-                :class="{'is-near-limit': bodyImageNearLimit}"
-            >
-              图片 {{ bodyImageStats.count }} 张 · 合计 {{ formatImageSize(bodyImageStats.totalBytes) }} / {{ BODY_IMAGE_TOTAL_MAX_TEXT }}
+            <div class="editor-footer">
+              <span class="word-count">字数 {{ wordCount }}</span>
+              <span
+                  v-if="bodyImageStats.count"
+                  class="body-image-meter"
+                  :class="{'is-near-limit': bodyImageNearLimit}"
+              >
+                图片 {{ bodyImageStats.count }} 张 · 合计 {{ formatImageSize(bodyImageStats.totalBytes) }} / {{ BODY_IMAGE_TOTAL_MAX_TEXT }}
+              </span>
             </div>
           </div>
         </el-form-item>
@@ -1600,13 +1611,18 @@ const refreshAfterDelete = async () => {
     outline-offset: -1px;
   }
 
-  .body-image-meter {
+  .editor-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     padding: 6px 12px;
     border-top: 1px dashed var(--at-border-warm);
     font-size: 12px;
     color: var(--at-text-secondary);
-    text-align: right;
+  }
 
+  .body-image-meter {
     &.is-near-limit {
       color: var(--el-color-warning);
     }
