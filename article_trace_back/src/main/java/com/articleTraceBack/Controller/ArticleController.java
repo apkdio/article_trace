@@ -328,6 +328,13 @@ public class ArticleController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer searchType,
             @RequestParam(required = false) Integer timeOrder) {
+        pageNum = PageUtil.normalizePageNum(pageNum);
+        pageSize = PageUtil.normalizePageSize(pageSize);
+        timeOrder = normalizeTimeOrder(timeOrder);
+        // 没有关键词就别带搜索类型：否则 SQL 会拼出 title like '%NULL%'，把整页过滤成空
+        if (search == null || search.isBlank()) {
+            searchType = null;
+        }
         String username = CurrentUser.require().username();
         User master = userService.findUserByName(username);
         if (master == null || master.getType() != 0) {

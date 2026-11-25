@@ -71,7 +71,7 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "(#{state} is not null and a.state = #{state} and (#{state} != 0 or a.create_user = #{userId}))" +
             "  )" +
             "and (#{nickName} is null or u.nickname = #{nickName}) " +
-            "and (#{searchType} is null " +
+            "and (#{searchType} is null or #{search} is null " +
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} =1 and u.nickname like concat('%',#{search},'%')))")
     int findAllArticlesCountInMaster(Integer categoryId, Integer state, Integer userId, String search, Integer searchType, String nickName);
@@ -85,7 +85,7 @@ public interface ArticleMapper extends BaseMapper<Article> {
             ") " +
             "and (a.state = #{state}) " +
             "and (#{nickName} is null or u.nickname = #{nickName}) " +
-            "and (#{searchType} is null " +
+            "and (#{searchType} is null or #{search} is null " +
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} =1 and u.nickname like concat('%',#{search},'%')))")
     int findAllArticlesCountInPublic(Integer categoryId, Integer state, String search, Integer searchType, String nickName);
@@ -106,7 +106,7 @@ public interface ArticleMapper extends BaseMapper<Article> {
             "(#{state} is not null and a.state = #{state} and (#{state} != 0 or a.create_user = #{userId}))" +
             "  )" +
             "and (#{nickName} is null or u.nickname = #{nickName}) " +
-            "and (#{searchType} is null " +
+            "and (#{searchType} is null or #{search} is null " +
             "or (#{searchType} = 0 and a.title like concat('%',#{search},'%')) " +
             "or (#{searchType} = 1 and u.nickname like concat('%',#{search},'%')))" +
             "order by " +

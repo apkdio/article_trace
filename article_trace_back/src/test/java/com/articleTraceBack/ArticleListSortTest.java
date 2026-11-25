@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -59,6 +60,26 @@ public class ArticleListSortTest {
     private String title(String tag) {
         String t = String.valueOf(System.nanoTime());
         return "sort-" + tag + "-" + t.substring(t.length() - 8);
+    }
+
+    @Test
+    public void masterListWithoutKeywordIgnoresSearchType() {
+        // 前端无关键词时也会固定带 searchType=0：不能让 SQL 拼出 title like '%NULL%' 把整页过滤成空
+        int uid = fixtures.ensureUser(AUTHOR);
+        int id = insertArticle(uid, title("nose"), LocalDateTime.now());
+        articleMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Article>()
+                        .eq("id", id).set("state", ArticleService.STATE_PENDING));
+        try {
+            assertEquals(ArticleService.STATE_PENDING, articleMapper.selectById(id).getState(),
+                    "前置：文章应已置为待审");
+            // total 由 Controller 设置，service 这里只验证 items 没有被过滤空
+            PageBean<Article> page = articleService.findAllArticlesInMaster(
+                    1, 10, null, null, null, null, 0, null, null);
+            assertFalse(page.getItems().isEmpty(), "无关键词时 searchType=0 不应过滤掉全部文章");
+        } finally {
+            articleMapper.deleteById(id);
+        }
     }
 
     @Test
